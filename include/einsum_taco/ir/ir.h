@@ -63,14 +63,5 @@ namespace einsum {
     }
 }
 
-// y = string() => "" => malloc(1)
-// string x; x = y =>
-
-// auto x = IRNode();
-// auto y(x);
-// auto x = std::move(y);
-// auto x = y                 y : MEM(int 5)
-// x = std::move(y)
-
 
 #endif //EINSUM_TACO_IR_H
