@@ -1,0 +1,31 @@
+Already in scope: edges[N][N], weights[N][N], source int
+
+Let Init(source int) -> (dist int[N], priorityQ int[N][N])
+    dist[j] = (j != source) * inf
+    priorityQ[j] = (j != source) * inf
+End
+
+
+Let UpdateEdges(dist int[N], priorityQ int[N][N], priority int) -> (new_dist int[N], new_priorityQ int[N][N], new_priority int)
+    new_dist[j] = edges[j][k] * priorityQ[priority][j] * (weights[j][k] + dist[k]) | k:(MIN, dist[j])
+	new_priorityQ[j][k] = (dist[k] > new_dist[k]) * new_dist[k] == j + (dist[k] == new_dist[k]) * priorityQ[j][k]
+	new_priority = priority
+End
+
+
+Let SSSP_one_priority_lvl(dist int[N], priorityQ int[N][N], priority int) -> (new_dist int[N], new_priorityQ int[N][N], new_priority int)
+	new_dist, new_priorityQ, _ = UpdateEdges*(dist, priorityQ, priority) | (#2[#3] == 0)
+    new_priority = priority + 1
+End
+
+
+
+###############
+Final Result
+###############
+Let SSSP() -> new_dist int[N]:
+	dist, priorityQ = Init(source)
+	new_dist, _, _ = SSSP_one_priority_lvl*(dist, priorityQ, 0) | (#2 == 0)
+End
+
+new_dist[j] = edges[j][k] * priorityQ[priority][j] * (weights[j][k] + dist[k]) | k:(MIN, dist[j])
