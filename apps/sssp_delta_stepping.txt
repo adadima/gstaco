@@ -25,6 +25,7 @@ Final Result
 ###############
 Let SSSP() -> new_dist int[N]:
 	dist, priorityQ = Init(source)
+	new = dist
 	new_dist, _, _ = SSSP_one_priority_lvl*(dist, priorityQ, 0) | (#2 == 0)
 End
 
