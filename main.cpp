@@ -27,15 +27,15 @@ int main(int argc, char *argv[]) {
     std::cout << "Access tensor: " << access.dump() << "\n";
     std::cout << "Write access tensor: " << writeAccess.dump() << "\n";
 
-    auto indVar1 = std::make_shared<IndexVarExpr>("j", 0);
-    auto indVar2 = std::make_shared<IndexVarExpr>("k", 0);
+    auto indVar1 = IR::make<IndexVarExpr>(IR::make<IndexVar>("j", 0));
+    auto indVar2 = IR::make<IndexVarExpr>(IR::make<IndexVar>("k", 0));
     auto indExpr = std::make_shared<ArithmeticExpression>(indVar1, indVar2, std::make_shared<AddOp>());
 
     std::vector<std::shared_ptr<DimensionType>> threeD = {std::make_shared<FixedDimension>(2), std::make_shared<FixedDimension>(3), std::make_shared<FixedDimension>(1)};
     tType = std::make_shared<TensorType>(std::make_shared<Datatype>(Datatype::Kind::Float), threeD);
     tvar = std::make_shared<TensorVar>("A", tType);
     auto ind1 = std::make_shared<Literal>(0, std::make_shared<Datatype>(Datatype::Kind::Int));
-    auto ind2 = std::make_shared<IndexVarExpr>("i", 3);
+    auto ind2 = IR::make<IndexVarExpr>(IR::make<IndexVar>("i", 3));
     access = ReadAccess(tvar, {ind1, ind2, indExpr});
     std::cout << "Access tensor: " << access.dump() << "\n";
 
@@ -53,9 +53,9 @@ int main(int argc, char *argv[]) {
 
     // define indices
     auto j = IR::make<IndexVar>("j", 10);
-    auto k = IR::make<IndexVarExpr>("k", 5);
-    auto round = IR::make<IndexVarExpr>("round", 15);
-    auto jr = IR::make<IndexVarExpr>("j", 10);
+    auto k = IR::make<IndexVarExpr>(IR::make<IndexVar>("k", 5));
+    auto round = IR::make<IndexVarExpr>(IR::make<IndexVar>("round", 15));
+    auto jr = IR::make<IndexVarExpr>(IR::make<IndexVar>("j", 10));
 
     // define tensor vars
     auto frontier = IR::make<TensorVar>("frontier", type);
@@ -88,12 +88,10 @@ int main(int argc, char *argv[]) {
     auto or_ = std::make_shared<OrOp>();
     auto eq = std::make_shared<EqOp>();
 
-    std::map<std::shared_ptr<IndexVar>, std::shared_ptr<Reduction>> reductions;
-    reductions[k] = IR::make<Reduction>(k, or_, zero);
+    std::vector<std::shared_ptr<Reduction>> reductions = {IR::make<Reduction>(k->indexVar, or_, zero)};
 
     auto def = IR::make<Definition>(
             IR::make<Access>(frontier, IR::make_vec<IndexVar>(j)),
-            IR::make_vec<IndexVar>(j),
             IR::make<ArithmeticExpression>(
                     IR::make<ReadAccess>(edges, IR::make_vec<Expression>(jr, k)),
                     IR::make<ArithmeticExpression>(
@@ -106,7 +104,6 @@ int main(int argc, char *argv[]) {
                             mul),
                     mul
                     ),
-            IR::make_vec<IndexVar>(j, k, round),
             reductions);
     std::cout << "frontier[j] = edges[j][k] * frontier_list[round][k] * (visited[j] == 0) | k:(OR, 0)\n" << def->dump() << "\n";
 

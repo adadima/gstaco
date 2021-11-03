@@ -40,6 +40,15 @@ namespace einsum {
         void accept(std::shared_ptr<IRVisitor> v) const;
     };
 
+    struct IndexVar : IRNode<IndexVar> {
+        std::string name;
+        int dimension;
+
+        IndexVar(std::string name, int dimension) : name(std::move(name)), dimension(dimension) {}
+
+        std::string dump() const override;
+    };
+
     struct Expression : IRNode<Expression> {
         int precedence;
         bool isAsymmetric;
@@ -48,6 +57,7 @@ namespace einsum {
         Expression(int precedence, bool isAsymmetric) : precedence(precedence), isAsymmetric(isAsymmetric) {}
         virtual std::shared_ptr<Type> getType() = 0;
         std::string dump() const override = 0;
+        virtual std::vector<std::shared_ptr<IndexVar>> getIndices() = 0;
     };
 
     struct Literal : IRNode<Literal, Expression> {
@@ -66,6 +76,8 @@ namespace einsum {
         }
 
         std::string dump() const override;
+
+        std::vector<std::shared_ptr<IndexVar>> getIndices() override;
 
         template<typename T>
         T getValue() const {
@@ -97,6 +109,8 @@ namespace einsum {
         BinaryOp(std::shared_ptr<Expression> left, std::shared_ptr<Expression> right, std::shared_ptr<Operator> op) : Base(op->precedence), left(std::move(left)), right(std::move(right)), op(std::move(op)) {}
 
         std::string dump() const override;
+
+        std::vector<std::shared_ptr<IndexVar>> getIndices() override;
 
         std::shared_ptr<Type> getType() override = 0;
     };
@@ -188,19 +202,13 @@ namespace einsum {
         std::shared_ptr<TensorType> getType() const;
     };
 
-    struct IndexVar : IRNode<IndexVar> {
-        std::string name;
-        int dimension;
-
-        IndexVar(std::string name, int dimension) : name(std::move(name)), dimension(dimension) {}
-
-        std::string dump() const override;
-    };
 
     //TODO: make this be just an expression which has an IndexVar inside!!
-    struct IndexVarExpr : IRNode<IndexVarExpr, IndexVar, Expression> {
-        explicit IndexVarExpr(std::string name, int dimension) : Base(std::move(name), dimension) {};
+    struct IndexVarExpr : IRNode<IndexVarExpr, Expression> {
+        std::shared_ptr<IndexVar> indexVar;
+        explicit IndexVarExpr(std::shared_ptr<IndexVar> indexVar) : Base(0), indexVar(std::move(indexVar)) {};
         std::string dump() const override;
+        std::vector<std::shared_ptr<IndexVar>> getIndices() override;
         std::shared_ptr<Type> getType() override;
     };
 
@@ -220,6 +228,7 @@ namespace einsum {
         ReadAccess(std::shared_ptr<TensorVar> tensor, std::vector<std::shared_ptr<Expression>> indices) : Base(1), tensor(std::move(tensor)), indices(std::move(indices)) {}
 
         std::string dump() const override;
+        std::vector<std::shared_ptr<IndexVar>> getIndices() override;
         std::shared_ptr<Type> getType() override;
 
     };
@@ -240,17 +249,25 @@ namespace einsum {
     };
 
     struct Definition : IRNode<Definition> {
-        Definition(std::shared_ptr<Access> lhs, std::vector<std::shared_ptr<IndexVar>> leftIndices,
-                   std::shared_ptr<Expression> rhs, std::vector<std::shared_ptr<IndexVar>> rightIndices,
-                   std::map<std::shared_ptr<IndexVar>, std::shared_ptr<Reduction>> reductions) :
-                   lhs(std::move(lhs)), leftIndices(std::move(leftIndices)),
-                   rhs(std::move(rhs)), rightIndices(std::move(rightIndices)),
-                   reductions(std::move(reductions)) {}
+        Definition(std::shared_ptr<Access> lhs,
+                   std::shared_ptr<Expression> rhs,
+                   std::vector<std::shared_ptr<Reduction>> reds) :
+                   lhs(std::move(lhs)),
+                   rhs(std::move(rhs)) {
+            leftIndices = this->lhs->indices;
+            rightIndices = this->rhs->getIndices();
+
+            for (auto &red : reds) {
+                reductionVars.push_back(red->reductionVar);
+                reductions[red->reductionVar] = red;
+            }
+        }
 
         std::string dump() const override;
 
         std::vector<std::shared_ptr<IndexVar>> leftIndices;
         std::vector<std::shared_ptr<IndexVar>> rightIndices;
+        std::vector<std::shared_ptr<IndexVar>> reductionVars;
         std::map<std::shared_ptr<IndexVar>, std::shared_ptr<Reduction>> reductions;
         std::shared_ptr<Access> lhs;
         std::shared_ptr<Expression> rhs;
@@ -276,6 +293,8 @@ namespace einsum {
         Call(std::shared_ptr<FuncDecl> function, std::vector<std::shared_ptr<Expression>> arguments) : Base(1), function(std::move(function)), arguments(std::move(arguments)) {};
 
         std::string dump() const override;
+
+        std::vector<std::shared_ptr<IndexVar>> getIndices() override;
 
         std::shared_ptr<Type> getType() override;
 

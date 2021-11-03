@@ -34,6 +34,10 @@ namespace einsum {
         }
     }
 
+    std::vector<std::shared_ptr<IndexVar>> Literal::getIndices() {
+        return {};
+    }
+
     std::string BinaryOp::dump() const {
         auto left = this->left->dump();
         auto right = this->right->dump();
@@ -44,6 +48,15 @@ namespace einsum {
             right = "(" + right + ")";
         }
         return left + " " + this->op->sign + " " + right;
+    }
+
+    std::vector<std::shared_ptr<IndexVar>> BinaryOp::getIndices() {
+        std::vector<std::shared_ptr<IndexVar>> lIndices = this->left->getIndices();
+        std::vector<std::shared_ptr<IndexVar>> rIndices = this->right->getIndices();
+        std::vector<std::shared_ptr<IndexVar>> inds(lIndices);
+        inds.insert(inds.end(), lIndices.begin(), lIndices.end());
+        inds.insert(inds.end(), rIndices.begin(), rIndices.end());
+        return inds;
     }
 
     std::shared_ptr<Type> ArithmeticExpression::getType() {
@@ -86,7 +99,11 @@ namespace einsum {
     }
 
     std::string IndexVarExpr::dump() const {
-        return this->name;
+        return this->indexVar->name;
+    }
+
+    std::vector<std::shared_ptr<IndexVar>> IndexVarExpr::getIndices() {
+        return {this->indexVar};
     }
 
     std::shared_ptr<Type> IndexVarExpr::getType() {
@@ -107,6 +124,15 @@ namespace einsum {
             acc += "[" + indice->dump() + "]";
         }
         return acc;
+    }
+
+    std::vector<std::shared_ptr<IndexVar>> ReadAccess::getIndices() {
+        std::vector<std::shared_ptr<IndexVar>> indices;
+        for (const auto &indExpr : this->indices) {
+            auto inds = indExpr->getIndices();
+            indices.insert(indices.end(), inds.begin(), inds.end());
+        }
+        return indices;
     }
 
     std::shared_ptr<Type> ReadAccess::getType() {
@@ -188,6 +214,15 @@ namespace einsum {
             }
         }
         return this->function->funcName + "(" + args + ")";
+    }
+
+    std::vector<std::shared_ptr<IndexVar>> Call::getIndices() {
+        std::vector<std::shared_ptr<IndexVar>> inds;
+        for (auto &argument : this->arguments) {
+            auto newInds = argument->getIndices();
+            inds.insert(inds.end(), newInds.begin(), newInds.end());
+        }
+        return inds;
     }
 
     std::string CallStarRepeat::dump() const {
