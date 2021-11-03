@@ -12,6 +12,8 @@ set(EINSUM_INCLUDE_DIR ${EINSUM_PROJECT_DIR}/include)
 
 file(GLOB EINSUM_IR_SOURCES ${EINSUM_SRC_DIR}/ir/*.cpp)
 if (EINSUM_ASSERTS)
+    add_compile_options(-fsanitize=address,undefined)
+    add_link_options(-fsanitize=address,undefined)
     add_definitions(-DEINSUM_ASSERTS)
 endif()
 
@@ -23,7 +25,7 @@ endif()
 target_include_directories(einsum_ir PUBLIC ${EINSUM_INCLUDE_DIR})
 install(TARGETS einsum_ir DESTINATION lib)
 
-add_executable(einsum main.cpp include/einsum_taco/ir/type.h src/ir/type.cpp include/einsum_taco/base/assert.h src/base/assert.cpp)
+add_executable(einsum main.cpp include/einsum_taco/ir/type.h src/ir/type.cpp include/einsum_taco/base/assert.h src/base/assert.cpp src/ir/expression.cpp)
 target_link_libraries(einsum einsum_ir)
 install(TARGETS einsum DESTINATION bin)
 
