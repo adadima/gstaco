@@ -34,13 +34,13 @@ namespace einsum {
     };
 
     template<typename T, typename parent = IR, typename... mixins>
-    struct IRNode : parent, mixins... {
-        using Base = IRNode<T, parent, mixins...>;
+    struct Acceptor : parent, mixins... {
+        using Base = Acceptor<T, parent, mixins...>;
         using parent :: parent;
         void accept(std::shared_ptr<IRVisitor> v) const;
     };
 
-    struct IndexVar : IRNode<IndexVar> {
+    struct IndexVar : Acceptor<IndexVar> {
         std::string name;
         int dimension;
 
@@ -49,18 +49,22 @@ namespace einsum {
         std::string dump() const override;
     };
 
-    struct Expression : IRNode<Expression> {
+    struct Expression : Acceptor<Expression> {
         int precedence;
         bool isAsymmetric;
+
         Expression() : precedence(0), isAsymmetric(false) {}
+
         explicit Expression(int precedence) : precedence(precedence), isAsymmetric(false) {}
+
         Expression(int precedence, bool isAsymmetric) : precedence(precedence), isAsymmetric(isAsymmetric) {}
+
         virtual std::shared_ptr<Type> getType() = 0;
         std::string dump() const override = 0;
         virtual std::vector<std::shared_ptr<IndexVar>> getIndices() = 0;
     };
 
-    struct Literal : IRNode<Literal, Expression> {
+    struct Literal : Acceptor<Literal, Expression> {
 
         template<typename T>
         Literal(T value, std::shared_ptr<Datatype> type) : Base(0), type(std::move(type)) {
@@ -101,7 +105,7 @@ namespace einsum {
         std::shared_ptr<Datatype> type;
     };
 
-    struct BinaryOp : IRNode<BinaryOp, Expression> {
+    struct BinaryOp : Acceptor<BinaryOp, Expression> {
         std::shared_ptr<Expression> left;
         std::shared_ptr<Expression> right;
         std::shared_ptr<Operator> op;
@@ -115,7 +119,7 @@ namespace einsum {
         std::shared_ptr<Type> getType() override = 0;
     };
 
-    struct ArithmeticExpression : IRNode<ArithmeticExpression, BinaryOp> {
+    struct ArithmeticExpression : Acceptor<ArithmeticExpression, BinaryOp> {
         template <typename OpT>
         ArithmeticExpression(std::shared_ptr<Expression> left, std::shared_ptr<Expression> right, std::shared_ptr<OpT> op) :
                 Base(
@@ -129,7 +133,7 @@ namespace einsum {
         std::shared_ptr<Type> getType() override;
     };
 
-    struct ModuloExpression : IRNode<ModuloExpression, BinaryOp> {
+    struct ModuloExpression : Acceptor<ModuloExpression, BinaryOp> {
         ModuloExpression(std::shared_ptr<Expression> left, std::shared_ptr<Expression> right) :
                 Base(
                         std::move(left),
@@ -140,7 +144,7 @@ namespace einsum {
         std::shared_ptr<Type> getType() override;
     };
 
-    struct LogicalExpression : IRNode<LogicalExpression, BinaryOp> {
+    struct LogicalExpression : Acceptor<LogicalExpression, BinaryOp> {
         template <typename OpT>
         LogicalExpression(std::shared_ptr<Expression> left, std::shared_ptr<Expression> right, std::shared_ptr<OpT> op) :
                 Base(
@@ -155,7 +159,7 @@ namespace einsum {
         std::shared_ptr<Type> getType() override;
     };
 
-    struct ComparisonExpression : IRNode<ComparisonExpression, BinaryOp> {
+    struct ComparisonExpression : Acceptor<ComparisonExpression, BinaryOp> {
         typedef std::shared_ptr<ComparisonExpression> Ptr;
         template<typename OpT>
         ComparisonExpression(std::shared_ptr<Expression> left, std::shared_ptr<Expression> right, std::shared_ptr<OpT> op) :
@@ -171,7 +175,7 @@ namespace einsum {
         std::shared_ptr<Type> getType() override;
     };
 
-    struct UnaryOp : IRNode<UnaryOp, Expression> {
+    struct UnaryOp : Acceptor<UnaryOp, Expression> {
         std::shared_ptr<Expression> expr;
         std::shared_ptr<Operator> op;
 
@@ -181,7 +185,7 @@ namespace einsum {
         std::shared_ptr<Type> getType() override = 0;
     };
 
-    struct NotExpr : IRNode<NotExpr, UnaryOp> {
+    struct NotExpr : Acceptor<NotExpr, UnaryOp> {
         explicit NotExpr(std::shared_ptr<Expression> expr) :
                 Base(
                         std::move(expr),
@@ -191,7 +195,7 @@ namespace einsum {
         std::shared_ptr<Type> getType() override;
     };
 
-    struct TensorVar : IRNode<TensorVar> {
+    struct TensorVar : Acceptor<TensorVar> {
         std::string name;
         std::shared_ptr<TensorType>  type;
 
@@ -203,8 +207,7 @@ namespace einsum {
     };
 
 
-    //TODO: make this be just an expression which has an IndexVar inside!!
-    struct IndexVarExpr : IRNode<IndexVarExpr, Expression> {
+    struct IndexVarExpr : Acceptor<IndexVarExpr, Expression> {
         std::shared_ptr<IndexVar> indexVar;
         explicit IndexVarExpr(std::shared_ptr<IndexVar> indexVar) : Base(0), indexVar(std::move(indexVar)) {};
         std::string dump() const override;
@@ -212,7 +215,7 @@ namespace einsum {
         std::shared_ptr<Type> getType() override;
     };
 
-    struct Access: IRNode<Access> {
+    struct Access: Acceptor<Access> {
         std::shared_ptr<TensorVar> tensor;
         std::vector<std::shared_ptr<IndexVar>> indices;
 
@@ -221,7 +224,7 @@ namespace einsum {
         std::string dump() const override;
     };
 
-    struct ReadAccess : IRNode<ReadAccess, Expression> {
+    struct ReadAccess : Acceptor<ReadAccess, Expression> {
         std::shared_ptr<TensorVar> tensor;
         std::vector<std::shared_ptr<Expression>> indices;
 
@@ -233,7 +236,7 @@ namespace einsum {
 
     };
 
-    struct Reduction : IRNode<Reduction> {
+    struct Reduction : Acceptor<Reduction> {
         std::shared_ptr<IndexVar> reductionVar;
         std::shared_ptr<Operator> reductionOp;
         std::shared_ptr<Expression> reductionInit;
@@ -248,7 +251,7 @@ namespace einsum {
         std::string dump() const override;
     };
 
-    struct Definition : IRNode<Definition> {
+    struct Definition : Acceptor<Definition> {
         Definition(std::shared_ptr<Access> lhs,
                    std::shared_ptr<Expression> rhs,
                    std::vector<std::shared_ptr<Reduction>> reds) :
@@ -273,7 +276,7 @@ namespace einsum {
         std::shared_ptr<Expression> rhs;
     };
 
-    struct FuncDecl : IRNode<FuncDecl> {
+    struct FuncDecl : Acceptor<FuncDecl> {
         std::string funcName;
         std::vector<std::shared_ptr<TensorVar>> inputs;
         std::vector<std::shared_ptr<TensorVar>> outputs;
@@ -289,7 +292,7 @@ namespace einsum {
         std::vector<std::shared_ptr<Type>> getOutputType() const;
     };
 
-    struct Call : IRNode<Call, Expression> {
+    struct Call : Acceptor<Call, Expression> {
         Call(std::shared_ptr<FuncDecl> function, std::vector<std::shared_ptr<Expression>> arguments) : Base(1), function(std::move(function)), arguments(std::move(arguments)) {};
 
         std::string dump() const override;
@@ -303,7 +306,7 @@ namespace einsum {
     };
 
 
-    struct CallStarRepeat : IRNode<CallStarRepeat, Call> {
+    struct CallStarRepeat : Acceptor<CallStarRepeat, Call> {
         CallStarRepeat(int numIterations, std::shared_ptr<FuncDecl> function, std::vector<std::shared_ptr<Expression>> arguments) :
             Base(std::move(function), std::move(arguments)), numIterations(numIterations) {}
 
@@ -312,7 +315,7 @@ namespace einsum {
         int numIterations;
     };
 
-    struct CallStarCondition : IRNode<CallStarCondition, Call> {
+    struct CallStarCondition : Acceptor<CallStarCondition, Call> {
         CallStarCondition(std::shared_ptr<Expression> stopCondition, std::shared_ptr<FuncDecl> function, std::vector<std::shared_ptr<Expression>> arguments) :
                 Base(std::move(function), std::move(arguments)), stopCondition(std::move(stopCondition)) {}
 
@@ -337,13 +340,12 @@ namespace einsum {
     };
 
     template<typename T, typename parent, typename... mixins>
-    void IRNode<T, parent, mixins...>::accept(std::shared_ptr<IRVisitor> v) const {
+    void Acceptor<T, parent, mixins...>::accept(std::shared_ptr<IRVisitor> v) const {
         v->accept(static_cast<const T&>(*this));
     }
 }
 
-//TODO: rename IRNode, typdef the shared ptr
-//TODO: define static methods that create shared ptr of objects => can do it on the IRNode with variadic templates
+//TODO: typdef the shared ptr
 //TODO: write test cases
 //TODO: represent modules and built ins already in scope
 //TODO: implement a switch case
