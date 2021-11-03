@@ -21,6 +21,17 @@ namespace einsum {
 
         virtual bool isBool() const = 0;
         virtual std::string dump() const = 0;
+
+        template<typename T, typename ... Types >
+        static std::shared_ptr<T> make(Types... args) {
+            return std::make_shared<T>(args...);
+        }
+
+        template<typename T, typename ... Types >
+        static std::vector<std::shared_ptr<T>> make_vec(Types... args) {
+            std::vector<std::shared_ptr<T>> v = {args...};
+            return v;
+        }
     };
 
     class Datatype : public Type {

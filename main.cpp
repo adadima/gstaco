@@ -41,54 +41,73 @@ int main(int argc, char *argv[]) {
 
     // edges -> int[10][5]
     // frontier[j] = edges[j][k] * frontier_list[round][k] * (visited[j] == 0) | k:(OR, 0)
-    auto zero = std::make_shared<Literal>(0, std::make_shared<Datatype>(Datatype::Kind::Int));
-    std::vector<std::shared_ptr<DimensionType>> edgesDims = {std::make_shared<FixedDimension>(10),
-                                                             std::make_shared<FixedDimension>(5)};
-    std::vector<std::shared_ptr<DimensionType>> frontierListDims = {std::make_shared<FixedDimension>(15),
-                                                                    std::make_shared<FixedDimension>(5)};
-    std::vector<std::shared_ptr<DimensionType>> dims = {std::make_shared<FixedDimension>(10)};
-
-    auto type = std::make_shared<TensorType>(std::make_shared<Datatype>(Datatype::Kind::Int), dims);
-    auto edgesType = std::make_shared<TensorType>(std::make_shared<Datatype>(Datatype::Kind::Int), edgesDims);
-    auto frontierListType = std::make_shared<TensorType>(std::make_shared<Datatype>(Datatype::Kind::Int), frontierListDims);
+    auto zero = IR::make<Literal>(0, Type::make<Datatype>(Datatype::Kind::Int));
+    auto type = Type::make<TensorType>(
+                            Type::make<Datatype>(
+                                    Datatype::Kind::Int
+                                    ),
+                            Type::make_vec<DimensionType>(
+                                    Type::make<FixedDimension>(10)
+                                            )
+                            );
 
     // define indices
-    auto j = std::make_shared<IndexVar>("j", 10);
-    auto k = std::make_shared<IndexVarExpr>("k", 5);
-    auto round = std::make_shared<IndexVarExpr>("round", 15);
-    auto jr = std::make_shared<IndexVarExpr>("j", 10);
+    auto j = IR::make<IndexVar>("j", 10);
+    auto k = IR::make<IndexVarExpr>("k", 5);
+    auto round = IR::make<IndexVarExpr>("round", 15);
+    auto jr = IR::make<IndexVarExpr>("j", 10);
 
     // define tensor vars
-    auto frontier = std::make_shared<TensorVar>("frontier", type);
-    auto visited = std::make_shared<TensorVar>("visited", type);
-    auto edges = std::make_shared<TensorVar>("edges", edgesType);
-    auto frontierList = std::make_shared<TensorVar>("frontier_list", frontierListType);
+    auto frontier = IR::make<TensorVar>("frontier", type);
+    auto visited = IR::make<TensorVar>("visited", type);
+    auto edges = IR::make<TensorVar>(
+            "edges",
+            Type::make<TensorType>(
+                    Type::make<Datatype>(
+                            Datatype::Kind::Int
+                    ),
+                    Type::make_vec<DimensionType>(
+                            Type::make<FixedDimension>(10),
+                            Type::make<FixedDimension>(5)
+                    )
+            ));
+    auto frontierList = IR::make<TensorVar>(
+            "frontier_list",
+            Type::make<TensorType>(
+                    Type::make<Datatype>(
+                            Datatype::Kind::Int
+                    ),
+                    Type::make_vec<DimensionType>(
+                            Type::make<FixedDimension>(15),
+                            Type::make<FixedDimension>(5)
+                    )
+            ));
 
-    std::vector<std::shared_ptr<Expression>> acc1 = {jr, k};
-    std::vector<std::shared_ptr<Expression>> acc2 = {round, k};
-    std::vector<std::shared_ptr<Expression>> acc3 = {jr};
-    auto edgesAcc = std::make_shared<ReadAccess>(edges, acc1);
-    auto flAcc = std::make_shared<ReadAccess>(frontierList, acc2);
-    auto visitedAcc = std::make_shared<ReadAccess>(visited, acc3);
-
-    // define lhs
-    std::vector<std::shared_ptr<IndexVar>> leftIndices = {j};
-    auto lhs = std::make_shared<Access>(frontier, leftIndices);
-
-    std::vector<std::shared_ptr<IndexVar>> rightIndices = {k, round};
+    // define operators
     auto mul = std::make_shared<MulOp>();
     auto or_ = std::make_shared<OrOp>();
     auto eq = std::make_shared<EqOp>();
 
-    auto logicExpr = std::make_shared<ComparisonExpression>(visitedAcc, zero, eq);
-    auto expr2 = std::make_shared<ArithmeticExpression>(flAcc, logicExpr, mul);
-    auto rhs = std::make_shared<ArithmeticExpression>(edgesAcc, expr2, mul);
-
-    auto reduction = std::make_shared<Reduction>(k, or_, zero);
-    std::cout << or_->reductionSign << "\n";
     std::map<std::shared_ptr<IndexVar>, std::shared_ptr<Reduction>> reductions;
-    reductions[k] = reduction;
-    auto def = std::make_shared<Definition>(lhs, leftIndices, rhs, rightIndices, reductions);
+    reductions[k] = IR::make<Reduction>(k, or_, zero);
+
+    auto def = IR::make<Definition>(
+            IR::make<Access>(frontier, IR::make_vec<IndexVar>(j)),
+            IR::make_vec<IndexVar>(j),
+            IR::make<ArithmeticExpression>(
+                    IR::make<ReadAccess>(edges, IR::make_vec<Expression>(jr, k)),
+                    IR::make<ArithmeticExpression>(
+                            IR::make<ReadAccess>(frontierList, IR::make_vec<Expression>(round, k)),
+                            IR::make<ComparisonExpression>(
+                                    IR::make<ReadAccess>(
+                                            visited,
+                                            IR::make_vec<Expression>(jr)),
+                                            zero, eq),
+                            mul),
+                    mul
+                    ),
+            IR::make_vec<IndexVar>(j, k, round),
+            reductions);
     std::cout << "frontier[j] = edges[j][k] * frontier_list[round][k] * (visited[j] == 0) | k:(OR, 0)\n" << def->dump() << "\n";
 
 }
