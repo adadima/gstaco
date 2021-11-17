@@ -110,7 +110,7 @@ namespace einsum {
         std::shared_ptr<Expression> right;
         std::shared_ptr<Operator> op;
 
-        BinaryOp(std::shared_ptr<Expression> left, std::shared_ptr<Expression> right, std::shared_ptr<Operator> op) : Base(op->precedence), left(std::move(left)), right(std::move(right)), op(std::move(op)) {}
+        BinaryOp(std::shared_ptr<Expression> left, std::shared_ptr<Expression> right, std::shared_ptr<Operator> op) : Base(op->precedence, op->isAsymmetric), left(std::move(left)), right(std::move(right)), op(std::move(op)) {}
 
         std::string dump() const override;
 
@@ -160,7 +160,6 @@ namespace einsum {
     };
 
     struct ComparisonExpression : Acceptor<ComparisonExpression, BinaryOp> {
-        typedef std::shared_ptr<ComparisonExpression> Ptr;
         template<typename OpT>
         ComparisonExpression(std::shared_ptr<Expression> left, std::shared_ptr<Expression> right, std::shared_ptr<OpT> op) :
                 Base(
@@ -185,8 +184,8 @@ namespace einsum {
         std::shared_ptr<Type> getType() override = 0;
     };
 
-    struct NotExpr : Acceptor<NotExpr, UnaryOp> {
-        explicit NotExpr(std::shared_ptr<Expression> expr) :
+    struct NotExpression : Acceptor<NotExpression, UnaryOp> {
+        explicit NotExpression(std::shared_ptr<Expression> expr) :
                 Base(
                         std::move(expr),
                         std::make_shared<NotOp>()

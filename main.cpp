@@ -88,8 +88,6 @@ int main(int argc, char *argv[]) {
     auto or_ = std::make_shared<OrOp>();
     auto eq = std::make_shared<EqOp>();
 
-    std::vector<std::shared_ptr<Reduction>> reductions = {IR::make<Reduction>(k->indexVar, or_, zero)};
-
     auto def = IR::make<Definition>(
             IR::make<Access>(frontier, IR::make_vec<IndexVar>(j)),
             IR::make<ArithmeticExpression>(
@@ -104,7 +102,89 @@ int main(int argc, char *argv[]) {
                             mul),
                     mul
                     ),
-            reductions);
+            IR::make_vec<Reduction>(IR::make<Reduction>(k->indexVar, or_, zero)));
     std::cout << "frontier[j] = edges[j][k] * frontier_list[round][k] * (visited[j] == 0) | k:(OR, 0)\n" << def->dump() << "\n";
 
+//    Let Frontier(frontier_list int[N][N], visited int[N], round int) -> frontier int[N]
+//      frontier[j] = edges[j][k] * frontier_list[round][k] * (visited[j] == 0) | k:(OR, 0)
+//    End
+    auto def2 = IR::make<Definition>(
+            IR::make<Access>(
+                    IR::make<TensorVar>(
+                            "round",
+                            Type::make<TensorType>(
+                                    Type::make<Datatype>(
+                                            Datatype::Kind::Int
+                                    ),
+                                    Type::make_vec<DimensionType>()
+                            )),
+                    IR::make_vec<IndexVar>()
+            ),
+            IR::make<ArithmeticExpression>(
+                    IR::make<ReadAccess>(
+                            IR::make<TensorVar>(
+                                    "round",
+                                    Type::make<TensorType>(
+                                            Type::make<Datatype>(
+                                                    Datatype::Kind::Int
+                                            ),
+                                            Type::make_vec<DimensionType>()
+                                    )),
+                            IR::make_vec<Expression>()
+                    ),
+                    IR::make<Literal>(2, Type::make<Datatype>(Datatype::Kind::Int)),
+                    mul
+                    ),
+
+            IR::make_vec<Reduction>()
+    );
+
+    auto func = IR::make<FuncDecl>(
+                "Frontier",
+                IR::make_vec<TensorVar>(
+                        IR::make<TensorVar>(
+                                "frontier_list",
+                                Type::make<TensorType>(
+                                    Type::make<Datatype>(
+                                            Datatype::Kind::Int
+                                    ),
+                                    Type::make_vec<DimensionType>(
+                                            Type::make<VariableDimension>("N"),
+                                            Type::make<VariableDimension>("N")
+                                    )
+                                )),
+                        IR::make<TensorVar>(
+                                "visited",
+                                Type::make<TensorType>(
+                                        Type::make<Datatype>(
+                                                Datatype::Kind::Int
+                                        ),
+                                        Type::make_vec<DimensionType>(
+                                                Type::make<VariableDimension>("N")
+                                        )
+                                )),
+                        IR::make<TensorVar>(
+                                "round",
+                                Type::make<TensorType>(
+                                        Type::make<Datatype>(
+                                                Datatype::Kind::Int
+                                        ),
+                                        Type::make_vec<DimensionType>()
+                                ))
+                        ),
+                IR::make_vec<TensorVar>(
+                        IR::make<TensorVar>(
+                                "frontier",
+                                Type::make<TensorType>(
+                                        Type::make<Datatype>(
+                                                Datatype::Kind::Int
+                                        ),
+                                        Type::make_vec<DimensionType>(
+                                                Type::make<VariableDimension>("N")
+                                        )
+                                ))
+                ),
+                IR::make_vec<Definition>(def, def2)
+            );
+    std::cout << func->dump() << "\n";
 }

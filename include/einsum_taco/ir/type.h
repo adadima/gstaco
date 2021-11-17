@@ -44,6 +44,21 @@ namespace einsum {
 
         explicit Datatype(Kind kind);
 
+        template <typename T>
+        static std::shared_ptr<Datatype> make_datatype() {
+            if (std::is_same<T, int>()) {
+                return Type::make<Datatype>(Kind::Int);
+            }
+
+            if (std::is_same<T, bool>()) {
+                return Type::make<Datatype>(Kind::Bool);
+            }
+
+            if (std::is_same<T, float>()) {
+                return Type::make<Datatype>(Kind::Float);
+            }
+        }
+
         Kind getKind() const;
 
         bool isInt() const override;

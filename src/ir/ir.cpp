@@ -39,15 +39,18 @@ namespace einsum {
     }
 
     std::string BinaryOp::dump() const {
-        auto left = this->left->dump();
-        auto right = this->right->dump();
+//        std::cout << "Precedence: " << this->precedence << "\n";
+//        std::cout << "Left precedence: " << this->left->precedence << "\n";
+//        std::cout << "Right precedence: " << this->right->precedence << "\n";
+        auto left_ = this->left->dump();
+        auto right_ = this->right->dump();
         if (this->left->precedence > this->precedence) {
-            left = "(" + left + ")";
+            left_ = "(" + left_ + ")";
         }
-        if (this->right->precedence > this->precedence) {
-            right = "(" + right + ")";
+        if ((this->right->precedence > this->precedence) ||  (this->right->precedence == this->precedence && this->isAsymmetric)){
+            right_ = "(" + right_ + ")";
         }
-        return left + " " + this->op->sign + " " + right;
+        return left_ + " " + this->op->sign + " " + right_;
     }
 
     std::vector<std::shared_ptr<IndexVar>> BinaryOp::getIndices() {
@@ -78,7 +81,7 @@ namespace einsum {
         return std::make_shared<Datatype>(Datatype::Kind::Bool);
     };
 
-    std::shared_ptr<Type> NotExpr::getType() {
+    std::shared_ptr<Type> NotExpression::getType() {
         return std::make_shared<Datatype>(Datatype::Kind::Bool);
     };
 
@@ -192,13 +195,13 @@ namespace einsum {
             }
         }
 
-        auto def = "Let " + this->funcName + "(" + inParams + ") -> (" + outParams + ")";
+        auto def = "Let " + this->funcName + "(" + inParams + ") -> (" + outParams + ")\n";
 
         std::string body;
         for (const auto &i : this->body) {
-            body += i->dump() + "\n";
+            body += "\t" + i->dump() + "\n";
         }
-        return def + "End";
+        return def + body + "End";
     }
 
     std::shared_ptr<Type> Call::getType() {
