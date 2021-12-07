@@ -1,0 +1,4 @@
+T_frontier[j] = ((T_edges[j][k] * T_frontier_list[round][k]) * (T_visited[j] == 0)) | k:(OR, 0)
+{Init(source)}
+{UpdateEdges*(dist, priorityQ, priority) | (#3 == 0)}
+{( ( ( ( (T_scalar + 4) * T_ten[k]) != 36.5) || false ) && ( ( ( (T_tensor[i][j][k] / 2) * T_tensor[i]) > T_tensor[(i+j)][0]) || true) )}

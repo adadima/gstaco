@@ -18,7 +18,7 @@
 namespace einsum {
 
     class IRVisitor;
-    struct IR {
+    struct IR : std::enable_shared_from_this<IR> {
         virtual std::string dump() const = 0;
 
         template<typename T, typename ... Types >
@@ -31,6 +31,8 @@ namespace einsum {
             std::vector<std::shared_ptr<T>> v = {args...};
             return v;
         }
+
+        virtual ~IR() = default;
     };
 
     template<typename T, typename parent = IR, typename... mixins>
@@ -38,6 +40,7 @@ namespace einsum {
         using Base = Acceptor<T, parent, mixins...>;
         using parent :: parent;
         void accept(std::shared_ptr<IRVisitor> v) const;
+        virtual ~Acceptor() = default;
     };
 
     struct IndexVar : Acceptor<IndexVar> {
@@ -181,7 +184,7 @@ namespace einsum {
         UnaryOp(std::shared_ptr<Expression> expr, std::shared_ptr<Operator> op) : Base(op->precedence), expr(std::move(expr)), op(std::move(op)) {}
 
         std::string dump() const override;
-        std::shared_ptr<Type> getType() override = 0;
+        std::vector<std::shared_ptr<IndexVar>> getIndices() override;
     };
 
     struct NotExpression : Acceptor<NotExpression, UnaryOp> {
@@ -203,6 +206,16 @@ namespace einsum {
         std::string dump() const override;
 
         std::shared_ptr<TensorType> getType() const;
+
+        template <typename V>
+        static std::shared_ptr<einsum::TensorVar> make(std::string name, std::initializer_list<std::shared_ptr<einsum::DimensionType>> dimensions) {
+
+            auto tType = einsum::IR::make<einsum::TensorType>(
+                    einsum::Datatype::make_datatype<V>(),
+                    dimensions
+            );
+            return einsum::IR::make<einsum::TensorVar>(name, tType);
+        }
     };
 
 
@@ -251,12 +264,17 @@ namespace einsum {
     };
 
     struct Definition : Acceptor<Definition> {
-        Definition(std::shared_ptr<Access> lhs,
+        Definition(std::vector<std::shared_ptr<Access>> lhs,
                    std::shared_ptr<Expression> rhs,
                    std::vector<std::shared_ptr<Reduction>> reds) :
                    lhs(std::move(lhs)),
                    rhs(std::move(rhs)) {
-            leftIndices = this->lhs->indices;
+            for (auto & lh : this->lhs) {
+                auto inds = lh->indices;
+                for (const auto & ind : inds) {
+                    leftIndices.push_back(ind);
+                }
+            }
             rightIndices = this->rhs->getIndices();
 
             for (auto &red : reds) {
@@ -271,7 +289,7 @@ namespace einsum {
         std::vector<std::shared_ptr<IndexVar>> rightIndices;
         std::vector<std::shared_ptr<IndexVar>> reductionVars;
         std::map<std::shared_ptr<IndexVar>, std::shared_ptr<Reduction>> reductions;
-        std::shared_ptr<Access> lhs;
+        std::vector<std::shared_ptr<Access>> lhs;
         std::shared_ptr<Expression> rhs;
     };
 
@@ -292,9 +310,16 @@ namespace einsum {
     };
 
     struct Call : Acceptor<Call, Expression> {
+        Call(std::string function, std::vector<std::shared_ptr<Expression>> arguments) : Base(1) {
+            this->function = IR::make<FuncDecl>(std::move(function), std::vector<std::shared_ptr<TensorVar>>(), std::vector<std::shared_ptr<TensorVar>>(), std::vector<std::shared_ptr<Definition>>()),
+            this->arguments = std::move(arguments);
+        };
+
         Call(std::shared_ptr<FuncDecl> function, std::vector<std::shared_ptr<Expression>> arguments) : Base(1), function(std::move(function)), arguments(std::move(arguments)) {};
 
         std::string dump() const override;
+
+        std::string dump_args() const;
 
         std::vector<std::shared_ptr<IndexVar>> getIndices() override;
 
@@ -315,6 +340,9 @@ namespace einsum {
     };
 
     struct CallStarCondition : Acceptor<CallStarCondition, Call> {
+        CallStarCondition(std::shared_ptr<Expression> stopCondition, std::string name, std::vector<std::shared_ptr<Expression>> arguments) :
+                Base(std::move(name), std::move(arguments)), stopCondition(std::move(stopCondition)) {}
+
         CallStarCondition(std::shared_ptr<Expression> stopCondition, std::shared_ptr<FuncDecl> function, std::vector<std::shared_ptr<Expression>> arguments) :
                 Base(std::move(function), std::move(arguments)), stopCondition(std::move(stopCondition)) {}
 

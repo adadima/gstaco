@@ -217,6 +217,7 @@ namespace einsum {
 
     struct TensorType : public Type {
     public:
+        TensorType() : type(Type::make<Datatype>(Datatype::Kind::Int)), dimensions(std::vector<std::shared_ptr<einsum::DimensionType>>()) {}
         TensorType(std::shared_ptr<Datatype> type, std::vector<std::shared_ptr<einsum::DimensionType>> dimensions) : type(std::move(type)), dimensions(std::move(dimensions)) {}
         std::shared_ptr<einsum::DimensionType> getDimension(int i) const;
 

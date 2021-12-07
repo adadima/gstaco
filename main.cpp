@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
     auto eq = std::make_shared<EqOp>();
 
     auto def = IR::make<Definition>(
-            IR::make<Access>(frontier, IR::make_vec<IndexVar>(j)),
+            IR::make_vec<Access>(IR::make<Access>(frontier, IR::make_vec<IndexVar>(j))),
             IR::make<ArithmeticExpression>(
                     IR::make<ReadAccess>(edges, IR::make_vec<Expression>(jr, k)),
                     IR::make<ArithmeticExpression>(
@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
 //      frontier[j] = edges[j][k] * frontier_list[round][k] * (visited[j] == 0) | k:(OR, 0)
 //    End
     auto def2 = IR::make<Definition>(
-            IR::make<Access>(
+            IR::make_vec<Access>(IR::make<Access>(
                     IR::make<TensorVar>(
                             "round",
                             Type::make<TensorType>(
@@ -119,7 +119,7 @@ int main(int argc, char *argv[]) {
                                     Type::make_vec<DimensionType>()
                             )),
                     IR::make_vec<IndexVar>()
-            ),
+            )),
             IR::make<ArithmeticExpression>(
                     IR::make<ReadAccess>(
                             IR::make<TensorVar>(

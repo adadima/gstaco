@@ -62,7 +62,7 @@ public:
         auto frontierList = make_tensor<int>("frontier_list", dims);
 
         return einsum::IR::make<einsum::Definition>(
-                einsum::IR::make<einsum::Access>(frontier, einsum::IR::make_vec<einsum::IndexVar>(j)),
+                einsum::IR::make_vec<einsum::Access>(einsum::IR::make<einsum::Access>(frontier, einsum::IR::make_vec<einsum::IndexVar>(j))),
                 einsum::IR::make<einsum::ArithmeticExpression>(
                         einsum::IR::make<einsum::ReadAccess>(edges, einsum::IR::make_vec<einsum::Expression>(jExpr, kExpr)),
                         einsum::IR::make<einsum::ArithmeticExpression>(
@@ -81,10 +81,10 @@ public:
 
     std::shared_ptr<einsum::Definition> definition2() {
         return einsum::IR::make<einsum::Definition>(
-                einsum::IR::make<einsum::Access>(
+                einsum::IR::make_vec<einsum::Access>(einsum::IR::make<einsum::Access>(
                         make_tensor<int>("round_out", {}),
                         einsum::IR::make_vec<einsum::IndexVar>()
-                ),
+                )),
                 einsum::IR::make<einsum::ArithmeticExpression>(
                         einsum::IR::make<einsum::ReadAccess>(
                                 make_tensor<int>("round_in", {}),
@@ -97,6 +97,24 @@ public:
                 einsum::IR::make_vec<einsum::Reduction>()
         );
     }
+
+    std::shared_ptr<einsum::FuncDecl> func1() {
+        auto frontier = make_tensor<int>("frontier", {einsum::Type::make<einsum::VariableDimension>("N")});
+        auto visited = make_tensor<int>("visited", {einsum::Type::make<einsum::VariableDimension>("N")});
+        auto frontier_list = make_tensor<int>("frontier_list", {einsum::Type::make<einsum::VariableDimension>("N"),einsum::Type::make<einsum::VariableDimension>("N")});
+
+        return einsum::IR::make<einsum::FuncDecl>(
+                "Frontier",
+                einsum::IR::make_vec<einsum::TensorVar>(
+                        frontier_list,
+                        visited,
+                        make_tensor<int>("round_in", {})
+                ),
+                einsum::IR::make_vec<einsum::TensorVar>(frontier, make_tensor<int>("round_out", {})),
+                einsum::IR::make_vec<einsum::Definition>(definition1(), definition2())
+        );
+    }
+
 protected:
     virtual void SetUp() {
 
@@ -236,27 +254,149 @@ TEST_F(DumpTest, FuncDeclTest1) {
 }
 
 TEST_F(DumpTest, FuncDeclTest2) {
-    auto frontier = make_tensor<int>("frontier", {einsum::Type::make<einsum::VariableDimension>("N")});
-    auto visited = make_tensor<int>("visited", {einsum::Type::make<einsum::VariableDimension>("N")});
-    auto frontier_list = make_tensor<int>("frontier_list", {einsum::Type::make<einsum::VariableDimension>("N"),einsum::Type::make<einsum::VariableDimension>("N")});
-
-    auto func2 = einsum::IR::make<einsum::FuncDecl>(
-            "Frontier",
-            einsum::IR::make_vec<einsum::TensorVar>(
-                   frontier_list,
-                   visited,
-                   make_tensor<int>("round_in", {})
-            ),
-            einsum::IR::make_vec<einsum::TensorVar>(frontier, make_tensor<int>("round_out", {})),
-            einsum::IR::make_vec<einsum::Definition>(definition1(), definition2())
-    );
-    EXPECT_EQ(func2->dump(),
+    EXPECT_EQ(func1()->dump(),
               "Let Frontier(frontier_list int[N][N], visited int[N], round_in int) -> (frontier int[N], round_out int)\n"
                    "\tfrontier[j] = edges[j][k] * frontier_list[2][k] * (visited[j] == 0) | k:(OR, 0)\n"
                    "\tround_out = round_in * 2\n"
                    "End");
 }
 
+// Round(0)
 TEST_F(DumpTest, CallTest) {
-
+    auto args1 = einsum::IR::make_vec<einsum::Expression>(zero);
+    auto call = einsum::IR::make<einsum::Call>(
+                 einsum::IR::make<einsum::FuncDecl>(
+                         "Round",
+                         einsum::IR::make_vec<einsum::TensorVar>(
+                                 make_tensor<int>("round_in", {})
+                         ),
+                         einsum::IR::make_vec<einsum::TensorVar>(make_tensor<int>("round_out", {})),
+                         einsum::IR::make_vec<einsum::Definition>(definition2())
+                 ),
+                einsum::IR::make_vec<einsum::Expression>(zero)
+             );
+    EXPECT_EQ(call->dump(), "Round(0)");
 }
+
+
+// Round(0)
+TEST_F(DumpTest, CallMultipleInputsTest) {
+    auto round_in = make_tensor<int>("round_in", {});
+    auto round_out = make_tensor<int>("round_out", {});
+    auto unused_in = make_tensor<int>("unused_in", {});
+    auto unused_out = make_tensor<int>("unused_out", {});
+    auto args = einsum::IR::make_vec<einsum::Expression>(
+            zero,
+            einsum::IR::make<einsum::ReadAccess>(
+                    A,
+                    einsum::IR::make_vec<einsum::Expression>()));
+
+    auto call = einsum::IR::make<einsum::Call>(
+            einsum::IR::make<einsum::FuncDecl>(
+                    "Round",
+                    einsum::IR::make_vec<einsum::TensorVar>(
+                            round_in,
+                            unused_in
+                    ),
+                    einsum::IR::make_vec<einsum::TensorVar>(
+                           round_out,
+                           unused_out
+                    ),
+                    einsum::IR::make_vec<einsum::Definition>(definition2())
+            ),
+            args
+    );
+    EXPECT_EQ(call->dump(), "Round(0, A)");
+
+    auto def = einsum::IR::make<einsum::Definition>(
+            einsum::IR::make_vec<einsum::Access>(
+                    einsum::IR::make<einsum::Access>(round_out, einsum::IR::make_vec<einsum::IndexVar>()),
+                    einsum::IR::make<einsum::Access>(unused_out, einsum::IR::make_vec<einsum::IndexVar>())
+            ),
+            call,
+            einsum::IR::make_vec<einsum::Reduction>()
+    );
+    EXPECT_EQ(def->dump(), "round_out, unused_out = Round(0, A)");
+}
+
+// Round*(A) | 3
+TEST_F(DumpTest, CallStarRepeatTest) {
+    auto round_in = make_tensor<int>("round_in", {});
+    auto round_out = make_tensor<int>("round_out", {});
+
+    auto args = einsum::IR::make_vec<einsum::Expression>(
+            einsum::IR::make<einsum::ReadAccess>(
+                    A,
+                    einsum::IR::make_vec<einsum::Expression>()));
+    auto call = einsum::IR::make<einsum::CallStarRepeat>(
+                    3,
+            einsum::IR::make<einsum::FuncDecl>(
+                    "Round",
+                    einsum::IR::make_vec<einsum::TensorVar>(
+                            round_in
+                    ),
+                    einsum::IR::make_vec<einsum::TensorVar>(round_out),
+                    einsum::IR::make_vec<einsum::Definition>(definition2())
+            ),
+            args
+    );
+    EXPECT_EQ(call->dump(), "Round*(A) | 3");
+
+    auto def = einsum::IR::make<einsum::Definition>(
+            einsum::IR::make_vec<einsum::Access>(
+                    einsum::IR::make<einsum::Access>(round_out, einsum::IR::make_vec<einsum::IndexVar>())),
+            call,
+            einsum::IR::make_vec<einsum::Reduction>()
+    );
+    EXPECT_EQ(def->dump(), "round_out = Round*(A) | 3");
+}
+
+
+// Round*(A) | (#1 == 2)
+TEST_F(DumpTest, CallStarConditionTest) {
+    auto round_in = make_tensor<int>("round_in", {});
+    auto round_out = make_tensor<int>("round_out", {});
+    auto unused_in = make_tensor<int>("unused_in", {});
+    auto unused_out = make_tensor<int>("unused_out", {});
+    auto args = einsum::IR::make_vec<einsum::Expression>(
+            zero,
+            einsum::IR::make<einsum::ReadAccess>(
+                    A,
+                    einsum::IR::make_vec<einsum::Expression>()));
+
+    auto cond = einsum::IR::make<einsum::ComparisonExpression>(
+            einsum::IR::make<einsum::ReadAccess>(
+                    make_tensor<int>("#1", {}),
+                    einsum::IR::make_vec<einsum::Expression>()),
+            two,
+            eq
+            );
+    auto call = einsum::IR::make<einsum::CallStarCondition>(
+            cond,
+            einsum::IR::make<einsum::FuncDecl>(
+                    "Round",
+                    einsum::IR::make_vec<einsum::TensorVar>(
+                            round_in,
+                            unused_in
+                    ),
+                    einsum::IR::make_vec<einsum::TensorVar>(
+                            round_out,
+                            unused_out
+                    ),
+                    einsum::IR::make_vec<einsum::Definition>(definition2())
+            ),
+            args
+    );
+    EXPECT_EQ(call->dump(), "Round*(0, A) | (#1 == 2)");
+
+    auto def = einsum::IR::make<einsum::Definition>(
+            einsum::IR::make_vec<einsum::Access>(
+                    einsum::IR::make<einsum::Access>(round_out, einsum::IR::make_vec<einsum::IndexVar>()),
+                    einsum::IR::make<einsum::Access>(unused_out, einsum::IR::make_vec<einsum::IndexVar>())
+            ),
+            call,
+            einsum::IR::make_vec<einsum::Reduction>()
+    );
+    EXPECT_EQ(def->dump(), "round_out, unused_out = Round*(0, A) | (#1 == 2)");
+}
+

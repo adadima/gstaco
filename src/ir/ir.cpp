@@ -5,7 +5,7 @@
 #include <einsum_taco/ir/ir.h>
 #include <string>
 #include <iostream>
-
+//auto obj = std::static_pointer_cast<einsum::Expression>(einsum::IR::make<einsum::Literal>($1, einsum::Type::make<einsum::Datatype>(einsum::Datatype::Kind::Int))); $$ = &obj;
 namespace einsum {
     bool Literal::isInt() const {
         return this->getDatatype()->isInt();
@@ -30,7 +30,8 @@ namespace einsum {
             case Datatype::Kind::Float:
                 return std::to_string(this->getValue<float>());
             case Datatype::Kind::Bool:
-                return std::to_string(this->getValue<bool>());
+                return this->getValue<bool>() ? "true" : "false";
+//                return std::to_string(this->getValue<bool>());
         }
     }
 
@@ -87,6 +88,10 @@ namespace einsum {
 
     std::string UnaryOp::dump() const {
         return this->op->sign + " " + this->expr->dump();
+    }
+
+    std::vector<std::shared_ptr<IndexVar>> UnaryOp::getIndices() {
+        return this->expr->getIndices();
     }
 
     std::string TensorVar::dump() const {
@@ -156,12 +161,23 @@ namespace einsum {
     }
 
     std::string Definition::dump() const {
-        auto def = this->lhs->dump() + " = " + this->rhs->dump();
+        std::string def; // = this->lhs->dump() + " = " + this->rhs->dump();
+        bool first = true;
+        for (const auto & lh : this->lhs) {
+            if (!first) {
+                def += ", ";
+            } else {
+                first = false;
+            }
+            def += lh->dump();
+        }
+
+        def += " = " + this->rhs->dump();
         if (this->reductions.empty()) {
             return def;
         }
         def += " | ";
-        bool first = true;
+        first = true;
         for (std::pair<std::shared_ptr<IndexVar>, std::shared_ptr<Reduction>> element : this->reductions) {
             if (!first) {
                 def += ", ";
@@ -208,7 +224,7 @@ namespace einsum {
         return std::make_shared<TupleType>(this->function->getOutputType());
     }
 
-    std::string Call::dump() const {
+    std::string Call::dump_args() const {
         std::string args;
         for (int i=0; i < this->arguments.size(); i++) {
             args += this->arguments[i]->dump();
@@ -216,7 +232,11 @@ namespace einsum {
                 args += ", ";
             }
         }
-        return this->function->funcName + "(" + args + ")";
+        return "(" + args + ")";
+    }
+
+    std::string Call::dump() const {
+        return this->function->funcName + this->dump_args();
     }
 
     std::vector<std::shared_ptr<IndexVar>> Call::getIndices() {
@@ -229,12 +249,14 @@ namespace einsum {
     }
 
     std::string CallStarRepeat::dump() const {
-        auto call = Call::dump();
+        auto call = this->function->funcName + "*" + this->dump_args();
         return call + " | " + std::to_string(this->numIterations);
     }
 
     std::string CallStarCondition::dump() const {
-        auto call = Call::dump();
+        auto call = this->function->funcName + "*" + this->dump_args();
+//        std::cout << "CALL %s\n" << call;
+//        std::cout << "CONDITION %s\n" << this->stopCondition->dump();
         return call + " | (" + this->stopCondition->dump() + ")";
     }
 

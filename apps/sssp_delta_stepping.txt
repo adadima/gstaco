@@ -28,5 +28,3 @@ Let SSSP() -> new_dist int[N]:
 	new = dist
 	new_dist, _, _ = SSSP_one_priority_lvl*(dist, priorityQ, 0) | (#2 == 0)
 End
-
-new_dist[j] = edges[j][k] * priorityQ[priority][j] * (weights[j][k] + dist[k]) | k:(MIN, dist[j])
