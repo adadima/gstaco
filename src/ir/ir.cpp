@@ -1,12 +1,13 @@
 //
 // Created by Alexandra Dima on 10/13/21.
 //
-
+#include <einsum_taco/ir/type.h>
 #include <einsum_taco/ir/ir.h>
 #include <string>
 #include <iostream>
 //auto obj = std::static_pointer_cast<einsum::Expression>(einsum::IR::make<einsum::Literal>($1, einsum::Type::make<einsum::Datatype>(einsum::Datatype::Kind::Int))); $$ = &obj;
 namespace einsum {
+
     bool Literal::isInt() const {
         return this->getDatatype()->isInt();
     }
@@ -144,7 +145,7 @@ namespace einsum {
     }
 
     std::shared_ptr<Type> ReadAccess::getType() {
-        std::vector<std::shared_ptr<DimensionType>> dims;
+        std::vector<std::shared_ptr<Expression>> dims;
         unsigned long last = this->tensor->type->getOrder() - this->indices.size();
         dims.reserve(last);
         for (int i=0; i < last; i++) {

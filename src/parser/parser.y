@@ -33,6 +33,11 @@ using namespace einsum;
   einsum::AddOp					*add_op;
   einsum::MulOp					*mul_op;
   einsum::Reduction 				*red;
+  einsum::TensorType				*ttype;
+  einsum::FuncDecl				*fdecl;
+  std::vector<std::shared_ptr<einsum::Definition>>	*defs_vec;
+  std::vector<std::shared_ptr<einsum::TensorVar>>	*tvar_vec;
+  einsum::TensorVar				*tvar;
 }
 
 %start	input
@@ -52,6 +57,14 @@ using namespace einsum;
 %type   <inds_vec>   write_access
 %type   <red>	     reduction
 %type   <reds_vec>   reduction_list
+%type   <ttype> 	type
+%type   <fdecl> 	func
+%type   <defs_vec>      statements
+%type   <tvar_vec> 	input_params
+%type   <tvar_vec>	output_params
+%type   <tvar_vec>	param_list
+%type   <tvar> 		param
+%type   <acc_vec>       def_lhs
 //%type   <op>	     reduction_operator
 %type   <r_access>   read_tensor_access
 %type   <w_access>   write_tensor_access
@@ -59,8 +72,10 @@ using namespace einsum;
 %token  <int_val> INTEGER_LITERAL
 %token  <bool_val> BOOL_LITERAL
 %token  <float_val> FLOAT_LITERAL
+%token  <id_val>   LET
+%token  <id_val>   END
+%token  <id_val>   RARROW
 %token  <id_val>   IDENTIFIER
-%token  <id_val>   TENSOR
 %token  <id_val>   COM
 %token  <op_val>   PIPE
 %token	NOT
@@ -88,10 +103,14 @@ using namespace einsum;
 
 %%
 
-input: /* nothing */
-// | input exp EOL  { std::string d = $2->dump(); const char *cstr = d.c_str(); printf("= %s\n", cstr); }
- | input def EOL  { std::string d = $2->dump(); const char *cstr = d.c_str(); printf("= %s\n", cstr); }
+input: | blank
+       | input func EOL blank  { std::string d = $2->dump(); const char *cstr = d.c_str(); printf("%s\n", cstr); }
+// | input orexp EOL  { std::string d = $2->dump(); const char *cstr = d.c_str(); printf("= %s\n", cstr); }
+// | input def EOL  { std::string d = $2->dump(); const char *cstr = d.c_str(); printf("= %s\n", cstr); }
  ;
+
+blank:
+| blank EOL
 
 orexp:		andexp
 		| orexp OR andexp { $$ = new einsum::LogicalExpression(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::OrOp>());};
@@ -122,14 +141,15 @@ notexp: 	exp
 
 
 access:						    {$$ = new std::vector<std::shared_ptr<einsum::Expression>>(); }
-| OPEN_BRACKET exp CLOSED_BRACKET  access {
+| OPEN_BRACKET orexp CLOSED_BRACKET  access {
 				auto list = new std::vector<std::shared_ptr<einsum::Expression>>();
-				list->push_back(std::shared_ptr<einsum::Expression>($2)); list->insert( list->end(), $4->begin(), $4->end());
+				list->push_back(std::shared_ptr<einsum::Expression>($2));
+				list->insert( list->end(), $4->begin(), $4->end());
 				$$ = list;
 			}
 ;
 
-read_tensor_access: TENSOR access { $$ = new einsum::ReadAccess(
+read_tensor_access: IDENTIFIER access { $$ = new einsum::ReadAccess(
 							std::shared_ptr<einsum::TensorVar>(new einsum::TensorVar(
 								*$1,
 								std::shared_ptr<einsum::TensorType>(new einsum::TensorType())
@@ -138,14 +158,14 @@ read_tensor_access: TENSOR access { $$ = new einsum::ReadAccess(
 						);
 				}
 
-write_access:
+write_access:					{$$ = new std::vector<std::shared_ptr<einsum::IndexVar>>(); }
 | OPEN_BRACKET IDENTIFIER CLOSED_BRACKET  write_access {
 				auto list = new std::vector<std::shared_ptr<einsum::IndexVar>>();
 				list->push_back(std::shared_ptr<einsum::IndexVar>(new einsum::IndexVar(*$2, 0)));
 				list->insert( list->end(), $4->begin(), $4->end());
 				$$ = list;
 			}
-write_tensor_access: TENSOR write_access { $$ = new einsum::Access(
+write_tensor_access: IDENTIFIER write_access { $$ = new einsum::Access(
 								std::shared_ptr<einsum::TensorVar>(new einsum::TensorVar(
 									*$1,
 									std::shared_ptr<einsum::TensorType>(new einsum::TensorType())
@@ -154,16 +174,37 @@ write_tensor_access: TENSOR write_access { $$ = new einsum::Access(
 							);
 					}
 
+def_lhs: IDENTIFIER write_access		{auto acc =  new einsum::Access(
+								std::shared_ptr<einsum::TensorVar>(new einsum::TensorVar(
+									*$1,
+									std::shared_ptr<einsum::TensorType>(new einsum::TensorType())
+								)),
+								*$2
+							);
+					auto outputs = new std::vector<std::shared_ptr<einsum::Access>>();
+					outputs->push_back(std::shared_ptr<einsum::Access>(acc));
+					$$ = outputs;}
+| IDENTIFIER write_access COM def_lhs	{
+					auto acc =  new einsum::Access(
+						std::shared_ptr<einsum::TensorVar>(new einsum::TensorVar(
+							*$1,
+							std::shared_ptr<einsum::TensorType>(new einsum::TensorType())
+						)),
+						*$2
+					);
+					$4->insert($4->begin(), std::shared_ptr<einsum::Access>(acc));
+					$$ = $4;}
+
 args:			{$$ = new std::vector<std::shared_ptr<einsum::Expression>>(); }
-| args COM exp		{$1->push_back(std::shared_ptr<einsum::Expression>($3)); $$ = $1;}
+| args COM orexp		{$1->push_back(std::shared_ptr<einsum::Expression>($3)); $$ = $1;}
 
 call: IDENTIFIER OPEN_PAREN CLOSED_PAREN	{new einsum::Call(*$1, std::vector<std::shared_ptr<einsum::Expression>>());}
-| IDENTIFIER OPEN_PAREN exp args CLOSED_PAREN {$4->push_back(std::shared_ptr<einsum::Expression>($3));
+| IDENTIFIER OPEN_PAREN orexp args CLOSED_PAREN   {$4->insert($4->begin(), std::shared_ptr<einsum::Expression>($3));
 						$$ = new einsum::Call(*$1, *$4);}
 
-call_star: IDENTIFIER MUL OPEN_PAREN CLOSED_PAREN PIPE exp	{new einsum::CallStarCondition(std::shared_ptr<einsum::Expression>($6), *$1, std::vector<std::shared_ptr<einsum::Expression>>());}
-| IDENTIFIER MUL OPEN_PAREN exp args CLOSED_PAREN PIPE exp	{
-							$5->push_back(std::shared_ptr<einsum::Expression>($4));
+call_star: IDENTIFIER MUL OPEN_PAREN CLOSED_PAREN PIPE orexp	{new einsum::CallStarCondition(std::shared_ptr<einsum::Expression>($6), *$1, std::vector<std::shared_ptr<einsum::Expression>>());}
+| IDENTIFIER MUL OPEN_PAREN orexp args CLOSED_PAREN PIPE orexp	{
+							$5->insert($5->begin(), std::shared_ptr<einsum::Expression>($4));
 							$$ = new einsum::CallStarCondition(std::shared_ptr<einsum::Expression>($8), *$1, *$5);}
 
 
@@ -177,7 +218,14 @@ exp:		OPEN_PAREN orexp CLOSED_PAREN { $$ = $2;}
 							)
 						)
 					}
-		| read_tensor_access  { $$ = $1}
+		| IDENTIFIER access 	{ $$ = new einsum::ReadAccess(
+								std::shared_ptr<einsum::TensorVar>(new einsum::TensorVar(
+									*$1,
+									std::shared_ptr<einsum::TensorType>(new einsum::TensorType())
+								)),
+								*$2
+							);
+					}
 		| call	{$$ = $1}
 		| call_star	{$$ = $1}
 		;
@@ -186,17 +234,17 @@ exp:		OPEN_PAREN orexp CLOSED_PAREN { $$ = $2;}
 //		    | MUL 	{$$ = new einsum::MulOp();}
 //		    | IDENTIFIER {$$ = new einsum::OrOp();}
 
-reduction: 	IDENTIFIER COLONS OPEN_PAREN PLUS COM exp CLOSED_PAREN  {$$ = new einsum::Reduction(
+reduction: 	IDENTIFIER COLONS OPEN_PAREN PLUS COM orexp CLOSED_PAREN  {$$ = new einsum::Reduction(
 												std::shared_ptr<einsum::IndexVar>(new einsum::IndexVar(*$1, 0)),
 												std::shared_ptr<einsum::AddOp>(new einsum::AddOp()),
 												std::shared_ptr<einsum::Expression>($6)
 											)}
-		| IDENTIFIER COLONS OPEN_PAREN MUL COM exp CLOSED_PAREN  {$$ = new einsum::Reduction(
+		| IDENTIFIER COLONS OPEN_PAREN MUL COM orexp CLOSED_PAREN  {$$ = new einsum::Reduction(
                 												std::shared_ptr<einsum::IndexVar>(new einsum::IndexVar(*$1, 0)),
                 												std::shared_ptr<einsum::MulOp>(new einsum::MulOp()),
                 												std::shared_ptr<einsum::Expression>($6)
                 											)}
-                | IDENTIFIER COLONS OPEN_PAREN IDENTIFIER COM exp CLOSED_PAREN  {$$ = new einsum::Reduction(
+                | IDENTIFIER COLONS OPEN_PAREN IDENTIFIER COM orexp CLOSED_PAREN  {$$ = new einsum::Reduction(
                 												std::shared_ptr<einsum::IndexVar>(new einsum::IndexVar(*$1, 0)),
                 												std::shared_ptr<einsum::OrOp>(new einsum::OrOp()),
                 												std::shared_ptr<einsum::Expression>($6)
@@ -205,23 +253,50 @@ reduction: 	IDENTIFIER COLONS OPEN_PAREN PLUS COM exp CLOSED_PAREN  {$$ = new ei
 reduction_list:	{$$ = new std::vector<std::shared_ptr<einsum::Reduction>>();}
 | reduction_list COM reduction {$1->push_back(std::shared_ptr<einsum::Reduction>($3)); $$ = $1;}
 
-def:		write_tensor_access ASSIGN exp	{
-						auto acc = std::vector<std::shared_ptr<einsum::Access>>();
-                                                acc.push_back(std::shared_ptr<einsum::Access>($1));
+def:		def_lhs ASSIGN orexp	{
 						$$ = new einsum::Definition(
-								acc,
+								*$1,
 								std::shared_ptr<einsum::Expression>($3),
 								std::vector<std::shared_ptr<einsum::Reduction>>()
 						)}
-		| write_tensor_access ASSIGN exp PIPE reduction reduction_list  {
-									auto acc = std::vector<std::shared_ptr<einsum::Access>>();
-									acc.push_back(std::shared_ptr<einsum::Access>($1));
-									$6->push_back(std::shared_ptr<einsum::Reduction>($5));
+		| def_lhs ASSIGN orexp PIPE reduction reduction_list  {
+									$6->insert($6->begin(), std::shared_ptr<einsum::Reduction>($5));
 									$$ = new einsum::Definition(
-											acc,
+											*$1,
 											std::shared_ptr<einsum::Expression>($3),
 											*$6
 									)}
+type: IDENTIFIER				{
+						auto dims = std::vector<std::shared_ptr<einsum::Expression>>();
+						$$ = new einsum::TensorType(std::make_shared<einsum::Datatype>(*$1), dims);}
+| type OPEN_BRACKET orexp CLOSED_BRACKET		{
+						 auto dims = std::vector<std::shared_ptr<einsum::Expression>>();
+						 for (int i=0; i < $1->getDimensions().size(); i++) {
+							dims.push_back(($1->getDimensions())[i]);
+						 }
+						 dims.push_back(std::shared_ptr<einsum::Expression>($3));
+						 $$ = new einsum::TensorType($1->getElementType(), dims);;
+						}
+
+param: IDENTIFIER type				{$$ = new einsum::TensorVar(*$1, std::shared_ptr<einsum::TensorType>($2));}
+
+param_list:					{$$ = new std::vector<std::shared_ptr<einsum::TensorVar>>();}
+| COM param param_list				{$3->insert($3->begin(), std::shared_ptr<einsum::TensorVar>($2));
+                                                 $$ = $3;}
+
+input_params: OPEN_PAREN CLOSED_PAREN		{$$ = new std::vector<std::shared_ptr<einsum::TensorVar>>();}
+| OPEN_PAREN param param_list CLOSED_PAREN	{$3->insert($3->begin(), std::shared_ptr<einsum::TensorVar>($2));
+						 $$ = $3;}
+
+output_params:					{$$ = new std::vector<std::shared_ptr<einsum::TensorVar>>();}
+| OPEN_PAREN param param_list CLOSED_PAREN	{$3->insert($3->begin(), std::shared_ptr<einsum::TensorVar>($2));
+                                                 $$ = $3;}
+
+statements:					{$$ = new std::vector<std::shared_ptr<einsum::Definition>>();}
+|  def EOL blank statements				{$4->insert($4->begin(), std::shared_ptr<einsum::Definition>($1));
+						 $$ = $4;}
+
+func:		LET IDENTIFIER input_params RARROW output_params EOL blank statements END {$$ = new einsum::FuncDecl(*$2, *$3, *$5, *$8);}
 %%
 
 int yyerror(string s)

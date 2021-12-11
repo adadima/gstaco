@@ -43,7 +43,7 @@ namespace einsum {
         };
 
         explicit Datatype(Kind kind);
-
+        explicit Datatype(std::string type_name);
         template <typename T>
         static std::shared_ptr<Datatype> make_datatype() {
             if (std::is_same<T, int>()) {
@@ -215,11 +215,20 @@ namespace einsum {
         std::string dump() const override;
     };
 
+    struct Expression;
+
+    // TODO: change dimensions to vector of expressions => they should always be constant
+    // TODO: rename "dimensions" to "shape"
+    // TODO: implement a "module" IR node to store the functions and globals
+    // TODO: allow users to write their own operators!!
     struct TensorType : public Type {
     public:
-        TensorType() : type(Type::make<Datatype>(Datatype::Kind::Int)), dimensions(std::vector<std::shared_ptr<einsum::DimensionType>>()) {}
-        TensorType(std::shared_ptr<Datatype> type, std::vector<std::shared_ptr<einsum::DimensionType>> dimensions) : type(std::move(type)), dimensions(std::move(dimensions)) {}
-        std::shared_ptr<einsum::DimensionType> getDimension(int i) const;
+        TensorType() : type(Type::make<Datatype>(Datatype::Kind::Int)), dimensions(std::vector<std::shared_ptr<einsum::Expression>>()) {}
+        TensorType(std::shared_ptr<Datatype> type, std::vector<std::shared_ptr<einsum::Expression>> dimensions) : type(std::move(type)), dimensions(std::move(dimensions)) {}
+
+        std::vector<std::shared_ptr<einsum::Expression>> getDimensions() const;
+
+        std::shared_ptr<einsum::Expression> getDimension(int i) const;
 
         std::shared_ptr<Datatype> getElementType() const;
 
@@ -234,7 +243,7 @@ namespace einsum {
         std::string dump() const override;
 
     private:
-        std::vector<std::shared_ptr<einsum::DimensionType>> dimensions;
+        std::vector<std::shared_ptr<einsum::Expression>> dimensions;
         std::shared_ptr<Datatype> type;
     };
 }

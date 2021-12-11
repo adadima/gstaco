@@ -16,9 +16,9 @@ int_const	{digit}+
 ID       [a-zA-Z_#][a-zA-Z_#0-9]*
 
 %%
-{int_const}	        {yylval.int_val = atoi(yytext); printf( "INT: %s\n", yytext ); return INTEGER_LITERAL; }
+{int_const}	        {yylval.int_val = atoi(yytext); return INTEGER_LITERAL; }
 
-{digit}+"."+{digit}*  {yylval.float_val = std::stof(yytext); printf( "FLOAT: %s\n", yytext ); return FLOAT_LITERAL; }
+{digit}+"."+{digit}*  {yylval.float_val = std::stof(yytext); return FLOAT_LITERAL; }
 
 "!"                 { yylval.op_val = new std::string(yytext); return NOT; }
 "*"                 { yylval.op_val = new std::string(yytext); return MUL; }
@@ -47,12 +47,18 @@ ID       [a-zA-Z_#][a-zA-Z_#0-9]*
 
 true|false    {yylval.bool_val = (std::string(yytext) == "true") ? true : false; return BOOL_LITERAL;}
 
-"T_"+{ID}   {yylval.id_val = new std::string(yytext); printf( "TENSOR: %s\n", yytext ); return TENSOR; }
-{ID}        {yylval.id_val = new std::string(yytext); printf( "IDENTIFIER: %s\n", yytext ); return IDENTIFIER; }
+"Let"       {yylval.id_val = new std::string(yytext); return LET; }
 
-Let|End|if|then|else {
+"End"       {yylval.id_val = new std::string(yytext); return END; }
+
+
+if|then|else {
             printf( "A keyword: %s\n", yytext );
             }
+
+_|{ID}        {yylval.id_val = new std::string(yytext); return IDENTIFIER; }
+
+"->"        {yylval.id_val = new std::string(yytext); return RARROW; }
 
 [ \t]*          /* eat up whitespace */
 
@@ -61,6 +67,3 @@ Let|End|if|then|else {
 "{"[^}\n]*"}"     /* eat up one-line comments */
 
 .		{ std::cerr << "SCANNER "; yyerror(""); exit(1);	}
-
-"->"|"|"|"#"
-

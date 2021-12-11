@@ -3,9 +3,21 @@
 //
 
 #include <einsum_taco/ir/type.h>
+#include <einsum_taco/ir/ir.h>
 
 namespace einsum {
     Datatype::Datatype(Kind kind) : kind(kind) {
+    }
+
+    Datatype::Datatype(std::string type_name) {
+        einsum_iassert( type_name == "int" || type_name == "float" || type_name == "bool");
+        if (type_name == "int") {
+            kind = Kind::Int;
+        } else if (type_name == "float") {
+            kind = Kind::Float;
+        } else {
+            kind =Kind::Bool;
+        }
     }
 
     Datatype::Kind Datatype::getKind() const {
@@ -112,8 +124,11 @@ namespace einsum {
                 return sizeof(double);
         }
     }
+    std::vector<std::shared_ptr<einsum::Expression>> TensorType::getDimensions() const {
+        return this->dimensions;
+    }
 
-    std::shared_ptr<einsum::DimensionType> TensorType::getDimension(int i) const {
+    std::shared_ptr<einsum::Expression> TensorType::getDimension(int i) const {
         return this->dimensions[i];
     }
 
