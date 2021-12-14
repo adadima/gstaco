@@ -1,9 +1,31 @@
 /* main.cc */
 
 #include <einsum_taco/parser/heading.h>
+#include <unistd.h>
 
 // prototype of bison-generated parser function
 int yyparse();
+
+//TODO: error checking for pipe and fork
+//int parse_from_string(std::string code) {
+//    int stdin_pipe[2];
+//    int stdout_pipe[2];
+//    pipe(stdin_pipe);
+//    pipe(stdout_pipe);
+//
+//    int pid = fork();
+//    if (pid == 0) {
+//        dup2(stdin_pipe[0], STDIN_FILENO);
+//        dup2(stdout_pipe[1],STDOUT_FILENO);
+//        const char* sent = code.c_str();
+//        write(stdin_pipe[1], sent, strlen(sent));  //TODO: write EOF
+//        close(stdin_pipe[1]);
+//        yyparse();
+//        exit(0);
+//    }
+//
+//    return 0;
+//}
 
 int main(int argc, char **argv)
 {

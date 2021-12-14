@@ -5,6 +5,12 @@
 #include "einsum_taco/ir/ir.h"
 #include <initializer_list>
 
+typedef struct yy_buffer_state * YY_BUFFER_STATE;
+extern int yyparse();
+extern YY_BUFFER_STATE yy_scan_string(char * str);
+extern void yy_delete_buffer(YY_BUFFER_STATE buffer);
+
+
 class DumpTest : public testing::Test {
 public:
     static inline const auto zero = einsum::IR::make<einsum::Literal>(0, einsum::Type::make<einsum::Datatype>(einsum::Datatype::Kind::Int));
@@ -35,9 +41,10 @@ public:
     static inline const auto intType = einsum::Type::make<einsum::Datatype>(
                                                 einsum::Datatype::Kind::Int
                                         );
+    static inline const auto varType = einsum::Type::make<einsum::TensorType>();
 
     template <typename V>
-    static std::shared_ptr<einsum::TensorVar> make_tensor(std::string name, std::initializer_list<std::shared_ptr<einsum::DimensionType>> dimensions) {
+    static std::shared_ptr<einsum::TensorVar> make_tensor(std::string name, std::initializer_list<std::shared_ptr<einsum::Expression>> dimensions) {
 
         auto tType = einsum::IR::make<einsum::TensorType>(
                         einsum::Datatype::make_datatype<V>(),
@@ -47,15 +54,15 @@ public:
     }
 
     static inline const auto A = make_tensor<int>("A",
-                {einsum::Type::make<einsum::FixedDimension>(2),
-                einsum::Type::make<einsum::FixedDimension>(3),
-                einsum::Type::make<einsum::FixedDimension>(1)}
+                {einsum::IR::make<einsum::Literal>(2, intType),
+                einsum::Type::make<einsum::Literal>(3, intType),
+                einsum::Type::make<einsum::Literal>(1, intType)}
         );
 
     std::shared_ptr<einsum::Definition> definition1() {
-        std::initializer_list<std::shared_ptr<einsum::DimensionType>> dims = {einsum::Type::make<einsum::FixedDimension>(2),
-                                                                              einsum::Type::make<einsum::FixedDimension>(3),
-                                                                              einsum::Type::make<einsum::FixedDimension>(1)};
+        std::initializer_list<std::shared_ptr<einsum::Expression>> dims = {einsum::IR::make<einsum::Literal>(2, intType),
+                                                                           einsum::Type::make<einsum::Literal>(3, intType),
+                                                                           einsum::Type::make<einsum::Literal>(1, intType)};
         auto frontier = make_tensor<int>("frontier", dims);
         auto visited = make_tensor<int>("visited", dims);
         auto edges = make_tensor<int>("edges", dims);
@@ -99,9 +106,10 @@ public:
     }
 
     std::shared_ptr<einsum::FuncDecl> func1() {
-        auto frontier = make_tensor<int>("frontier", {einsum::Type::make<einsum::VariableDimension>("N")});
-        auto visited = make_tensor<int>("visited", {einsum::Type::make<einsum::VariableDimension>("N")});
-        auto frontier_list = make_tensor<int>("frontier_list", {einsum::Type::make<einsum::VariableDimension>("N"),einsum::Type::make<einsum::VariableDimension>("N")});
+        auto frontier = make_tensor<int>("frontier", {einsum::Type::make<einsum::ReadAccess>("N")});
+        auto visited = make_tensor<int>("visited", {einsum::Type::make<einsum::ReadAccess>("N")});
+        auto frontier_list = make_tensor<int>("frontier_list", {einsum::Type::make<einsum::ReadAccess>("N"),
+                                                                einsum::Type::make<einsum::ReadAccess>("N")});
 
         return einsum::IR::make<einsum::FuncDecl>(
                 "Frontier",
@@ -114,6 +122,28 @@ public:
                 einsum::IR::make_vec<einsum::Definition>(definition1(), definition2())
         );
     }
+//
+//    void parse(std::string inp) {
+//
+//        // some command that fails to execute properly.
+//        std::string command = inp + " > "
+//
+//        std::array<char, 128> buffer;
+//        std::string result;
+//
+//        std::cout << "Opening reading pipe" << std::endl;
+//        FILE* pipe = popen(command.c_str(), "r");
+//        if (!pipe)
+//        {
+//            std::cerr << "Couldn't start command." << std::endl;
+//            return 0;
+//        }
+//        while (fgets(buffer.data(), 128, pipe) != NULL) {
+//            std::cout << "Reading..." << std::endl;
+//            result += buffer.data();
+//        }
+//        auto returnCode = pclose(pipe);
+//    }
 
 protected:
     virtual void SetUp() {
@@ -132,7 +162,18 @@ TEST_F(DumpTest, LiteralsTest) {
     EXPECT_EQ (intLit.dump(),  "6");
 
     auto boolLit = einsum::IR::make<einsum::Literal>(true, einsum::Type::make<einsum::Datatype>(einsum::Datatype::Kind::Bool));
-    EXPECT_EQ (boolLit->dump(),  "1");
+    EXPECT_EQ (boolLit->dump(),  "true");
+
+    auto floatLit = einsum::IR::make<einsum::Literal>(6.0f, einsum::Type::make<einsum::Datatype>(einsum::Datatype::Kind::Float));
+    EXPECT_EQ (floatLit->dump().rfind("6.0", 0),  0);
+}
+
+TEST_F(DumpTest, LiteralsTestParsed) {
+    auto intLit = einsum::Literal(6, einsum::Type::make<einsum::Datatype>(einsum::Datatype::Kind::Int));
+    EXPECT_EQ (intLit.dump(),  "6");
+
+    auto boolLit = einsum::IR::make<einsum::Literal>(true, einsum::Type::make<einsum::Datatype>(einsum::Datatype::Kind::Bool));
+    EXPECT_EQ (boolLit->dump(),  "true");
 
     auto floatLit = einsum::IR::make<einsum::Literal>(6.0f, einsum::Type::make<einsum::Datatype>(einsum::Datatype::Kind::Float));
     EXPECT_EQ (floatLit->dump().rfind("6.0", 0),  0);
@@ -219,14 +260,14 @@ TEST_F(DumpTest, BinaryExprTest) {
             or_
             );
 
-    EXPECT_EQ(bool1->dump(), "j + k > j - k || 1");
+    EXPECT_EQ(bool1->dump(), "j + k > j - k || true");
 
     auto bool2 = einsum::IR::make<einsum::LogicalExpression>(
             bool1,
             no,
             and_
     );
-    EXPECT_EQ(bool2->dump(), "(j + k > j - k || 1) && 0");
+    EXPECT_EQ(bool2->dump(), "(j + k > j - k || true) && false");
 
     //auto neg = einsum::IR::make<einsum::NotExpression>(bool1);
 }

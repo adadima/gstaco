@@ -10,6 +10,8 @@ int yylex(void);
 using namespace einsum;
 %}
 
+%parse-param {int *nastiness} {int *randomness}
+
 %union {
   string*					 op_val;
   string					 *id_val;

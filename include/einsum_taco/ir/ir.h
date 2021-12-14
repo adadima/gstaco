@@ -240,6 +240,10 @@ namespace einsum {
         std::shared_ptr<TensorVar> tensor;
         std::vector<std::shared_ptr<Expression>> indices;
 
+        explicit ReadAccess(std::string tensor) : Base(1), tensor(make<TensorVar>(tensor, std::shared_ptr<TensorType>(new TensorType()))), indices(std::vector<std::shared_ptr<Expression>>()) {}
+
+        ReadAccess(std::string tensor, std::vector<std::shared_ptr<Expression>> indices) : Base(1), tensor(make<TensorVar>(tensor, std::shared_ptr<TensorType>(new TensorType()))), indices(std::move(indices)) {}
+
         ReadAccess(std::shared_ptr<TensorVar> tensor, std::vector<std::shared_ptr<Expression>> indices) : Base(1), tensor(std::move(tensor)), indices(std::move(indices)) {}
 
         std::string dump() const override;
