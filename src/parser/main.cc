@@ -27,6 +27,7 @@ int yyparse();
 //    return 0;
 //}
 
+//TODO:: use yyrestart
 int main(int argc, char **argv)
 {
     if ((argc > 1) && (freopen(argv[1], "r", stdin) == NULL))
