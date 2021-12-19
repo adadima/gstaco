@@ -6,10 +6,8 @@
 #include <initializer_list>
 
 typedef struct yy_buffer_state * YY_BUFFER_STATE;
-extern int yyparse();
-extern YY_BUFFER_STATE yy_scan_string(char * str);
-extern void yy_delete_buffer(YY_BUFFER_STATE buffer);
-
+extern int yyparse(std::vector<einsum::FuncDecl> *declarations);
+extern void yyset_in(FILE * in_str  );
 
 class DumpTest : public testing::Test {
 public:
@@ -122,28 +120,26 @@ public:
                 einsum::IR::make_vec<einsum::Definition>(definition1(), definition2())
         );
     }
-//
-//    void parse(std::string inp) {
-//
-//        // some command that fails to execute properly.
-//        std::string command = inp + " > "
-//
-//        std::array<char, 128> buffer;
-//        std::string result;
-//
-//        std::cout << "Opening reading pipe" << std::endl;
-//        FILE* pipe = popen(command.c_str(), "r");
-//        if (!pipe)
-//        {
-//            std::cerr << "Couldn't start command." << std::endl;
-//            return 0;
-//        }
-//        while (fgets(buffer.data(), 128, pipe) != NULL) {
-//            std::cout << "Reading..." << std::endl;
-//            result += buffer.data();
-//        }
-//        auto returnCode = pclose(pipe);
-//    }
+
+    std::vector<einsum::FuncDecl> parse(std::string code) {
+        char temp_name[17];
+        strcpy(temp_name, "dump_test_XXXXXX");
+        int f = mkstemp(temp_name);
+        if (f == -1) {
+            throw std::system_error(errno, std::system_category());
+        }
+        auto w_temp = fdopen(f, "wb");
+        fwrite(code.data(), 1, code.size(), w_temp);
+        fclose(w_temp);
+
+        auto r_temp = fdopen(f, "rb");
+        yyset_in(r_temp);
+        auto declarations = std::vector<einsum::FuncDecl>();
+        yyparse(&declarations);
+        fclose(r_temp);
+        close(f);
+        return declarations;
+    }
 
 protected:
     virtual void SetUp() {

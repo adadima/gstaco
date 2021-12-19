@@ -4,7 +4,7 @@
 %{
 #include <einsum_taco/parser/heading.h>
 #include "tok.h"
-int yyerror(char *s);
+int yyerror(vector<einsum::FuncDecl> *declarations, char *s);
 %}
 
 %option noyywrap
@@ -66,4 +66,4 @@ _|{ID}        {yylval.id_val = new std::string(yytext); return IDENTIFIER; }
 
 "{"[^}\n]*"}"     /* eat up one-line comments */
 
-.		{ std::cerr << "SCANNER "; yyerror(""); exit(1);	}
+.		{ std::cerr << "SCANNER "; yyerror(nullptr, ""); exit(1);	}

@@ -1,19 +1,24 @@
 enable_testing()
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND}  --output-on-failure)
 
-add_library(test_interface INTERFACE)
+include(FetchContent)
+FetchContent_Declare(
+        googletest
+        URL https://github.com/google/googletest/archive/refs/tags/release-1.11.0.zip
+)
+# For Windows: Prevent overriding the parent project's compiler/linker settings
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
+include(GoogleTest)
 
-if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    target_include_directories(test_interface INTERFACE /usr/local/include)
-    target_link_directories(test_interface INTERFACE /usr/local/lib)
-endif ()
+add_library(test_interface INTERFACE)
 target_link_libraries(test_interface INTERFACE gtest gtest_main einsum_lib)
 
 function(add_einsum_test test_name)
     add_executable(${test_name} ${test_name}.cpp)
-    target_link_libraries(${test_name} test_interface)
-    add_test(${test_name} ${test_name})
+    target_link_libraries(${test_name} PUBLIC test_interface)
     add_dependencies(check ${test_name})
+    gtest_discover_tests(${test_name})
 endfunction()
 
 add_einsum_test(dump_test)
