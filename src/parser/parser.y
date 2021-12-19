@@ -1,13 +1,10 @@
 %{
 #include "einsum_taco/parser/heading.h"
-
-int yyerror(vector<einsum::FuncDecl> *declarations, char *s);
-int yylex(void);
-
-using namespace einsum;
 %}
 
-%parse-param {vector<einsum::FuncDecl> *declarations}
+
+%parse-param {State state}
+%lex-param {State state}
 
 %union {
   string*					 op_val;
@@ -102,9 +99,9 @@ using namespace einsum;
 %%
 // func EOL blank EOL def EOL blank EOL orexp EOL
 input: | blank
-       | input func blank  {declarations->push_back(*$2);}
-       | input orexp blank { std::string d = $2->dump(); const char *cstr = d.c_str(); printf("= %s\n", cstr); }
-       | input def blank { std::string d = $2->dump(); const char *cstr = d.c_str(); printf("= %s\n", cstr); }
+       | input func blank  {state.module->add(std::shared_ptr<ModuleComponent>($2));}
+       | input orexp blank {state.module->add(std::shared_ptr<ModuleComponent>($2));}
+       | input def blank   {state.module->add(std::shared_ptr<ModuleComponent>($2));}
  ;
 
 blank:
@@ -297,17 +294,41 @@ statements:					{$$ = new std::vector<std::shared_ptr<einsum::Definition>>();}
 func:		LET IDENTIFIER input_params RARROW output_params EOL blank statements END {$$ = new einsum::FuncDecl(*$2, *$3, *$5, *$8);}
 %%
 
-int yyerror(vector<einsum::FuncDecl> *declarations, string s)
+int yyerror(State state, string s)
 {
-  extern int yylineno;	// defined and maintained in lex.c
-  extern char *yytext;	// defined and maintained in lex.c
-
-  cerr << "ERROR: " << s << " at symbol \"" << yytext;
-  cerr << "\" on line " << yylineno << endl;
+  cerr << "ERROR: " << s << " at symbol \"" << yyget_text(state.scanner);
+  cerr << "\" on line " << yyget_lineno(state.scanner) << endl;
   exit(1);
 }
 
-int yyerror(vector<einsum::FuncDecl> *declarations, char *s)
+int yyerror(State state, char *s)
 {
-  return yyerror(declarations, string(s));
+  return yyerror(state, string(s));
+}
+
+extern "C" int yywrap(yyscan_t scanner) {
+  /* Since this is a simple demonstration, so we will just terminate when we reach the end of the input file */
+  return 1;
+}
+
+einsum::Module parse_module(FILE* file) {
+	auto module = einsum::Module(std::vector<std::shared_ptr<einsum::ModuleComponent>>());
+	yyscan_t scanner;
+	yylex_init(&scanner) ;
+	auto state = State{scanner, &module};
+
+	yyset_in(file, scanner);
+
+	int status;
+	yypstate *ps = yypstate_new ();
+	YYSTYPE pushed_value;
+
+	do {
+	    auto l = yylex(&pushed_value, scanner);
+	    status = yypush_parse(ps, l, &pushed_value, state);
+	} while(status == YYPUSH_MORE);
+
+	yypstate_delete (ps);
+	yylex_destroy (scanner) ;
+	return module;
 }

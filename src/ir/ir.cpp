@@ -274,4 +274,53 @@ namespace einsum {
         std::transform(this->outputs.begin(), this->outputs.end(), std::back_inserter(types), mapper);
         return types;
     }
+
+    std::string Module::dump() const {
+        std::string code;
+        for (const auto &d: decls) {
+            code += d->dump();
+            code += "\n";
+        }
+        return code;
+    }
+
+    void Module::add(std::shared_ptr<ModuleComponent> decl) {
+        decls.push_back(std::move(decl));
+    }
+
+    bool ModuleComponent::is_decl() const {
+        return dynamic_cast<const FuncDecl*>(this) != nullptr;
+    }
+
+    FuncDecl& ModuleComponent::as_decl() {
+        return dynamic_cast<FuncDecl&>(*this);
+    }
+
+    const FuncDecl& ModuleComponent::as_decl() const {
+        return dynamic_cast<const FuncDecl&>(*this);
+    }
+
+    bool ModuleComponent::is_def() const {
+        return dynamic_cast<const Definition*>(this) != nullptr;
+    }
+
+    Definition& ModuleComponent::as_def() {
+        return dynamic_cast<Definition&>(*this);
+    }
+
+    const Definition& ModuleComponent::as_def() const {
+        return dynamic_cast<const Definition&>(*this);
+    }
+
+    bool ModuleComponent::is_expr() const {
+        return dynamic_cast<const Expression*>(this) != nullptr;
+    }
+
+    Expression& ModuleComponent::as_expr() {
+        return dynamic_cast<Expression&>(*this);
+    }
+
+    const Expression& ModuleComponent::as_expr() const {
+        return dynamic_cast<const Expression&>(*this);
+    }
 }

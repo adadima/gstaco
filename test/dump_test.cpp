@@ -6,8 +6,6 @@
 #include <initializer_list>
 
 typedef struct yy_buffer_state * YY_BUFFER_STATE;
-extern int yyparse(std::vector<einsum::FuncDecl> *declarations);
-extern void yyset_in(FILE * in_str  );
 
 class DumpTest : public testing::Test {
 public:
@@ -119,26 +117,6 @@ public:
                 einsum::IR::make_vec<einsum::TensorVar>(frontier, make_tensor<int>("round_out", {})),
                 einsum::IR::make_vec<einsum::Definition>(definition1(), definition2())
         );
-    }
-
-    std::vector<einsum::FuncDecl> parse(std::string code) {
-        char temp_name[17];
-        strcpy(temp_name, "dump_test_XXXXXX");
-        int f = mkstemp(temp_name);
-        if (f == -1) {
-            throw std::system_error(errno, std::system_category());
-        }
-        auto w_temp = fdopen(f, "wb");
-        fwrite(code.data(), 1, code.size(), w_temp);
-        fclose(w_temp);
-
-        auto r_temp = fdopen(f, "rb");
-        yyset_in(r_temp);
-        auto declarations = std::vector<einsum::FuncDecl>();
-        yyparse(&declarations);
-        fclose(r_temp);
-        close(f);
-        return declarations;
     }
 
 protected:

@@ -11,7 +11,7 @@ Let Backward_Step(frontier_list int[N][N], num_paths int[N], deps int[N], visite
 
 End
 backward_deps, final_visited = Backwards_Vertex(frontier_list, num_paths, deps, visited, round)
-
-2 / ((j + k) * (j - k) / 2)
+2.0
+2.0 / ((j + k) * (j - k) / 2)
 
 

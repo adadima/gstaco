@@ -12,7 +12,7 @@ FetchContent_MakeAvailable(googletest)
 include(GoogleTest)
 
 add_library(test_interface INTERFACE)
-target_link_libraries(test_interface INTERFACE gtest gtest_main einsum_lib)
+target_link_libraries(test_interface INTERFACE gtest gtest_main parser_lib einsum_lib)
 
 function(add_einsum_test test_name)
     add_executable(${test_name} ${test_name}.cpp)
@@ -22,4 +22,5 @@ function(add_einsum_test test_name)
 endfunction()
 
 add_einsum_test(dump_test)
+add_einsum_test(parse_test)
 add_einsum_test(gen_test)

@@ -43,6 +43,24 @@ namespace einsum {
         virtual ~Acceptor() = default;
     };
 
+    struct FuncDecl;
+    struct Definition;
+    struct Expression;
+
+    struct ModuleComponent : Acceptor<ModuleComponent> {
+        bool is_decl() const;
+        FuncDecl& as_decl();
+        const FuncDecl& as_decl() const;
+
+        bool is_def() const;
+        Definition& as_def();
+        const Definition& as_def() const;
+
+        bool is_expr() const;
+        Expression& as_expr();
+        const Expression& as_expr() const;
+    };
+
     struct IndexVar : Acceptor<IndexVar> {
         std::string name;
         int dimension;
@@ -52,7 +70,7 @@ namespace einsum {
         std::string dump() const override;
     };
 
-    struct Expression : Acceptor<Expression> {
+    struct Expression : Acceptor<Expression, ModuleComponent> {
         int precedence;
         bool isAsymmetric;
 
@@ -267,7 +285,7 @@ namespace einsum {
         std::string dump() const override;
     };
 
-    struct Definition : Acceptor<Definition> {
+    struct Definition : Acceptor<Definition, ModuleComponent> {
         Definition(std::vector<std::shared_ptr<Access>> lhs,
                    std::shared_ptr<Expression> rhs,
                    std::vector<std::shared_ptr<Reduction>> reds) :
@@ -297,7 +315,7 @@ namespace einsum {
         std::shared_ptr<Expression> rhs;
     };
 
-    struct FuncDecl : Acceptor<FuncDecl> {
+    struct FuncDecl : Acceptor<FuncDecl, ModuleComponent> {
         std::string funcName;
         std::vector<std::shared_ptr<TensorVar>> inputs;
         std::vector<std::shared_ptr<TensorVar>> outputs;
@@ -355,7 +373,15 @@ namespace einsum {
         std::shared_ptr<Expression> stopCondition;
     };
 
+    struct Module : Acceptor<Module> {
+        std::vector<std::shared_ptr<ModuleComponent>> decls;
 
+        explicit Module(std::vector<std::shared_ptr<ModuleComponent>> decls) : decls(std::move(decls)) {}
+
+        std::string dump() const override;
+
+        void add(std::shared_ptr<ModuleComponent> decl);
+    };
 
     struct IRVisitor {
         virtual void accept(const Expression& node) = 0;

@@ -38,7 +38,7 @@ find_package(FLEX REQUIRED)
 
 bison_target(parser "${EINSUM_PARSER_DIR}/parser.y"  "${CMAKE_CURRENT_BINARY_DIR}/main.cc"
         DEFINES_FILE ${CMAKE_CURRENT_BINARY_DIR}/tok.h
-        COMPILE_FLAGS "--yacc --define=api.pure=full --define=api.push-pull=push --locations"
+        COMPILE_FLAGS "--yacc --define=api.pure=full --define=api.push-pull=push"
         )
 flex_target(lexer "${EINSUM_PARSER_DIR}/parser.lex" "${CMAKE_CURRENT_BINARY_DIR}/F.cc")
 
@@ -51,7 +51,7 @@ add_library(parser_lib STATIC
         )
 set_target_properties(parser_lib PROPERTIES CXX_STANDARD 14)
 target_include_directories(parser_lib PUBLIC ${EINSUM_INCLUDE_DIR})
-target_link_libraries(parser_lib einsum_lib)
+target_link_libraries(parser_lib PUBLIC einsum_lib)
 
 add_executable(parser_exec "${EINSUM_PARSER_DIR}/main.cc")
 target_link_libraries(parser_exec parser_lib)
