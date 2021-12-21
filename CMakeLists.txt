@@ -38,7 +38,7 @@ find_package(FLEX REQUIRED)
 
 bison_target(parser "${EINSUM_PARSER_DIR}/parser.y"  "${CMAKE_CURRENT_BINARY_DIR}/main.cc"
         DEFINES_FILE ${CMAKE_CURRENT_BINARY_DIR}/tok.h
-        COMPILE_FLAGS "--yacc --define=api.pure=full --define=api.push-pull=push"
+        COMPILE_FLAGS "--yacc --define=api.pure=full --define=api.push-pull=push -v"
         )
 flex_target(lexer "${EINSUM_PARSER_DIR}/parser.lex" "${CMAKE_CURRENT_BINARY_DIR}/F.cc")
 

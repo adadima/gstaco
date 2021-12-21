@@ -1,4 +1,4 @@
-
+A[j][k][j+k] < A[0][2][j]
 
 
 Let Backward_Step(frontier_list int[N][N], num_paths int[N], deps int[N], visited int[N], round int) -> (final_frontier_list int[N][N], final_num_paths int[N], final_deps int[N], final_visited int[N], final_round int)
@@ -13,5 +13,6 @@ End
 backward_deps, final_visited = Backwards_Vertex(frontier_list, num_paths, deps, visited, round)
 2.0
 2.0 / ((j + k) * (j - k) / 2)
+
 
 

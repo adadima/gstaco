@@ -142,17 +142,6 @@ TEST_F(DumpTest, LiteralsTest) {
     EXPECT_EQ (floatLit->dump().rfind("6.0", 0),  0);
 }
 
-TEST_F(DumpTest, LiteralsTestParsed) {
-    auto intLit = einsum::Literal(6, einsum::Type::make<einsum::Datatype>(einsum::Datatype::Kind::Int));
-    EXPECT_EQ (intLit.dump(),  "6");
-
-    auto boolLit = einsum::IR::make<einsum::Literal>(true, einsum::Type::make<einsum::Datatype>(einsum::Datatype::Kind::Bool));
-    EXPECT_EQ (boolLit->dump(),  "true");
-
-    auto floatLit = einsum::IR::make<einsum::Literal>(6.0f, einsum::Type::make<einsum::Datatype>(einsum::Datatype::Kind::Float));
-    EXPECT_EQ (floatLit->dump().rfind("6.0", 0),  0);
-}
-
 TEST_F(DumpTest, ReadAccessTest1) {
     auto access = einsum::ReadAccess(A, {});
     EXPECT_EQ(access.dump(), "A");

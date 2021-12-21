@@ -136,10 +136,10 @@ notexp: 	exp
 
 
 access:						    {$$ = new std::vector<std::shared_ptr<einsum::Expression>>(); }
-| OPEN_BRACKET orexp CLOSED_BRACKET  access {
+| access OPEN_BRACKET orexp CLOSED_BRACKET   {
 				auto list = new std::vector<std::shared_ptr<einsum::Expression>>();
-				list->push_back(std::shared_ptr<einsum::Expression>($2));
-				list->insert( list->end(), $4->begin(), $4->end());
+				list->push_back(std::shared_ptr<einsum::Expression>($3));
+				list->insert( list->end(), $1->begin(), $1->end());
 				$$ = list;
 			}
 ;
@@ -296,9 +296,11 @@ func:		LET IDENTIFIER input_params RARROW output_params EOL blank statements END
 
 int yyerror(State state, string s)
 {
-  cerr << "ERROR: " << s << " at symbol \"" << yyget_text(state.scanner);
-  cerr << "\" on line " << yyget_lineno(state.scanner) << endl;
-  exit(1);
+  std::stringstream sin;
+  sin << "ERROR: " << s << " at symbol \"" << yyget_text(state.scanner);
+  sin << "\" on line " << yyget_lineno(state.scanner);
+  const auto msg = sin.str();
+  throw std::runtime_error(msg);
 }
 
 int yyerror(State state, char *s)
