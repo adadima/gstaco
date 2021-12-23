@@ -176,50 +176,9 @@ namespace einsum {
         NeqOp() : Operator(7, "!=") {}
     };
 
-    struct DimensionType : public Type {
-        bool isInt() const override;
-
-        bool isFloat() const override;
-
-        bool isBool() const override;
-
-        std::string dump() const override = 0;
-    };
-
-
-    struct FixedDimension : DimensionType {
-        int value;
-        explicit FixedDimension(int value) : value(value) {}
-
-        std::string dump() const override;
-    };
-
-    struct VariableDimension : DimensionType {
-        std::string varName;
-        explicit VariableDimension(std::string varName) : varName(std::move(varName)) {}
-
-        std::string dump() const override;
-    };
-
-    struct BinaryExpressionDimension : DimensionType {
-        std::shared_ptr<DimensionType> left;
-        std::shared_ptr<DimensionType> right;
-        std::shared_ptr<Operator> op;
-
-        template<typename OpT>
-        BinaryExpressionDimension(std::shared_ptr<DimensionType> left,
-                                  std::shared_ptr<DimensionType> right,
-                                  std::shared_ptr<OpT> op) : left(std::move(left)), right(std::move(right)), op(std::move(op)) {
-                    static_assert(std::is_base_of<BinaryOperator, OpT>::value, "operator of binary expression dimension has wrong type");
-        }
-        std::string dump() const override;
-    };
-
     struct Expression;
 
-    // TODO: change dimensions to vector of expressions => they should always be constant
-    // TODO: rename "dimensions" to "shape"
-    // TODO: implement a "module" IR node to store the functions and globals
+
     // TODO: allow users to write their own operators!!
     struct TensorType : public Type {
     public:

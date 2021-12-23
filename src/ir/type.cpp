@@ -82,36 +82,12 @@ namespace einsum {
         return false;
     }
 
-    bool DimensionType::isFloat() const {
-        return false;
-    }
-
-    bool DimensionType::isInt() const {
-        return false;
-    }
-
-    bool DimensionType::isBool() const {
-        return false;
-    }
-
     std::string TensorType::dump() const {
         std::string dims;
         for (const auto &dimension : this->dimensions) {
             dims += "[" + dimension->dump() + "]";
         }
         return this->getElementType()->dump() + dims;
-    }
-
-    std::string FixedDimension::dump() const {
-        return std::to_string(this->value);
-    }
-
-    std::string VariableDimension::dump() const {
-        return this->varName;
-    }
-
-    std::string BinaryExpressionDimension::dump() const {
-        return this->left->dump() + " " + this->op->sign + " " + this->right->dump();
     }
 
     size_t Datatype::getNumBytes() const {

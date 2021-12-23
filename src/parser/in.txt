@@ -7,5 +7,3 @@ Let Backward_Step(frontier_list int[N][N], num_paths int[N], deps int[N], visite
 	final_deps, final_round = Backwards_Edge(frontier_list, num_paths, backward_deps, final_visited, round)
 
 End
-
-x = round_in * 2.0
