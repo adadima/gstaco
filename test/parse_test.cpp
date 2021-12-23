@@ -50,9 +50,9 @@ TEST(ParseTest, BinaryExprTest) {
 
     EXPECT_EQ(parse("j + k > j - k").dump(), "j + k > j - k\n");
 
-    EXPECT_EQ(parse("A[j][k][j + k] < A[0][2][j]").dump(), "A[j][k][j + k] < A[0][2][j]\n");
+    EXPECT_EQ(parse("x = A[j][k][j + k] < A[0][2][j]").dump(), "x = A[j][k][j + k] < A[0][2][j]\n");
 
-//    EXPECT_EQ(parse("j + k > j - k || true").dump(), "j + k > j - k || true\n");
+    EXPECT_EQ(parse("j + k > j - k || true").dump(), "j + k > j - k || true\n");
 
     EXPECT_EQ(parse("(j + k > j - k || true) && false").dump(), "(j + k > j - k || true) && false\n");
 
@@ -66,11 +66,11 @@ TEST(ParseTest, DefinitionTest) {
 
 
 TEST(ParseTest, FuncDeclTest1) {
-    const std::string func = R"(
+    const std::string func =R"(
 Let Round(round_in int) -> (round_out int)
     round_out = round_in * 2
 End)";
-    EXPECT_EQ(parse(func).dump(),func + "\n");
+    EXPECT_EQ("\n" + parse(func).dump(),func + "\n");
 }
 
 TEST(ParseTest, FuncDeclTest2) {
@@ -79,7 +79,7 @@ Let Frontier(frontier_list int[N][N], visited int[N], round_in int) -> (frontier
     frontier[j] = edges[j][k] * frontier_list[2][k] * (visited[j] == 0) | k:(OR, 0)
     round_out = round_in * 2
 End)";
-    EXPECT_EQ(parse(func).dump(),func + "\n");
+    EXPECT_EQ("\n" + parse(func).dump(), func + "\n");
 }
 
 // Round(0)
@@ -98,9 +98,9 @@ TEST(ParseTest, CallMultipleInputsTest) {
 
 // Round*(A) | 3
 TEST(ParseTest, CallStarRepeatTest) {
-    EXPECT_EQ(parse("Round*(A) | 3").dump(), "Round*(A) | 3\n");
+    EXPECT_EQ(parse("Round*(A) | (3)").dump(), "Round*(A) | (3)\n");
 
-    EXPECT_EQ(parse("round_out = Round*(A) | 3").dump(), "round_out = Round*(A) | 3\n");
+    EXPECT_EQ(parse("round_out = Round*(A) | (3)").dump(), "round_out = Round*(A) | (3)\n");
 }
 
 

@@ -71,6 +71,7 @@
 %token  <id_val>   END
 %token  <id_val>   RARROW
 %token  <id_val>   IDENTIFIER
+%token  <id_val>   STAR_CALL
 %token  <id_val>   COM
 %token  <op_val>   PIPE
 %token	NOT
@@ -127,7 +128,7 @@ as_exp: 	mdm_exp
 		| as_exp SUB mdm_exp { $$ = new einsum::ArithmeticExpression(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::SubOp>());};
 
 mdm_exp: 	notexp
-		| mdm_exp MUL notexp { $$ = new einsum::ArithmeticExpression(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::MulOp>());}
+		| mdm_exp MUL notexp { cout << "parsing mul\n"; $$ = new einsum::ArithmeticExpression(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::MulOp>());}
 		| mdm_exp DIV notexp { $$ = new einsum::ArithmeticExpression(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::DivOp>());};
 		| mdm_exp MOD notexp { $$ = new einsum::ArithmeticExpression(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::ModOp>());};
 
@@ -136,10 +137,10 @@ notexp: 	exp
 
 
 access:						    {$$ = new std::vector<std::shared_ptr<einsum::Expression>>(); }
-| access OPEN_BRACKET orexp CLOSED_BRACKET   {
+| OPEN_BRACKET orexp CLOSED_BRACKET  access {
 				auto list = new std::vector<std::shared_ptr<einsum::Expression>>();
-				list->push_back(std::shared_ptr<einsum::Expression>($3));
-				list->insert( list->end(), $1->begin(), $1->end());
+				list->push_back(std::shared_ptr<einsum::Expression>($2));
+				list->insert( list->end(), $4->begin(), $4->end());
 				$$ = list;
 			}
 ;
@@ -197,23 +198,17 @@ call: IDENTIFIER OPEN_PAREN CLOSED_PAREN	{new einsum::Call(*$1, std::vector<std:
 | IDENTIFIER OPEN_PAREN orexp args CLOSED_PAREN   {$4->insert($4->begin(), std::shared_ptr<einsum::Expression>($3));
 						$$ = new einsum::Call(*$1, *$4);}
 
-call_star: IDENTIFIER MUL OPEN_PAREN CLOSED_PAREN PIPE orexp	{new einsum::CallStarCondition(std::shared_ptr<einsum::Expression>($6), *$1, std::vector<std::shared_ptr<einsum::Expression>>());}
-| IDENTIFIER MUL OPEN_PAREN orexp args CLOSED_PAREN PIPE orexp	{
-							$5->insert($5->begin(), std::shared_ptr<einsum::Expression>($4));
-							$$ = new einsum::CallStarCondition(std::shared_ptr<einsum::Expression>($8), *$1, *$5);}
+call_star: STAR_CALL OPEN_PAREN CLOSED_PAREN PIPE orexp	{$1->pop_back(); new einsum::CallStarCondition(std::shared_ptr<einsum::Expression>($5), *$1, std::vector<std::shared_ptr<einsum::Expression>>());}
+| STAR_CALL OPEN_PAREN orexp args CLOSED_PAREN PIPE orexp	{ $1->pop_back();
+							$4->insert($4->begin(), std::shared_ptr<einsum::Expression>($3));
+							$$ = new einsum::CallStarCondition(std::shared_ptr<einsum::Expression>($7), *$1, *$4);}
 
 
 exp:		OPEN_PAREN orexp CLOSED_PAREN { $$ = $2;}
 		| INTEGER_LITERAL	{ $$ = new einsum::Literal($1, einsum::Type::make<einsum::Datatype>(einsum::Datatype::Kind::Int)); }
 		| FLOAT_LITERAL		{ $$ = new einsum::Literal($1, einsum::Type::make<einsum::Datatype>(einsum::Datatype::Kind::Float)); }
 		| BOOL_LITERAL		{ $$ = new einsum::Literal($1, einsum::Type::make<einsum::Datatype>(einsum::Datatype::Kind::Bool)); }
-		| IDENTIFIER		{
-						$$ = new einsum::IndexVarExpr(std::shared_ptr<einsum::IndexVar>(
-								new einsum::IndexVar(*$1, 0)
-							)
-						);
-					}
-		| IDENTIFIER access 	{ $$ = new einsum::ReadAccess(
+		| IDENTIFIER access 	{ cout << "parsing tensor\n"; $$ = new einsum::ReadAccess(
 								std::shared_ptr<einsum::TensorVar>(new einsum::TensorVar(
 									*$1,
 									std::shared_ptr<einsum::TensorType>(new einsum::TensorType())
@@ -224,10 +219,6 @@ exp:		OPEN_PAREN orexp CLOSED_PAREN { $$ = $2;}
 		| call	{$$ = $1;}
 		| call_star	{$$ = $1;}
 		;
-//
-//reduction_operator: PLUS 	{$$ = new einsum::AddOp();}
-//		    | MUL 	{$$ = new einsum::MulOp();}
-//		    | IDENTIFIER {$$ = new einsum::OrOp();}
 
 reduction: 	IDENTIFIER COLONS OPEN_PAREN PLUS COM orexp CLOSED_PAREN  {$$ = new einsum::Reduction(
 												std::shared_ptr<einsum::IndexVar>(new einsum::IndexVar(*$1, 0)),
@@ -303,7 +294,7 @@ int yyerror(State state, string s)
   throw std::runtime_error(msg);
 }
 
-int yyerror(State state, char *s)
+int yyerror(State state, const char *s)
 {
   return yyerror(state, string(s));
 }

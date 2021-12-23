@@ -253,15 +253,15 @@ TEST_F(DumpTest, FuncDeclTest1) {
     );
     EXPECT_EQ(func->dump(),
               "Let Round(round_in int) -> (round_out int)\n"
-                   "\tround_out = round_in * 2\n"
+                   "   round_out = round_in * 2\n"
                    "End");
 }
 
 TEST_F(DumpTest, FuncDeclTest2) {
     EXPECT_EQ(func1()->dump(),
               "Let Frontier(frontier_list int[N][N], visited int[N], round_in int) -> (frontier int[N], round_out int)\n"
-                   "\tfrontier[j] = edges[j][k] * frontier_list[2][k] * (visited[j] == 0) | k:(OR, 0)\n"
-                   "\tround_out = round_in * 2\n"
+                   "    frontier[j] = edges[j][k] * frontier_list[2][k] * (visited[j] == 0) | k:(OR, 0)\n"
+                   "    round_out = round_in * 2\n"
                    "End");
 }
 

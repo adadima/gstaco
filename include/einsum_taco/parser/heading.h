@@ -20,7 +20,7 @@ struct State {
     einsum::Module* module;
 };
 
-int yyerror(State state, char *);
+int yyerror(State state, const char *);
 
 int yylex(YYSTYPE * yylval_param, yyscan_t scanner);
 

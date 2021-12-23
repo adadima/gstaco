@@ -16,7 +16,7 @@ int_const	{digit}+
 ID       [a-zA-Z_#][a-zA-Z_#0-9]*
 
 %%
-{int_const}	        {yylval->int_val = atoi(yytext); return INTEGER_LITERAL; }
+{int_const}	        {yylval->int_val = atoi(yytext); cout << "INTEGER LITERAL " << yytext << "\n"; return INTEGER_LITERAL; }
 
 {digit}+"."+{digit}*  {yylval->float_val = std::stof(yytext); return FLOAT_LITERAL; }
 
@@ -55,6 +55,8 @@ true|false    {yylval->bool_val = (std::string(yytext) == "true") ? true : false
 if|then|else {
             printf( "A keyword: %s\n", yytext );
             }
+
+{ID}"*"         {yylval->id_val = new std::string(yytext); return STAR_CALL; }
 
 _|{ID}        {yylval->id_val = new std::string(yytext); return IDENTIFIER; }
 

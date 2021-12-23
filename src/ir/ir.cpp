@@ -216,7 +216,7 @@ namespace einsum {
 
         std::string body;
         for (const auto &i : this->body) {
-            body += "\t" + i->dump() + "\n";
+            body += "    " + i->dump() + "\n";
         }
         return def + body + "End";
     }
@@ -256,9 +256,8 @@ namespace einsum {
 
     std::string CallStarCondition::dump() const {
         auto call = this->function->funcName + "*" + this->dump_args();
-//        std::cout << "CALL %s\n" << call;
-//        std::cout << "CONDITION %s\n" << this->stopCondition->dump();
-        return call + " | (" + this->stopCondition->dump() + ")";
+        //  TODO: think of when to wrap condition around parens
+        return call + " | " + "(" + this->stopCondition->dump() + ")";
     }
 
     std::vector<std::shared_ptr<Type>> FuncDecl::getInputType() const {
