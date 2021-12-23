@@ -253,7 +253,7 @@ TEST_F(DumpTest, FuncDeclTest1) {
     );
     EXPECT_EQ(func->dump(),
               "Let Round(round_in int) -> (round_out int)\n"
-                   "   round_out = round_in * 2\n"
+                   "    round_out = round_in * 2\n"
                    "End");
 }
 

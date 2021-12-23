@@ -226,7 +226,7 @@ namespace einsum {
         std::shared_ptr<TensorType> getType() const;
 
         template <typename V>
-        static std::shared_ptr<einsum::TensorVar> make(std::string name, std::initializer_list<std::shared_ptr<einsum::DimensionType>> dimensions) {
+        static std::shared_ptr<einsum::TensorVar> make(std::string name, std::initializer_list<std::shared_ptr<einsum::Expression>> dimensions) {
 
             auto tType = einsum::IR::make<einsum::TensorType>(
                     einsum::Datatype::make_datatype<V>(),
