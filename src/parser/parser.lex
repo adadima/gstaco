@@ -16,7 +16,7 @@ int_const	{digit}+
 ID       [a-zA-Z_#][a-zA-Z_#0-9]*
 
 %%
-{int_const}	        {yylval->int_val = atoi(yytext); cout << "INTEGER LITERAL " << yytext << "\n"; return INTEGER_LITERAL; }
+{int_const}	        {yylval->int_val = atoi(yytext); return INTEGER_LITERAL; }
 
 {digit}+"."+{digit}*  {yylval->float_val = std::stof(yytext); return FLOAT_LITERAL; }
 

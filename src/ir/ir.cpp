@@ -277,6 +277,7 @@ namespace einsum {
     std::string Module::dump() const {
         std::string code;
         for (const auto &d: decls) {
+            code += "\n";
             code += d->dump();
             code += "\n";
         }

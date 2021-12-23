@@ -128,7 +128,7 @@ as_exp: 	mdm_exp
 		| as_exp SUB mdm_exp { $$ = new einsum::ArithmeticExpression(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::SubOp>());};
 
 mdm_exp: 	notexp
-		| mdm_exp MUL notexp { cout << "parsing mul\n"; $$ = new einsum::ArithmeticExpression(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::MulOp>());}
+		| mdm_exp MUL notexp { $$ = new einsum::ArithmeticExpression(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::MulOp>());}
 		| mdm_exp DIV notexp { $$ = new einsum::ArithmeticExpression(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::DivOp>());};
 		| mdm_exp MOD notexp { $$ = new einsum::ArithmeticExpression(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::ModOp>());};
 
@@ -208,7 +208,7 @@ exp:		OPEN_PAREN orexp CLOSED_PAREN { $$ = $2;}
 		| INTEGER_LITERAL	{ $$ = new einsum::Literal($1, einsum::Type::make<einsum::Datatype>(einsum::Datatype::Kind::Int)); }
 		| FLOAT_LITERAL		{ $$ = new einsum::Literal($1, einsum::Type::make<einsum::Datatype>(einsum::Datatype::Kind::Float)); }
 		| BOOL_LITERAL		{ $$ = new einsum::Literal($1, einsum::Type::make<einsum::Datatype>(einsum::Datatype::Kind::Bool)); }
-		| IDENTIFIER access 	{ cout << "parsing tensor\n"; $$ = new einsum::ReadAccess(
+		| IDENTIFIER access 	{ $$ = new einsum::ReadAccess(
 								std::shared_ptr<einsum::TensorVar>(new einsum::TensorVar(
 									*$1,
 									std::shared_ptr<einsum::TensorType>(new einsum::TensorType())
