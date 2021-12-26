@@ -39,7 +39,7 @@ namespace einsum {
     struct Acceptor : parent, mixins... {
         using Base = Acceptor<T, parent, mixins...>;
         using parent :: parent;
-        void accept(std::shared_ptr<IRVisitor> v) const;
+        void accept(IRVisitor* v) const;
         virtual ~Acceptor() = default;
     };
 
@@ -384,26 +384,23 @@ namespace einsum {
     };
 
     struct IRVisitor {
-        virtual void accept(const Expression& node) = 0;
-        virtual void accept(const FuncDecl& node) = 0;
-        virtual void accept(const Definition& node) = 0;
-        virtual void accept(const Reduction& node) = 0;
-        virtual void accept(const Access& node) = 0;
-        virtual void accept(const CallStarRepeat& node) = 0;
-        virtual void accept(const CallStarCondition& node) = 0;
-        virtual void accept(const Call& node) = 0;
-        virtual void accept(const IndexVar& node) = 0;
-        virtual void accept(const TensorVar& node) = 0;
+        virtual void visit(const Expression& node) = 0;
+        virtual void visit(const FuncDecl& node) = 0;
+        virtual void visit(const Definition& node) = 0;
+        virtual void visit(const Reduction& node) = 0;
+        virtual void visit(const Access& node) = 0;
+        virtual void visit(const CallStarRepeat& node) = 0;
+        virtual void visit(const CallStarCondition& node) = 0;
+        virtual void visit(const Call& node) = 0;
+        virtual void visit(const IndexVar& node) = 0;
+        virtual void visit(const TensorVar& node) = 0;
     };
 
     template<typename T, typename parent, typename... mixins>
-    void Acceptor<T, parent, mixins...>::accept(std::shared_ptr<IRVisitor> v) const {
-        v->accept(static_cast<const T&>(*this));
+    void Acceptor<T, parent, mixins...>::accept(IRVisitor* v) const {
+        v->visit(static_cast<const T&>(*this));
     }
 }
 
-//TODO: typdef the shared ptr
-//TODO: write test cases
-//TODO: represent modules and built ins already in scope
 //TODO: implement a switch case
 #endif //EINSUM_TACO_IR_H
