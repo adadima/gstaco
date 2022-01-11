@@ -27,6 +27,8 @@ public:
 };
 
 //TODO: write more visitor tests!
+//TODO: put expected asts in files
+
 
 TEST_F(Cleanup, IndexVars1) {
     const string func = R"(
@@ -162,7 +164,6 @@ End)";
 	>
 >)";
     module->accept(printer);
-    //cout << printer->ast;
 
     EXPECT_EQ(printer->ast, ast);
 }

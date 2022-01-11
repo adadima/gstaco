@@ -14,6 +14,7 @@
 #include<einsum_taco/ir/type.h>
 #include<einsum_taco/base/assert.h>
 #include<set>
+#include<map>
 
 
 namespace einsum {

@@ -29,16 +29,26 @@ namespace einsum {
     void CodeGenVisitor::visit(const TensorVar& node) {
         oss << node.dump();
     }
+
     void CodeGenVisitor::visit(const IndexVarExpr& node) {
-        oss << node.dump();
-    }
-    void CodeGenVisitor::visit(const Access& node) {
-        oss << node.dump();
-    }
-    void CodeGenVisitor::visit(const ReadAccess& node) {
-        oss << node.dump();
+        node.indexVar->accept(this);
     }
 
+    void CodeGenVisitor::visit(const Access& node) {
+        node.tensor->accept(this);
+        for (auto &&ind: node.indices) {
+            ind->accept(this);
+        }
+    }
+    void CodeGenVisitor::visit(const ReadAccess& node) {
+        node.tensor->accept(this);
+        for (auto &&ind: node.indices) {
+            ind->accept(this);
+        }
+    }
+
+    //
+    // TODO: generate asserts that index var dimensions match
     // frontier[j] = edges[j][k] * frontier_list[round][k] * (visited[j] == 0) | k:(OR, 0)
     void CodeGenVisitor::visit(const Definition& node) {
 

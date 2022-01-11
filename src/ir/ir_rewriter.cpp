@@ -95,6 +95,8 @@ namespace einsum {
         context->exit_access();
     }
 
+    //TODO: index vars in ReadAccess should shadow tensors declared in the context ONLY IF they have an associated reduction.
+    //TODO: an index is an IndexVarExpr if it appears on the lhs or if it has a reduction. Otherwise, it's a declared tensor.
     void  IRRewriter::visit(ReadAccess& node) {
         if (context->tensor_scope() && (node.indices.empty() && !context->get_read_tensor(*node.tensor))) {
             auto ivar = context->get_index_var_expr(node.tensor->name);
