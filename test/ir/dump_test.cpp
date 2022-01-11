@@ -28,9 +28,9 @@ public:
     static inline const auto eq = einsum::Type::make<einsum::EqOp>();
     static inline const auto neq = einsum::Type::make<einsum::NeqOp>();
 
-    static inline const auto i = einsum::IR::make<einsum::IndexVar>("i", 0);
-    static inline const auto j = einsum::IR::make<einsum::IndexVar>("j", 0);
-    static inline const auto k = einsum::IR::make<einsum::IndexVar>("k", 0);
+    static inline const auto i = einsum::IR::make<einsum::IndexVar>("i", zero);
+    static inline const auto j = einsum::IR::make<einsum::IndexVar>("j", zero);
+    static inline const auto k = einsum::IR::make<einsum::IndexVar>("k", zero);
     static inline const auto jExpr = einsum::IR::make<einsum::IndexVarExpr>(j);
     static inline const auto kExpr = einsum::IR::make<einsum::IndexVarExpr>(k);
     static inline const auto jkExpr = einsum::IR::make<einsum::ArithmeticExpression>(jExpr, kExpr, std::make_shared<einsum::AddOp>());

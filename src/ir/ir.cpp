@@ -5,8 +5,25 @@
 #include <einsum_taco/ir/ir.h>
 #include <string>
 #include <iostream>
-//auto obj = std::static_pointer_cast<einsum::Expression>(einsum::IR::make<einsum::Literal>($1, einsum::Type::make<einsum::Datatype>(einsum::Datatype::Kind::Int))); $$ = &obj;
+#include <einsum_taco/ir/context.h>
+#include <set>
+#include <map>
+#include <cxxabi.h>
+
+
 namespace einsum {
+
+    std::string IR::class_name() const {
+        int status;
+        char* demangled_name_buf = abi::__cxa_demangle(typeid(*this).name(), nullptr, nullptr, &status);
+        auto demangled_name = std::string{demangled_name_buf};
+        free(demangled_name_buf);
+        if (demangled_name.find("einsum::") == 0) {
+            return demangled_name.substr(8);
+        }
+        return demangled_name;
+    }
+
 
     bool Literal::isInt() const {
         return this->getDatatype()->isInt();
@@ -22,7 +39,7 @@ namespace einsum {
 
     std::shared_ptr<Type> Literal::getType() {
         return type;
-    };
+    }
 
     std::string Literal::dump() const {
         switch (this->getDatatype()->getKind()) {
@@ -41,9 +58,6 @@ namespace einsum {
     }
 
     std::string BinaryOp::dump() const {
-//        std::cout << "Precedence: " << this->precedence << "\n";
-//        std::cout << "Left precedence: " << this->left->precedence << "\n";
-//        std::cout << "Right precedence: " << this->right->precedence << "\n";
         auto left_ = this->left->dump();
         auto right_ = this->right->dump();
         if (this->left->precedence > this->precedence) {
@@ -69,23 +83,23 @@ namespace einsum {
             return std::make_shared<Datatype>(Datatype::Kind::Float);
         }
         return std::make_shared<Datatype>(Datatype::Kind::Int);
-    };
+    }
 
     std::shared_ptr<Type> ModuloExpression::getType() {
         return std::make_shared<Datatype>(Datatype::Kind::Int);
-    };
+    }
 
     std::shared_ptr<Type> LogicalExpression::getType() {
         return std::make_shared<Datatype>(Datatype::Kind::Bool);
-    };
+    }
 
     std::shared_ptr<Type> ComparisonExpression::getType() {
         return std::make_shared<Datatype>(Datatype::Kind::Bool);
-    };
+    }
 
     std::shared_ptr<Type> NotExpression::getType() {
         return std::make_shared<Datatype>(Datatype::Kind::Bool);
-    };
+    }
 
     std::string UnaryOp::dump() const {
         return this->op->sign + " " + this->expr->dump();
@@ -323,4 +337,107 @@ namespace einsum {
     const Expression& ModuleComponent::as_expr() const {
         return dynamic_cast<const Expression&>(*this);
     }
+
+    std::shared_ptr<FuncDecl> as_decl(const std::shared_ptr<ModuleComponent>& component) {
+        return std::dynamic_pointer_cast<FuncDecl>(component);
+    }
+
+    std::shared_ptr<Definition> as_def(const std::shared_ptr<ModuleComponent>& component) {
+        return std::dynamic_pointer_cast<Definition>(component);
+    }
+
+    std::string IndexVar::getName() const {
+        return name;
+    }
+
+    std::shared_ptr<Expression> IndexVar::getDimension(int i) const {
+        return dimension;
+    }
+
+    std::string IndexVarExpr::getName() const {
+        return indexVar->getName();
+    }
+
+    std::shared_ptr<Expression> IndexVarExpr::getDimension(int i) const {
+        return indexVar->getDimension(i);
+    }
+
+    std::map<std::string, std::set<std::shared_ptr<Expression>>>  Literal::getIndexVarDims(IRContext* context) const {
+        return {};
+    }
+
+    std::map<std::string, std::set<std::shared_ptr<Expression>>>  BinaryOp::getIndexVarDims(IRContext* context) const {
+        auto left_dims = left->getIndexVarDims(context);
+        auto right_dims = right->getIndexVarDims(context);
+
+        for (const auto &[key, value] : right_dims) {
+            left_dims.emplace(key, value);
+        }
+        return left_dims;
+    }
+
+    std::map<std::string, std::set<std::shared_ptr<Expression>>>  UnaryOp::getIndexVarDims(IRContext* context) const {
+        return expr->getIndexVarDims(context);
+    }
+
+    template<class T, class E>
+    std::map<std::string, std::set<std::shared_ptr<Expression>>>  getDimsFromAccess(const std::shared_ptr<const TensorVar>& tensor, const std::vector<std::shared_ptr<E>>& indices) {
+        auto dims = std::map<std::string, std::set<std::shared_ptr<Expression>>> ();
+
+        for (int i=0; i < indices.size(); i++) {
+            auto ind = indices[i];
+            auto index_var = std::dynamic_pointer_cast<T>(ind);
+            if (index_var) {
+                auto dimension = tensor->type->getDimension(i);
+                dims[index_var->getName()].insert(dimension);
+            }
+        }
+
+        return dims;
+    }
+
+    std::map<std::string, std::set<std::shared_ptr<Expression>>>  ReadAccess::getIndexVarDims(IRContext* context) const {
+        return getDimsFromAccess<IndexVarExpr, Expression>(context->get_read_tensor(*tensor), indices);
+    }
+
+    std::map<std::string, std::set<std::shared_ptr<Expression>>>  IndexVarExpr::getIndexVarDims(IRContext* context) const {
+        return {};
+    }
+
+    std::map<std::string, std::set<std::shared_ptr<Expression>>>  Call::getIndexVarDims(IRContext* context) const {
+        auto dims = std::map<std::string, std::set<std::shared_ptr<Expression>>> ();
+
+        for (auto &&arg : arguments) {
+            for (const auto &[key, value] : arg->getIndexVarDims(context)) {
+                auto &entry = dims[key];
+                entry.insert(value.begin(), value.end());
+            }
+        }
+
+        return dims;
+    }
+
+    std::map<std::string, std::set<std::shared_ptr<Expression>>>  Access::getIndexVarDims(IRContext* context) const {
+        return getDimsFromAccess<IndexVar, IndexVar>(context->get_write_tensor(*tensor), indices);
+    }
+
+    std::map<std::string, std::set<std::shared_ptr<Expression>>> Definition::getIndexVarDims(IRContext* context) const {
+        auto dims = std::map<std::string, std::set<std::shared_ptr<Expression>>> ();
+
+        for (auto &&acc : lhs) {
+            for (const auto &[key, value] : acc->getIndexVarDims(context)) {
+                auto &entry = dims[key];
+                entry.insert(value.begin(), value.end());
+            }
+        }
+
+        for (const auto &[key, value] : rhs->getIndexVarDims(context)) {
+            auto &entry = dims[key];
+            entry.insert(value.begin(), value.end());
+        }
+
+        return dims;
+    }
+
+
 }

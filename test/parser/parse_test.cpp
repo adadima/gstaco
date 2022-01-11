@@ -5,7 +5,7 @@
 #include <gtest/gtest.h>
 #include "einsum_taco/ir/ir.h"
 #include <einsum_taco/parser/heading.h>
-#include "utils.h"
+#include "../utils.h"
 
 TEST(ParseTest, LiteralsTest) {
     EXPECT_EQ (parse("6").dump(),  "\n6\n");
