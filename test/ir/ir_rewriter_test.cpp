@@ -12,35 +12,6 @@
 
 using namespace std;
 
-struct IRTensorChecker : IRMutator {
-    IRContext* context;
-
-    explicit IRTensorChecker(IRContext* context) : context(context) {}
-
-    void visit(IndexVar& node) override {}
-    void visit(Literal& node) override {}
-    void visit(ArithmeticExpression& node) override {}
-    void visit(ModuloExpression& node) override {}
-    void visit(LogicalExpression& node) override {}
-    void visit(ComparisonExpression& node) override {}
-    void visit(NotExpression& node) override {}
-    void visit(TensorVar& node) override {}
-    void visit(IndexVarExpr& node) override {}
-    void visit(Access& node) override {}
-    void visit(ReadAccess& node) override {}
-    void visit(Definition& node) override {}
-    void visit(FuncDecl& node) override {}
-    void visit(Call& node) override {}
-    void visit(CallStarRepeat& node) override {}
-    void visit(CallStarCondition& node) override {}
-    void visit(Module& node) override {}
-    void visit(Reduction& node) override {}
-
-private:
-    void visit_binary(const BinaryOp& node) {}
-    void visit_unary(const UnaryOp& node) {}
-};
-
 class Cleanup : public IRRewriter, public testing::Test {
 public:
     DumpAstVisitor* printer;
@@ -53,18 +24,9 @@ public:
 
         }
     }
-
-protected:
-    virtual void SetUp() {
-
-    }
-
-    virtual void TearDown() {
-        // Code here will be called immediately after each test (right
-        // before the destructor).
-
-    }
 };
+
+//TODO: write more visitor tests!
 
 TEST_F(Cleanup, IndexVars1) {
     const string func = R"(
