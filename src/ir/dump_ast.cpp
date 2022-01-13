@@ -58,62 +58,6 @@ void einsum::DumpAstVisitor::visit(const einsum::Reduction &node) {
     unindent();
 }
 
-void einsum::DumpAstVisitor::visit_binary(const einsum::BinaryOp &node) {
-    indent();
-
-    node.left->accept(this);
-    auto left = ast;
-
-    node.right->accept(this);
-    auto right = ast;
-
-    ast = get_indent() + "<" + node.class_name() + "\n" +
-            left + "\n";
-    indent();
-    ast += get_indent() + node.op->sign + "\n";
-    unindent();
-    ast += right + "\n";
-    ast += get_indent() + ">";
-
-    unindent();
-}
-
-void einsum::DumpAstVisitor::visit_unary(const einsum::UnaryOp &node) {
-    indent();
-
-    node.expr->accept(this);
-    auto exp = ast;
-
-    ast = get_indent() + "<" + node.class_name() + "\n";
-    indent();
-    ast += get_indent() + node.op->sign + "\n";
-    unindent();
-    ast += exp + "\n";
-    ast += get_indent() + ">";
-
-    unindent();
-}
-
-void einsum::DumpAstVisitor::visit(const einsum::ModuloExpression &node) {
-    visit_binary(node);
-}
-
-void einsum::DumpAstVisitor::visit(const einsum::ArithmeticExpression &node) {
-    visit_binary(node);
-}
-
-void einsum::DumpAstVisitor::visit(const einsum::LogicalExpression &node) {
-    visit_binary(node);
-}
-
-void einsum::DumpAstVisitor::visit(const einsum::ComparisonExpression &node) {
-    visit_binary(node);
-}
-
-void einsum::DumpAstVisitor::visit(const einsum::NotExpression &node) {
-    visit_unary(node);
-}
-
 void einsum::DumpAstVisitor::visit(const einsum::TensorVar &node) {
     indent();
     ast = get_indent() + "<" + node.class_name() + " " + node.name + " " + node.getType()->dump() + ">";
@@ -292,6 +236,42 @@ void einsum::DumpAstVisitor::array_ast(const std::vector<std::string>& arr) {
     for (auto &&a: arr) {
         ast += a + "\n";
     }
+    ast += get_indent() + ">";
+
+    unindent();
+}
+
+void einsum::DumpAstVisitor::visit(const einsum::BinaryOp &node) {
+    indent();
+
+    node.left->accept(this);
+    auto left = ast;
+
+    node.right->accept(this);
+    auto right = ast;
+
+    ast = get_indent() + "<" + node.class_name() + "\n" +
+          left + "\n";
+    indent();
+    ast += get_indent() + node.op->sign + "\n";
+    unindent();
+    ast += right + "\n";
+    ast += get_indent() + ">";
+
+    unindent();
+}
+
+void einsum::DumpAstVisitor::visit(const einsum::UnaryOp &node) {
+    indent();
+
+    node.expr->accept(this);
+    auto exp = ast;
+
+    ast = get_indent() + "<" + node.class_name() + "\n";
+    indent();
+    ast += get_indent() + node.op->sign + "\n";
+    unindent();
+    ast += exp + "\n";
     ast += get_indent() + ">";
 
     unindent();

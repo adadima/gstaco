@@ -78,29 +78,6 @@ namespace einsum {
         return inds;
     }
 
-    std::shared_ptr<Type> ArithmeticExpression::getType() {
-        if (this->left->getType()->isFloat() || this->right->getType()->isFloat()) {
-            return std::make_shared<Datatype>(Datatype::Kind::Float);
-        }
-        return std::make_shared<Datatype>(Datatype::Kind::Int);
-    }
-
-    std::shared_ptr<Type> ModuloExpression::getType() {
-        return std::make_shared<Datatype>(Datatype::Kind::Int);
-    }
-
-    std::shared_ptr<Type> LogicalExpression::getType() {
-        return std::make_shared<Datatype>(Datatype::Kind::Bool);
-    }
-
-    std::shared_ptr<Type> ComparisonExpression::getType() {
-        return std::make_shared<Datatype>(Datatype::Kind::Bool);
-    }
-
-    std::shared_ptr<Type> NotExpression::getType() {
-        return std::make_shared<Datatype>(Datatype::Kind::Bool);
-    }
-
     std::string UnaryOp::dump() const {
         return this->op->sign + " " + this->expr->dump();
     }
@@ -160,7 +137,10 @@ namespace einsum {
 
     std::shared_ptr<Type> ReadAccess::getType() {
         std::vector<std::shared_ptr<Expression>> dims;
-        unsigned long last = this->tensor->type->getOrder() - this->indices.size();
+        int last = this->tensor->type->getOrder() - this->indices.size();
+        if (last < 0) {
+            last = 0;
+        }
         dims.reserve(last);
         for (int i=0; i < last; i++) {
             dims.push_back(this->tensor->type->getDimension(i));
@@ -376,8 +356,16 @@ namespace einsum {
         return left_dims;
     }
 
+    std::shared_ptr<Type> BinaryOp::getType() {
+        return type;
+    }
+
     std::map<std::string, std::set<std::shared_ptr<Expression>>>  UnaryOp::getIndexVarDims(IRContext* context) const {
         return expr->getIndexVarDims(context);
+    }
+
+    std::shared_ptr<Type> UnaryOp::getType() {
+        return type;
     }
 
     template<class T, class E>

@@ -8,6 +8,7 @@
 #include<vector>
 #include<map>
 #include<string>
+#include<array>
 #include<einsum_taco/base/assert.h>
 
 
@@ -96,23 +97,23 @@ namespace einsum {
 
     struct Operator {
         Operator(int precedence, const char* sign) :
-                precedence(precedence), sign(sign), reductionSign(""), isAsymmetric(false) {}
+                precedence(precedence), sign(sign), isAsymmetric(false) {}
 
         Operator(int precedence, const char* sign, bool isAsymmetric) :
-                precedence(precedence), sign(sign), reductionSign(""), isAsymmetric(isAsymmetric) {}
+                precedence(precedence), sign(sign), isAsymmetric(isAsymmetric) {}
 
         Operator(int precedence, const char* sign, const char* reductionSign) :
-                precedence(precedence), sign(sign), reductionSign(std::move(reductionSign)), isAsymmetric(false) {}
+                precedence(precedence), sign(sign), reductionSign(reductionSign), isAsymmetric(false) {}
 
         std::string reductionSign;
         int precedence;
         bool isAsymmetric;
         std::string sign;
+
+        [[nodiscard]] bool isArithmetic() const;
     };
 
     struct BinaryOperator {};
-
-    struct ReductionOperator {};
 
     struct UnaryOperator {};
 
@@ -120,7 +121,7 @@ namespace einsum {
 
     struct ComparisonOperator {};
 
-    struct AddOp : Operator, BinaryOperator, ReductionOperator {
+    struct AddOp : Operator, BinaryOperator {
         AddOp() : Operator(4, "+", "+") {}
     };
 
@@ -128,7 +129,7 @@ namespace einsum {
         SubOp() : Operator(4, "-", true) {}
     };
 
-    struct MulOp : Operator, BinaryOperator, ReductionOperator {
+    struct MulOp : Operator, BinaryOperator {
         MulOp() : Operator(3, "*", "*") {}
     };
 
@@ -140,11 +141,11 @@ namespace einsum {
         ModOp() : Operator(3, "%") {}
     };
 
-    struct AndOp : Operator, BinaryOperator, LogicalOperator, ReductionOperator {
+    struct AndOp : Operator, BinaryOperator, LogicalOperator {
         AndOp() : Operator(11, "&&", "AND")  {}
     };
 
-    struct OrOp : Operator, BinaryOperator, LogicalOperator, ReductionOperator {
+    struct OrOp : Operator, BinaryOperator, LogicalOperator {
         OrOp() : Operator(12, "||", "OR") {}
     };
 

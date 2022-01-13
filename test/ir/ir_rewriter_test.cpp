@@ -70,8 +70,8 @@ End)";
 										>
 									>
 							>
-							<ArithmeticExpression
-								<ArithmeticExpression
+							<BinaryOp
+								<BinaryOp
 									<ReadAccess
 										<TensorVar edges int[N][N]>
 										<Array
@@ -113,7 +113,7 @@ End)";
 									>
 								>
 								*
-								<ComparisonExpression
+								<BinaryOp
 									<ReadAccess
 										<TensorVar visited int[N]>
 										<Array
@@ -149,7 +149,7 @@ End)";
 										<Array>
 									>
 							>
-							<ArithmeticExpression
+							<BinaryOp
 								<ReadAccess
 									<TensorVar round_in int>
 									<Array>

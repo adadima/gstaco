@@ -26,16 +26,13 @@ namespace einsum {
 
         void visit(IndexVar& node) override;
         void visit(Literal& node) override;
-        void visit(ArithmeticExpression& node) override;
-        void visit(ModuloExpression& node) override;
-        void visit(LogicalExpression& node) override;
-        void visit(ComparisonExpression& node) override;
-        void visit(NotExpression& node) override;
         void visit(TensorVar& node) override;
         void visit(IndexVarExpr& node) override;
         void visit(Access& node) override;
         void visit(ReadAccess& node) override;
         void visit(Definition& node) override;
+        void visit(BinaryOp& node) override;
+        void visit(UnaryOp& node) override;
         void visit(FuncDecl& node) override;
         void visit(Call& node) override;
         void visit(CallStarRepeat& node) override;
@@ -45,11 +42,9 @@ namespace einsum {
         std::shared_ptr<ModuleComponent> visit(ModuleComponent& node);
         std::shared_ptr<Expression> visit(Expression& node);
 
-        template<typename T>
-        std::shared_ptr<T> rewrite_binary(T& node);
+        std::shared_ptr<BinaryOp> rewrite_binary(BinaryOp& node);
 
-        template<typename T>
-        std::shared_ptr<T> rewrite_unary(T& node);
+        std::shared_ptr<UnaryOp> rewrite_unary(UnaryOp& node);
     };
 
 }

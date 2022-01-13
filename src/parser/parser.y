@@ -13,11 +13,8 @@
   bool 						 bool_val;
   float 					 float_val;
   einsum::Literal		                 *lit;
-  einsum::ArithmeticExpression			 *arith;
-  einsum::ComparisonExpression			 *comp;
-  einsum::LogicalExpression       		 *logic;
-  einsum::ModuloExpression    	   		 *mod;
-  einsum::NotExpression           		 *noot;
+  einsum::BinaryOp				*binary;
+  einsum::UnaryOp				*unary;
   einsum::Expression              		 *expression;
   std::vector<std::shared_ptr<einsum::Expression>>    *expr_vec;
   std::vector<std::shared_ptr<einsum::Reduction>>     *reds_vec;
@@ -109,31 +106,31 @@ blank:
 | blank EOL
 
 orexp:		andexp
-		| orexp OR andexp { $$ = new einsum::LogicalExpression(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::OrOp>());};
+		| orexp OR andexp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::OrOp>(), einsum::Type::make<Datatype>(einsum::Datatype::Kind::Bool));};
 
-andexp:		eqexp | andexp AND eqexp { $$ = new einsum::LogicalExpression(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::AndOp>()); };
+andexp:		eqexp | andexp AND eqexp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::AndOp>(), einsum::Type::make<Datatype>(einsum::Datatype::Kind::Bool)); };
 
 eqexp: 		compexp
-		| eqexp EQ compexp { $$ = new einsum::ComparisonExpression(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::EqOp>()); }
-		| eqexp NEQ compexp { $$ = new einsum::ComparisonExpression(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::NeqOp>()); };
+		| eqexp EQ compexp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::EqOp>(), einsum::Type::make<Datatype>(einsum::Datatype::Kind::Bool)); }
+		| eqexp NEQ compexp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::NeqOp>(), einsum::Type::make<Datatype>(einsum::Datatype::Kind::Bool)); };
 
 compexp: 	as_exp
-		| compexp GT as_exp { $$ = new einsum::ComparisonExpression(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::GtOp>()); }
-		| compexp GTE as_exp { $$ = new einsum::ComparisonExpression(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::GteOp>()); }
-		| compexp LT as_exp { $$ = new einsum::ComparisonExpression(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::LtOp>()); }
-		| compexp LTE as_exp { $$ = new einsum::ComparisonExpression(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::LteOp>()); };
+		| compexp GT as_exp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::GtOp>(), einsum::Type::make<Datatype>(einsum::Datatype::Kind::Bool)); }
+		| compexp GTE as_exp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::GteOp>(), einsum::Type::make<Datatype>(einsum::Datatype::Kind::Bool)); }
+		| compexp LT as_exp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::LtOp>(), einsum::Type::make<Datatype>(einsum::Datatype::Kind::Bool)); }
+		| compexp LTE as_exp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::LteOp>(), einsum::Type::make<Datatype>(einsum::Datatype::Kind::Bool)); };
 
 as_exp: 	mdm_exp
-		| as_exp PLUS mdm_exp { $$ = new einsum::ArithmeticExpression(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::AddOp>());}
-		| as_exp SUB mdm_exp { $$ = new einsum::ArithmeticExpression(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::SubOp>());};
+		| as_exp PLUS mdm_exp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::AddOp>(), nullptr);}
+		| as_exp SUB mdm_exp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::SubOp>(), nullptr);};
 
 mdm_exp: 	notexp
-		| mdm_exp MUL notexp { $$ = new einsum::ArithmeticExpression(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::MulOp>());}
-		| mdm_exp DIV notexp { $$ = new einsum::ArithmeticExpression(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::DivOp>());};
-		| mdm_exp MOD notexp { $$ = new einsum::ArithmeticExpression(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::ModOp>());};
+		| mdm_exp MUL notexp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::MulOp>(), nullptr);}
+		| mdm_exp DIV notexp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::DivOp>(), nullptr);};
+		| mdm_exp MOD notexp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::ModOp>(), einsum::Type::make<Datatype>(einsum::Datatype::Kind::Int));};
 
 notexp: 	exp
-		| NOT notexp { $$ = new einsum::NotExpression(std::shared_ptr<einsum::Expression>($2));};
+		| NOT notexp { $$ = new einsum::UnaryOp(std::shared_ptr<einsum::Expression>($2), std::make_shared<einsum::NotOp>(), einsum::Type::make<Datatype>(einsum::Datatype::Kind::Bool));};
 
 
 access:						    {$$ = new std::vector<std::shared_ptr<einsum::Expression>>(); }

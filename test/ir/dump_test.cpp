@@ -33,10 +33,14 @@ public:
     static inline const auto k = einsum::IR::make<einsum::IndexVar>("k", zero);
     static inline const auto jExpr = einsum::IR::make<einsum::IndexVarExpr>(j);
     static inline const auto kExpr = einsum::IR::make<einsum::IndexVarExpr>(k);
-    static inline const auto jkExpr = einsum::IR::make<einsum::ArithmeticExpression>(jExpr, kExpr, std::make_shared<einsum::AddOp>());
+    static inline const auto jkExpr = einsum::IR::make<einsum::BinaryOp>(jExpr, kExpr, std::make_shared<einsum::AddOp>(),
+                                                                         nullptr);
     static inline const auto intType = einsum::Type::make<einsum::Datatype>(
                                                 einsum::Datatype::Kind::Int
                                         );
+    static inline const auto boolType = einsum::Type::make<einsum::Datatype>(
+            einsum::Datatype::Kind::Bool
+    );
     static inline const auto varType = einsum::Type::make<einsum::TensorType>();
 
     template <typename V>
@@ -66,17 +70,17 @@ public:
 
         return einsum::IR::make<einsum::Definition>(
                 einsum::IR::make_vec<einsum::Access>(einsum::IR::make<einsum::Access>(frontier, einsum::IR::make_vec<einsum::IndexVar>(j))),
-                einsum::IR::make<einsum::ArithmeticExpression>(
+                einsum::IR::make<einsum::BinaryOp>(
                         einsum::IR::make<einsum::ReadAccess>(edges, einsum::IR::make_vec<einsum::Expression>(jExpr, kExpr)),
-                        einsum::IR::make<einsum::ArithmeticExpression>(
+                        einsum::IR::make<einsum::BinaryOp>(
                                 einsum::IR::make<einsum::ReadAccess>(frontierList, einsum::IR::make_vec<einsum::Expression>(two, kExpr)),
-                                einsum::IR::make<einsum::ComparisonExpression>(
+                                einsum::IR::make<einsum::BinaryOp>(
                                         einsum::IR::make<einsum::ReadAccess>(
                                                 visited,
                                                 einsum::IR::make_vec<einsum::Expression>(jExpr)),
-                                        zero, eq),
-                                mul),
-                        mul
+                                        zero, eq, boolType),
+                                mul, nullptr),
+                        mul, nullptr
                 ),
                 einsum::IR::make_vec<einsum::Reduction>(einsum::IR::make<einsum::Reduction>(k, or_, zero)));
 
@@ -88,13 +92,13 @@ public:
                         make_tensor<int>("round_out", {}),
                         einsum::IR::make_vec<einsum::IndexVar>()
                 )),
-                einsum::IR::make<einsum::ArithmeticExpression>(
+                einsum::IR::make<einsum::BinaryOp>(
                         einsum::IR::make<einsum::ReadAccess>(
                                 make_tensor<int>("round_in", {}),
                                 einsum::IR::make_vec<einsum::Expression>()
                         ),
                         two,
-                        mul
+                        mul, nullptr
                 ),
 
                 einsum::IR::make_vec<einsum::Reduction>()
@@ -171,41 +175,41 @@ TEST_F(DumpTest, AccessTest) {
 }
 
 TEST_F(DumpTest, BinaryExprTest) {
-    auto plus = einsum::IR::make<einsum::ArithmeticExpression>(jExpr, kExpr, add);
+    auto plus = einsum::IR::make<einsum::BinaryOp>(jExpr, kExpr, add, nullptr);
     EXPECT_EQ(plus->dump(), "j + k");
 
-    auto minus = einsum::IR::make<einsum::ArithmeticExpression>(jExpr, kExpr, sub);
+    auto minus = einsum::IR::make<einsum::BinaryOp>(jExpr, kExpr, sub, nullptr);
     EXPECT_EQ(minus->dump(), "j - k");
 
-    auto times = einsum::IR::make<einsum::ArithmeticExpression>(plus, minus, mul);
+    auto times = einsum::IR::make<einsum::BinaryOp>(plus, minus, mul, nullptr);
     EXPECT_EQ(times->dump(), "(j + k) * (j - k)");
 
-    auto half = einsum::IR::make<einsum::ArithmeticExpression>(
+    auto half = einsum::IR::make<einsum::BinaryOp>(
             times,
             two,
-            //einsum::IR::make<einsum::ReadAccess>(A, einsum::IR::make_vec<einsum::Expression>()),
-            div);
+            div,
+            nullptr);
     EXPECT_EQ(half->dump(), "(j + k) * (j - k) / 2");
 
-    auto minus2 = einsum::IR::make<einsum::ArithmeticExpression>(two, minus, sub);
+    auto minus2 = einsum::IR::make<einsum::BinaryOp>(two, minus, sub, nullptr);
     EXPECT_EQ(minus2->dump(), "2 - (j - k)");
 
-    auto half2 = einsum::IR::make<einsum::ArithmeticExpression>(two, half, div);
+    auto half2 = einsum::IR::make<einsum::BinaryOp>(two, half, div, nullptr);
     EXPECT_EQ(half2->dump(), "2 / ((j + k) * (j - k) / 2)");
 
-    auto par = einsum::IR::make<einsum::ModuloExpression>(plus, two);
+    auto par = einsum::IR::make<einsum::BinaryOp>(plus, two,std::make_shared<einsum::ModOp>(), intType);
     EXPECT_EQ(par->dump(), "(j + k) % 2");
 
-    auto equal = einsum::IR::make<einsum::ComparisonExpression>(jExpr, kExpr, eq);
+    auto equal = einsum::IR::make<einsum::BinaryOp>(jExpr, kExpr, eq, boolType);
     EXPECT_EQ(equal->dump(), "j == k");
 
-    auto nEqual = einsum::IR::make<einsum::ComparisonExpression>(plus, kExpr, neq);
+    auto nEqual = einsum::IR::make<einsum::BinaryOp>(plus, kExpr, neq, boolType);
     EXPECT_EQ(nEqual->dump(), "j + k != k");
 
-    auto more = einsum::IR::make<einsum::ComparisonExpression>(plus, minus, gt);
+    auto more = einsum::IR::make<einsum::BinaryOp>(plus, minus, gt, boolType);
     EXPECT_EQ(more->dump(), "j + k > j - k");
 
-    auto less = einsum::IR::make<einsum::ComparisonExpression>(
+    auto less = einsum::IR::make<einsum::BinaryOp>(
             einsum::IR::make<einsum::ReadAccess>(
                     A,
                     einsum::IR::make_vec<einsum::Expression>(jExpr, kExpr, jkExpr)
@@ -213,22 +217,24 @@ TEST_F(DumpTest, BinaryExprTest) {
             einsum::IR::make<einsum::ReadAccess>(
                     A,
                     einsum::IR::make_vec<einsum::Expression>(zero, two, jExpr)
-            ), lt);
+            ), lt, boolType);
     EXPECT_EQ(less->dump(), "A[j][k][j + k] < A[0][2][j]");
 
 
-    auto bool1 = einsum::IR::make<einsum::LogicalExpression>(
+    auto bool1 = einsum::IR::make<einsum::BinaryOp>(
             more,
             yes,
-            or_
+            or_,
+            boolType
             );
 
     EXPECT_EQ(bool1->dump(), "j + k > j - k || true");
 
-    auto bool2 = einsum::IR::make<einsum::LogicalExpression>(
+    auto bool2 = einsum::IR::make<einsum::BinaryOp>(
             bool1,
             no,
-            and_
+            and_,
+            boolType
     );
     EXPECT_EQ(bool2->dump(), "(j + k > j - k || true) && false");
 
@@ -368,12 +374,13 @@ TEST_F(DumpTest, CallStarConditionTest) {
                     A,
                     einsum::IR::make_vec<einsum::Expression>()));
 
-    auto cond = einsum::IR::make<einsum::ComparisonExpression>(
+    auto cond = einsum::IR::make<einsum::BinaryOp>(
             einsum::IR::make<einsum::ReadAccess>(
                     make_tensor<int>("#1", {}),
                     einsum::IR::make_vec<einsum::Expression>()),
             two,
-            eq
+            eq,
+            boolType
             );
     auto call = einsum::IR::make<einsum::CallStarCondition>(
             cond,

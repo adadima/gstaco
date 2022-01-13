@@ -115,4 +115,10 @@ namespace einsum {
     int TensorType::getOrder() const {
         return (int) this->dimensions.size();
     }
+
+    constexpr std::array<const char*, 4> arith_ops {"+", "-", "*", "/"};
+
+    bool Operator::isArithmetic() const {
+        return std::find(begin(arith_ops), end(arith_ops), sign) != end(arith_ops);
+    }
 }

@@ -12,24 +12,22 @@ namespace einsum {
         return std::dynamic_pointer_cast<T>(ref.shared_from_this());
     }
 
-    template<typename T>
-    std::shared_ptr<T> IRRewriter::rewrite_binary(T& node) {
+    std::shared_ptr<BinaryOp> IRRewriter::rewrite_binary(BinaryOp& node) {
         node.left->accept(this);
         auto new_left = expr;
 
         node.right->accept(this);
         auto new_right = expr;
 
-        auto bin = std::make_shared<T>(new_left, new_right, node.op);
+        auto bin = std::make_shared<BinaryOp>(new_left, new_right, node.op, node.getType());
 
         return bin;
     }
 
-    template<typename T>
-    std::shared_ptr<T> IRRewriter::rewrite_unary(T& node) {
+    std::shared_ptr<UnaryOp> IRRewriter::rewrite_unary(UnaryOp& node) {
         node.expr->accept(this);
         auto exp = expr;
-        return std::make_shared<T>(exp, node.op);
+        return std::make_shared<UnaryOp>(exp, node.op, node.getType());
     }
 
     void IRRewriter::visit(IndexVar& node) {
@@ -39,26 +37,6 @@ namespace einsum {
 
     void  IRRewriter::visit(Literal& node) {
         expr = shared_from_ref(node);
-    }
-
-    void  IRRewriter::visit(ArithmeticExpression& node) {
-        expr = rewrite_binary(node);
-    }
-
-    void  IRRewriter::visit(ModuloExpression& node) {
-        expr = rewrite_binary(node);
-    }
-
-    void  IRRewriter::visit(LogicalExpression& node) {
-        expr = rewrite_binary(node);
-    }
-
-    void  IRRewriter::visit(ComparisonExpression& node) {
-        expr = rewrite_binary(node);
-    }
-
-    void  IRRewriter::visit(NotExpression& node) {
-        expr = rewrite_unary(node);
     }
 
     void  IRRewriter::visit(TensorVar& node) {
@@ -231,5 +209,13 @@ namespace einsum {
     }
 
     void IRRewriter::visit(Reduction &node) {}
+
+    void IRRewriter::visit(BinaryOp &node) {
+        expr = rewrite_binary(node);
+    }
+
+    void IRRewriter::visit(UnaryOp &node) {
+        expr = rewrite_unary(node);
+    }
 
 }

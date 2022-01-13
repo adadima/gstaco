@@ -25,6 +25,7 @@ namespace einsum {
 
     struct IR : std::enable_shared_from_this<IR> {
 
+        // TODO: make this a visitor instead
         virtual std::string dump() const = 0;
 
         virtual void accept(IRVisitor* v) const = 0;
@@ -150,12 +151,21 @@ namespace einsum {
         std::shared_ptr<Datatype> type;
     };
 
-    struct BinaryOp : Expression {
+    struct BinaryOp : Acceptor<BinaryOp, Expression> {
         std::shared_ptr<Expression> left;
         std::shared_ptr<Expression> right;
         std::shared_ptr<Operator> op;
+        std::shared_ptr<Type> type;
 
-        BinaryOp(std::shared_ptr<Expression> left, std::shared_ptr<Expression> right, std::shared_ptr<Operator> op) : Expression(op->precedence, op->isAsymmetric), left(std::move(left)), right(std::move(right)), op(std::move(op)) {}
+        BinaryOp(std::shared_ptr<Expression> left_, std::shared_ptr<Expression> right_, std::shared_ptr<Operator> op_, std::shared_ptr<Type> type_) :
+                Base(op_->precedence, op_->isAsymmetric), left(std::move(left_)), right(std::move(right_)), op(std::move(op_)) {
+            if (!type_) {
+                einsum_iassert(op->isArithmetic());
+                type = deduce_type();
+            } else {
+                type = std::move(type_);
+            }
+        }
 
         std::string dump() const override;
 
@@ -163,102 +173,126 @@ namespace einsum {
 
         std::map<std::string, std::set<std::shared_ptr<Expression>>> getIndexVarDims(IRContext* context) const override;
 
-        std::shared_ptr<Type> getType() override = 0;
-    };
+        std::shared_ptr<Type> getType() override;
 
-    struct ArithmeticExpression : Acceptor<ArithmeticExpression, BinaryOp> {
-        //template <typename OpT>
-        ArithmeticExpression(std::shared_ptr<Expression> left, std::shared_ptr<Expression> right, std::shared_ptr<Operator> op) :
-                Base(
-                        std::move(left),
-                        std::move(right),
-                        std::move(op)
-                        ) {
-//            static_assert(std::is_base_of<Operator, OpT>::value, "operator of boolean expression has wrong type");
-//            static_assert(std::is_base_of<BinaryOperator, OpT>::value, "operator of boolean expression has wrong type");
+    private:
+        std::shared_ptr<Type> deduce_type() const {
+            if (left->getType()->isFloat() || right->getType()->isFloat()) {
+                return std::make_shared<Datatype>(Datatype::Kind::Float);
+            }
+            return std::make_shared<Datatype>(Datatype::Kind::Int);
         }
-        std::shared_ptr<Type> getType() override;
     };
 
-    struct ModuloExpression : Acceptor<ModuloExpression, BinaryOp> {
-        ModuloExpression(std::shared_ptr<Expression> left, std::shared_ptr<Expression> right, std::shared_ptr<Operator> op) :
-                Base(
-                        std::move(left),
-                        std::move(right),
-                        std::move(op)
-                ) {};
+//    struct ArithmeticExpression : Acceptor<ArithmeticExpression, BinaryOp> {
+//        //template <typename OpT>
+//        ArithmeticExpression(std::shared_ptr<Expression> left, std::shared_ptr<Expression> right, std::shared_ptr<Operator> op) :
+//                Base(
+//                        std::move(left),
+//                        std::move(right),
+//                        std::move(op),
+//                        compute_type(left, right)
+//                        ) {
+////            static_assert(std::is_base_of<Operator, OpT>::value, "operator of boolean expression has wrong type");
+////            static_assert(std::is_base_of<BinaryOperator, OpT>::value, "operator of boolean expression has wrong type");
+//        }
+//
+//        static std::shared_ptr<Type> compute_type(const std::shared_ptr<Expression>& left, const std::shared_ptr<Expression>& right) {
+//            if (left->getType()->isFloat() || right->getType()->isFloat()) {
+//                return std::make_shared<Datatype>(Datatype::Kind::Float);
+//            }
+//            return std::make_shared<Datatype>(Datatype::Kind::Int);
+//        }
+//    };
+//
+//    struct ModuloExpression : Acceptor<ModuloExpression, BinaryOp> {
+//        ModuloExpression(std::shared_ptr<Expression> left, std::shared_ptr<Expression> right, std::shared_ptr<Operator> op) :
+//                Base(
+//                        std::move(left),
+//                        std::move(right),
+//                        std::move(op),
+//                        Type::make<Datatype>(Datatype::Kind::Int)
+//                ) {};
+//
+//        ModuloExpression(std::shared_ptr<Expression> left, std::shared_ptr<Expression> right) :
+//                Base(
+//                        std::move(left),
+//                        std::move(right),
+//                        std::make_shared<ModOp>(),
+//                        Type::make<Datatype>(Datatype::Kind::Int)
+//                ) {};
+//
+//        //std::shared_ptr<Type> getType() override;
+//    };
+//
+//    struct LogicalExpression : Acceptor<LogicalExpression, BinaryOp> {
+//        //template <typename OpT>
+//        LogicalExpression(std::shared_ptr<Expression> left, std::shared_ptr<Expression> right, std::shared_ptr<Operator> op) :
+//                Base(
+//                        std::move(left),
+//                        std::move(right),
+//                        std::move(op),
+//                        Type::make<Datatype>(Datatype::Kind::Bool)
+//                ) {
+////                    static_assert(std::is_base_of<Operator, OpT>::value, "operator of boolean expression has wrong type");
+////                    static_assert(std::is_base_of<LogicalOperator, OpT>::value, "operator of boolean expression has wrong type");
+//        };
+//
+//        //std::shared_ptr<Type> getType() override;
+//    };
+//
+//    struct ComparisonExpression : Acceptor<ComparisonExpression, BinaryOp> {
+//        //template<typename OpT>
+//        ComparisonExpression(std::shared_ptr<Expression> left, std::shared_ptr<Expression> right, std::shared_ptr<Operator> op) :
+//                Base(
+//                        std::move(left),
+//                        std::move(right),
+//                        std::move(op),
+//                        Type::make<Datatype>(Datatype::Kind::Bool)
+//                ) {
+////                    static_assert(std::is_base_of<Operator, OpT>::value, "operator of arithmetic expression has wrong type");
+////                    static_assert(std::is_base_of<ComparisonOperator, OpT>::value, "operator of arithmetic expression has wrong type");
+//        };
+//
+//        //std::shared_ptr<Type> getType() override;
+//    };
 
-        ModuloExpression(std::shared_ptr<Expression> left, std::shared_ptr<Expression> right) :
-                Base(
-                        std::move(left),
-                        std::move(right),
-                        std::make_shared<ModOp>()
-                ) {};
-
-        std::shared_ptr<Type> getType() override;
-    };
-
-    struct LogicalExpression : Acceptor<LogicalExpression, BinaryOp> {
-        //template <typename OpT>
-        LogicalExpression(std::shared_ptr<Expression> left, std::shared_ptr<Expression> right, std::shared_ptr<Operator> op) :
-                Base(
-                        std::move(left),
-                        std::move(right),
-                        std::move(op)
-                ) {
-//                    static_assert(std::is_base_of<Operator, OpT>::value, "operator of boolean expression has wrong type");
-//                    static_assert(std::is_base_of<LogicalOperator, OpT>::value, "operator of boolean expression has wrong type");
-        };
-
-        std::shared_ptr<Type> getType() override;
-    };
-
-    struct ComparisonExpression : Acceptor<ComparisonExpression, BinaryOp> {
-        //template<typename OpT>
-        ComparisonExpression(std::shared_ptr<Expression> left, std::shared_ptr<Expression> right, std::shared_ptr<Operator> op) :
-                Base(
-                        std::move(left),
-                        std::move(right),
-                        std::move(op)
-                ) {
-//                    static_assert(std::is_base_of<Operator, OpT>::value, "operator of arithmetic expression has wrong type");
-//                    static_assert(std::is_base_of<ComparisonOperator, OpT>::value, "operator of arithmetic expression has wrong type");
-        };
-
-        std::shared_ptr<Type> getType() override;
-    };
-
-    struct UnaryOp : Expression {
+    struct UnaryOp : Acceptor<UnaryOp, Expression> {
         std::shared_ptr<Expression> expr;
         std::shared_ptr<Operator> op;
+        std::shared_ptr<Type> type;
 
-        UnaryOp(std::shared_ptr<Expression> expr, std::shared_ptr<Operator> op) : expr(std::move(expr)), op(std::move(op)) {}
+        UnaryOp(std::shared_ptr<Expression> expr, std::shared_ptr<Operator> op, std::shared_ptr<Type> type) : expr(std::move(expr)), op(std::move(op)), type(std::move(type)) {}
 
         std::string dump() const override;
         std::vector<std::shared_ptr<IndexVar>> getIndices() override;
         std::map<std::string, std::set<std::shared_ptr<Expression>>> getIndexVarDims(IRContext* context) const override;
-    };
-
-    struct NotExpression : Acceptor<NotExpression, UnaryOp> {
-        explicit NotExpression(std::shared_ptr<Expression> expr) :
-                Base(
-                        std::move(expr),
-                        std::make_shared<NotOp>()
-                ) {};
-
-        NotExpression(std::shared_ptr<Expression> expr, std::shared_ptr<Operator> op) :
-                Base(
-                        std::move(expr),
-                        std::move(op)
-                ) {};
-
         std::shared_ptr<Type> getType() override;
     };
+
+//    struct NotExpression : Acceptor<NotExpression, UnaryOp> {
+//        explicit NotExpression(std::shared_ptr<Expression> expr) :
+//                Base(
+//                        std::move(expr),
+//                        std::make_shared<NotOp>(),
+//                        Type::make<Datatype>(Datatype::Kind::Bool)
+//                ) {};
+//
+//        NotExpression(std::shared_ptr<Expression> expr, std::shared_ptr<Operator> op) :
+//                Base(
+//                        std::move(expr),
+//                        std::move(op),
+//                        Type::make<Datatype>(Datatype::Kind::Bool)
+//                ) {};
+//
+//        //std::shared_ptr<Type> getType() override;
+//    };
 
     struct TensorVar : Acceptor<TensorVar> {
         std::string name;
         std::shared_ptr<TensorType>  type;
 
+        explicit TensorVar(std::string name) : name(std::move(name)), type(Type::make<TensorType>()) {}
         TensorVar(std::string name, std::shared_ptr<TensorType>  type) : name(std::move(name)), type(std::move(type)) {}
 
         std::string dump() const override;
@@ -294,6 +328,8 @@ namespace einsum {
     struct Access: Acceptor<Access> {
         std::shared_ptr<TensorVar> tensor;
         std::vector<std::shared_ptr<IndexVar>> indices;
+
+        explicit Access(std::string tensor) : tensor(make<TensorVar>(std::move(tensor), std::shared_ptr<TensorType>(new TensorType()))), indices(std::vector<std::shared_ptr<IndexVar>>()) {}
 
         Access(std::shared_ptr<TensorVar> tensor, std::vector<std::shared_ptr<IndexVar>> indices) : tensor(std::move(tensor)), indices(std::move(indices)) {}
 
@@ -339,11 +375,18 @@ namespace einsum {
     };
 
     struct Definition : Acceptor<Definition, ModuleComponent> {
+        Definition(std::shared_ptr<Access> lhs, std::shared_ptr<Expression> rhs) :
+                    Definition({std::move(lhs)}, std::move(rhs), {}) {}
+
+//        Definition(std::shared_ptr<Access> lhs, std::shared_ptr<Expression> rhs, const std::vector<std::shared_ptr<Reduction>>& reds) :
+//                Definition({std::move(lhs)}, std::move(rhs), reds) {}
+
         Definition(std::vector<std::shared_ptr<Access>> lhs,
                    std::shared_ptr<Expression> rhs,
                    const std::vector<std::shared_ptr<Reduction>>& reds) :
                    lhs(std::move(lhs)),
-                   rhs(std::move(rhs)) {
+                   rhs(std::move(rhs)),
+                   reduction_list(reds) {
             for (auto & lh : this->lhs) {
                 auto inds = lh->indices;
                 for (const auto & ind : inds) {
@@ -366,6 +409,7 @@ namespace einsum {
         std::vector<std::shared_ptr<IndexVar>> rightIndices;
         std::vector<std::shared_ptr<IndexVar>> reductionVars;
         std::map<std::shared_ptr<IndexVar>, std::shared_ptr<Reduction>> reductions;
+        std::vector<std::shared_ptr<Reduction>> reduction_list;
         std::vector<std::shared_ptr<Access>> lhs;
         std::shared_ptr<Expression> rhs;
     };
@@ -441,20 +485,13 @@ namespace einsum {
 
     struct IRVisitor {
         virtual void visit(const IndexVar& node) = 0;
-
         virtual void visit(const Literal& node) = 0;
-
-        virtual void visit(const ArithmeticExpression& node) = 0;
-
-        virtual void visit(const ModuloExpression& node) = 0;
-        
-        virtual void visit(const LogicalExpression& node) = 0;
-        virtual void visit(const ComparisonExpression& node) = 0;
-        virtual void visit(const NotExpression& node) = 0;
         virtual void visit(const TensorVar& node) = 0;
         virtual void visit(const IndexVarExpr& node) = 0;
         virtual void visit(const Access& node) = 0;
         virtual void visit(const ReadAccess& node) = 0;
+        virtual void visit(const BinaryOp& node) = 0;
+        virtual void visit(const UnaryOp& node) = 0;
         virtual void visit(const Definition& node) = 0;
         virtual void visit(const FuncDecl& node) = 0;
         virtual void visit(const Call& node) = 0;
@@ -467,15 +504,12 @@ namespace einsum {
     struct IRMutator {
         virtual void visit(IndexVar& node) = 0;
         virtual void visit(Literal& node) = 0;
-        virtual void visit(ArithmeticExpression& node) = 0;
-        virtual void visit(ModuloExpression& node) = 0;
-        virtual void visit(LogicalExpression& node) = 0;
-        virtual void visit(ComparisonExpression& node) = 0;
-        virtual void visit(NotExpression& node) = 0;
         virtual void visit(TensorVar& node) = 0;
         virtual void visit(IndexVarExpr& node) = 0;
         virtual void visit(Access& node) = 0;
         virtual void visit(ReadAccess& node) = 0;
+        virtual void visit(BinaryOp& node) = 0;
+        virtual void visit(UnaryOp& node) = 0;
         virtual void visit(Definition& node) = 0;
         virtual void visit(FuncDecl& node) = 0;
         virtual void visit(Call& node) = 0;
