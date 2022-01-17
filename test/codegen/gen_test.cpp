@@ -116,3 +116,18 @@ End)";
 )";
     assert_generated_defintion(in, expected);
 }
+
+TEST_F(GenTest, Definition4) {
+    auto in = R"(Let func(B int[10][20], C int[20], j int, i int, k int) -> (A int[10])
+    A[i] = B[i][j] * C[j] * C[k] | j:(+, 0)
+End)";
+    auto expected = R"(for(int i=0; i<10; i++) {
+    auto init_j = 0;
+    for(int j=0; j<20; j++) {
+        init_j = init_j + B[i][j] * C[j] * C[k];
+    }
+    A[i] = init_j;
+}
+)";
+    assert_generated_defintion(in, expected);
+}

@@ -11,12 +11,22 @@
 
 namespace einsum {
     class IRContext {
+        struct DefinitionScope {
+            std::shared_ptr<Definition> def;
+            std::set<std::string> leftIndexVars;
+            std::set<std::string> reductionIndexVars;
+
+            [[nodiscard]] bool has_index_var(const std::string& i) const {
+                return leftIndexVars.count(i) || reductionIndexVars.count(i);
+            }
+
+        };
 
         std::map<std::string, std::shared_ptr<TensorVar>> globals_;
         std::map<std::string, std::shared_ptr<FuncDecl>>  functions_;
 
         std::shared_ptr<FuncDecl> func_scope_;
-        std::shared_ptr<Definition> def_scope_;
+        DefinitionScope* def_scope_;
         std::shared_ptr<Access> access_scope_;
         std::stack<std::shared_ptr<TensorVar>> tensor_scope_;
         std::map<std::string, std::shared_ptr<IndexVar>> reduction_dimensions_;
@@ -43,7 +53,7 @@ namespace einsum {
             return func_scope_;
         }
 
-        std::shared_ptr<Definition>& def_scope() {
+        DefinitionScope*& def_scope() {
             return def_scope_;
         }
 
@@ -73,7 +83,8 @@ namespace einsum {
 
         void enter_definition(const std::shared_ptr<Definition>& def) {
 
-            def_scope() = def;
+            auto scope = new DefinitionScope{def, def->getLeftIndexVars(), def->getReductionVars()};
+            def_scope() = scope;
 
             if (!func_scope()) {
                 for(auto &&acc : def->lhs) {

@@ -404,7 +404,8 @@ namespace einsum {
         std::string dump() const override;
 
         std::map<std::string, std::set<std::shared_ptr<Expression>>> getIndexVarDims(IRContext* context) const;
-
+        std::set<std::string> getLeftIndexVars() const;
+        std::set<std::string> getReductionVars() const;
         std::vector<std::shared_ptr<IndexVar>> leftIndices;
         std::vector<std::shared_ptr<IndexVar>> rightIndices;
         std::vector<std::shared_ptr<IndexVar>> reductionVars;

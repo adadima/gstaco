@@ -427,5 +427,21 @@ namespace einsum {
         return dims;
     }
 
+    std::set<std::string> Definition::getLeftIndexVars() const {
+        auto s = std::set<std::string>();
+        for (auto &&var: leftIndices) {
+            s.insert(var->getName());
+        }
+        return s;
+    }
+
+    std::set<std::string> Definition::getReductionVars() const {
+        auto s = std::set<std::string>();
+        for (auto &&var: reductionVars) {
+            s.insert(var->getName());
+        }
+        return s;
+    }
+
 
 }
