@@ -5,6 +5,11 @@
 #include "einsum_taco/codegen/codegen_visitor.h"
 
 namespace einsum {
+    template<typename T>
+    std::shared_ptr<T> shared_from_ref(const T& ref) {
+        return std::dynamic_pointer_cast<T>(ref.shared_from_this());
+    }
+
     void CodeGenVisitor::visit(const IndexVar& node) {
         oss << node.dump();
     }
@@ -20,16 +25,11 @@ namespace einsum {
     }
 
     void CodeGenVisitor::visit(const Access& node) {
-        node.tensor->accept(this);
-        for (auto &&ind: node.indices) {
-            ind->accept(this);
-        }
+        oss << node.dump();
     }
+
     void CodeGenVisitor::visit(const ReadAccess& node) {
-        node.tensor->accept(this);
-        for (auto &&ind: node.indices) {
-            ind->accept(this);
-        }
+        oss << node.dump();
     }
 
     //
@@ -44,12 +44,25 @@ namespace einsum {
         // otherwise, rhs is a non-call expression.
         auto lhs = node.lhs[0];
         for(auto &&acc : lhs->indices) {
-
+            generate_for_loop(acc);
+            indent();
         }
+
+        auto init_var = visit_reduced_expr(node.rhs, node.reduction_list);
+
+        oss << get_indent();
         node.lhs[0]->accept(this);
         oss << " = ";
-        visit_reduced_expr(*node.rhs, node.reduction_list);
+        oss << init_var;
+        oss << ";\n";
+
+        for(auto &&acc: lhs->indices) {
+            unindent();
+            oss << get_indent();
+            oss << "}\n";
+        }
     }
+
     void CodeGenVisitor::visit(const FuncDecl& node) {}
 
     void CodeGenVisitor::visit(const Call& node) {}
@@ -61,51 +74,68 @@ namespace einsum {
     void CodeGenVisitor::visit(const Module& node) {}
 
     void CodeGenVisitor::visit(const Reduction &node) {
+        auto i = node.reductionVar->getName();
 
+        std::string init_var = "init_";
+        init_var += i;
+        oss << get_indent();
+        oss << "auto ";
+        oss << init_var;
+        oss << " = ";
+        node.reductionInit->accept(this);
+        oss << ";\n";
+
+        generate_for_loop(node.reductionVar);
     }
 
-    void CodeGenVisitor::visit_reduced_expr(const Expression& expr, const std::vector<std::shared_ptr<Reduction>>& reductions) {
+    std::string CodeGenVisitor::visit_reduced_expr(const std::shared_ptr<Expression>& expr, const std::vector<std::shared_ptr<Reduction>>& reductions) {
         if (reductions.empty()) {
-            expr.accept(this);
-            oss << "\n";
+            oss << get_indent();
+            oss << "auto init = ";
+            expr->accept(this);
+            oss << ";\n";
+            return "init";
         }
 
+        std::string var;
+
         for(int r=0; r < reductions.size(); r++) {
+            reductions[r]->accept(this);
+            indent();
+
+        }
+
+        for(int r=(reductions.size()-1); r >= 0; r--) {
             auto red = reductions[r];
             auto i = red->reductionVar->getName();
 
             std::string init_var = "init_";
             init_var += i;
+
+            std::shared_ptr<Expression> exp;
+            if (r == (reductions.size() - 1)) {
+                exp = reduce_expression(init_var, expr, red->reductionOp);
+            } else {
+                auto next_var = "init_" + reductions[r+1]->reductionVar->getName();
+                exp = reduce_expression(init_var, IR::make<ReadAccess>(next_var), red->reductionOp);
+            }
+
             oss << get_indent();
             oss << init_var;
             oss << " = ";
-            red->reductionInit->accept(this);
+            exp->accept(this);
             oss << ";\n";
 
-            oss << get_indent();
-            oss << "for(int ";
-            oss <<  i;
-            oss << "=0; ";
-            oss <<  i;
-            oss <<  "<";
-            red->reductionVar->dimension->accept(this);
-            oss << ";"; oss << i; oss << "++) {\n";
-
-            indent();
-            if (r == reductions.size() - 1) {
-                oss << init_var;
-                oss << " = ";
-                expr.accept(this);
-                oss << "\n";
-            }
-
-        }
-
-        for(auto &&red: reductions) {
             unindent();
             oss << get_indent();
             oss << "}\n";
+
+            if (!r) {
+                var = init_var;
+            }
         }
+
+        return var;
     }
 
     void CodeGenVisitor::visit(const BinaryOp &node) {
@@ -116,9 +146,19 @@ namespace einsum {
         oss << node.dump();
     }
 
-//    std::shared_ptr<Definition> reduce_expression(const std::string& init_var, std::shared_ptr<Expression> expr, std::shared_ptr<Operator> op) {
-//        std::shared_ptr<Expression> left = IR::make<ReadAccess>(init_var);
-//        auto rhs = IR::make<BinaryOp>(left, std::move(expr), std::move(op), );
-//        return IR::make<Definition>(IR::make<Access>(init_var), rhs);
-//    }
+    std::shared_ptr<Expression> CodeGenVisitor::reduce_expression(const std::string& init_var, std::shared_ptr<Expression> expr, const std::shared_ptr<Operator>& op) {
+        std::shared_ptr<Expression> left = IR::make<ReadAccess>(init_var);
+        return IR::make<BinaryOp>(left, std::move(expr), op, op->type);
+    }
+
+    void CodeGenVisitor::generate_for_loop(const std::shared_ptr<IndexVar>& ivar) {
+        oss << get_indent();
+        oss << "for(int ";
+        oss <<  ivar->getName();
+        oss << "=0; ";
+        oss <<   ivar->getName();
+        oss <<  "<";
+        ivar->dimension->accept(this);
+        oss << "; "; oss << ivar->getName(); oss << "++) {\n";
+    };
 }

@@ -9,48 +9,68 @@
 namespace einsum {
     struct CodeGenVisitor : IRVisitor {
 
-            //std::vector<std::shared_ptr<Reduction>> reductions;
-            int indent_;
-
-            CodeGenVisitor(std::ostream &oss, std::string module_name) : oss(oss), module_name(std::move(module_name)), indent_(0) {}
-
-            void visit(const IndexVar& node) override;
-            void visit(const Literal& node) override;
-            void visit(const TensorVar& node) override;
-            void visit(const IndexVarExpr& node) override;
-            void visit(const Access& node) override;
-            void visit(const ReadAccess& node) override;
-            void visit(const BinaryOp& node) override;
-            void visit(const UnaryOp& node) override;
-            void visit(const Definition& node) override;
-            void visit(const FuncDecl& node) override;
-            void visit(const Call& node) override;
-            void visit(const CallStarRepeat& node) override;
-            void visit(const CallStarCondition& node) override;
-            void visit(const Module& node) override;
-            void visit(const Reduction& node) override;
-
-            int& get_indent_lvl() {
-                return indent_;
-            }
-
-            void indent() {
-                get_indent_lvl() ++;
-            }
-
-            void unindent() {
-                get_indent_lvl() --;
-            }
-
-            std::string get_indent() {
-                return std::string(get_indent_lvl(), '\t');
-            }
-
-    private:
         std::ostream &oss;
         std::string module_name;
-        void visit_reduced_expr(const Expression& expr, const std::vector<std::shared_ptr<Reduction>>& reductions);
-    };
+        int indent_;
 
+        CodeGenVisitor(std::ostream &oss, std::string module_name) : oss(oss), module_name(std::move(module_name)),
+                                                                     indent_(0) {}
+
+        void visit(const IndexVar &node) override;
+
+        void visit(const Literal &node) override;
+
+        void visit(const TensorVar &node) override;
+
+        void visit(const IndexVarExpr &node) override;
+
+        void visit(const Access &node) override;
+
+        void visit(const ReadAccess &node) override;
+
+        void visit(const BinaryOp &node) override;
+
+        void visit(const UnaryOp &node) override;
+
+        void visit(const Definition &node) override;
+
+        void visit(const FuncDecl &node) override;
+
+        void visit(const Call &node) override;
+
+        void visit(const CallStarRepeat &node) override;
+
+        void visit(const CallStarCondition &node) override;
+
+        void visit(const Module &node) override;
+
+        void visit(const Reduction &node) override;
+
+        int &get_indent_lvl() {
+            return indent_;
+        }
+
+        void indent() {
+            get_indent_lvl()++;
+        }
+
+        void unindent() {
+            get_indent_lvl()--;
+        }
+
+        std::string get_indent() {
+            return std::string(get_indent_lvl() * 4, ' ');
+        }
+
+        void generate_for_loop(const std::shared_ptr<IndexVar>& ivar);
+
+    private:
+
+        std::string visit_reduced_expr(const std::shared_ptr<Expression>& expr, const std::vector<std::shared_ptr<Reduction>> &reductions);
+
+        static std::shared_ptr<Expression> reduce_expression(const std::string &init_var, std::shared_ptr<Expression> expr,
+                                                      const std::shared_ptr<Operator> &op);
+
+    };
 }
 #endif //EINSUM_TACO_CODEGEN_VISITOR_H

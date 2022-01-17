@@ -17,6 +17,7 @@ std::string einsum::DumpAstVisitor::get_indent() const {
 
 void einsum::DumpAstVisitor::unindent() {
     indent_ -= 1;
+    assert(indent_ >= 0);
 }
 
 void einsum::DumpAstVisitor::visit(const einsum::IndexVar &node) {

@@ -5,6 +5,7 @@
 #ifndef EINSUM_TACO_TYPE_H
 #define EINSUM_TACO_TYPE_H
 
+#include <utility>
 #include<vector>
 #include<map>
 #include<string>
@@ -72,6 +73,18 @@ namespace einsum {
 
         size_t getNumBytes() const;
 
+        static std::shared_ptr<Type> intType() {
+            return make<Datatype>(Kind::Int);
+        }
+
+        static std::shared_ptr<Type> boolType() {
+            return make<Datatype>(Kind::Bool);
+        }
+
+        static std::shared_ptr<Type> floatType() {
+            return make<Datatype>(Kind::Float);
+        }
+
     private:
         Kind kind;
     };
@@ -96,21 +109,23 @@ namespace einsum {
 
 
     struct Operator {
-        Operator(int precedence, const char* sign) :
-                precedence(precedence), sign(sign), isAsymmetric(false) {}
+        Operator(int precedence, const char* sign, std::shared_ptr<Type> type) :
+                precedence(precedence), sign(sign), isAsymmetric(false), type(std::move(type)) {}
 
-        Operator(int precedence, const char* sign, bool isAsymmetric) :
-                precedence(precedence), sign(sign), isAsymmetric(isAsymmetric) {}
+        Operator(int precedence, const char* sign, bool isAsymmetric, std::shared_ptr<Type> type) :
+                precedence(precedence), sign(sign), isAsymmetric(isAsymmetric), type(std::move(type)) {}
 
-        Operator(int precedence, const char* sign, const char* reductionSign) :
-                precedence(precedence), sign(sign), reductionSign(reductionSign), isAsymmetric(false) {}
+        Operator(int precedence, const char* sign, const char* reductionSign, std::shared_ptr<Type> type) :
+                precedence(precedence), sign(sign), reductionSign(reductionSign), isAsymmetric(false), type(std::move(type)) {}
 
         std::string reductionSign;
         int precedence;
         bool isAsymmetric;
         std::string sign;
+        std::shared_ptr<Type> type;
 
         [[nodiscard]] bool isArithmetic() const;
+
     };
 
     struct BinaryOperator {};
@@ -122,59 +137,59 @@ namespace einsum {
     struct ComparisonOperator {};
 
     struct AddOp : Operator, BinaryOperator {
-        AddOp() : Operator(4, "+", "+") {}
+        AddOp() : Operator(4, "+", "+", nullptr) {}
     };
 
     struct SubOp : Operator, BinaryOperator {
-        SubOp() : Operator(4, "-", true) {}
+        SubOp() : Operator(4, "-", true, nullptr) {}
     };
 
     struct MulOp : Operator, BinaryOperator {
-        MulOp() : Operator(3, "*", "*") {}
+        MulOp() : Operator(3, "*", "*", nullptr) {}
     };
 
     struct DivOp : Operator, BinaryOperator {
-        DivOp() : Operator(3, "/", true) {}
+        DivOp() : Operator(3, "/", true, nullptr) {}
     };
 
     struct ModOp : Operator, BinaryOperator {
-        ModOp() : Operator(3, "%") {}
+        ModOp() : Operator(3, "%", Datatype::intType()) {}
     };
 
     struct AndOp : Operator, BinaryOperator, LogicalOperator {
-        AndOp() : Operator(11, "&&", "AND")  {}
+        AndOp() : Operator(11, "&&", "AND", Datatype::boolType())  {}
     };
 
     struct OrOp : Operator, BinaryOperator, LogicalOperator {
-        OrOp() : Operator(12, "||", "OR") {}
+        OrOp() : Operator(12, "||", "OR", Datatype::boolType()) {}
     };
 
     struct NotOp : Operator, LogicalOperator, UnaryOperator {
-        NotOp() : Operator(2, "!") {}
+        NotOp() : Operator(2, "!", Datatype::boolType()) {}
     };
 
     struct LtOp : Operator, ComparisonOperator {
-        LtOp() : Operator(6, "<") {}
+        LtOp() : Operator(6, "<", Datatype::boolType()) {}
     };
 
     struct LteOp : Operator, ComparisonOperator {
-        LteOp() : Operator(6, "<=") {}
+        LteOp() : Operator(6, "<=", Datatype::boolType()) {}
     };
 
     struct GtOp : Operator, ComparisonOperator {
-        GtOp() : Operator(6, ">") {}
+        GtOp() : Operator(6, ">", Datatype::boolType()) {}
     };
 
     struct GteOp : Operator, ComparisonOperator {
-        GteOp() : Operator(6, ">=") {}
+        GteOp() : Operator(6, ">=", Datatype::boolType()) {}
     };
 
     struct EqOp : Operator, ComparisonOperator {
-        EqOp() : Operator(7, "==") {}
+        EqOp() : Operator(7, "==", Datatype::boolType()) {}
     };
 
     struct NeqOp : Operator, ComparisonOperator {
-        NeqOp() : Operator(7, "!=") {}
+        NeqOp() : Operator(7, "!=", Datatype::boolType()) {}
     };
 
     struct Expression;

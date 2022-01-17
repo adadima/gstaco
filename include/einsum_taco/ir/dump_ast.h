@@ -11,7 +11,7 @@ namespace einsum{
     class DumpAstVisitor : public IRVisitor {
     public:
         std::string ast;
-        int indent_;
+        int indent_ = 0;
 
         void visit(const IndexVar& node) override;
 
