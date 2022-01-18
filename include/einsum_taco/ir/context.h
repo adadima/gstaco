@@ -73,8 +73,15 @@ namespace einsum {
             globals_.emplace(tensor->name, tensor);
         }
 
+        std::shared_ptr<FuncDecl> get_function(const std::string& name) {
+            if (functions_.count(name)) {
+                return functions_[name];
+            }
+            return nullptr;
+        }
+
         void enter_function(const std::shared_ptr<FuncDecl>& func) {
-            functions_.emplace(func->funcName, func);
+            // functions_.emplace(func->funcName, func);
 
             func_scope() = func;
 
@@ -129,7 +136,8 @@ namespace einsum {
             def_scope() = nullptr;
         }
 
-        void exit_function() {
+        void exit_function(const std::shared_ptr<FuncDecl> func) {
+            functions_.emplace(func->funcName, func);
             func_scope() = nullptr;
         }
 

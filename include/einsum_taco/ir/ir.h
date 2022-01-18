@@ -15,6 +15,7 @@
 #include<einsum_taco/base/assert.h>
 #include<set>
 #include<map>
+#include<memory>
 
 
 namespace einsum {
@@ -102,7 +103,7 @@ namespace einsum {
 
         Expression(int precedence, bool isAsymmetric) : precedence(precedence), isAsymmetric(isAsymmetric) {}
 
-        virtual std::shared_ptr<Type> getType() = 0;
+        virtual std::shared_ptr<Type> getType() const = 0;
         std::string dump() const override = 0;
         virtual std::vector<std::shared_ptr<IndexVar>> getIndices() = 0;
         virtual std::map<std::string, std::set<std::shared_ptr<Expression>>> getIndexVarDims(IRContext* context) const = 0;
@@ -134,7 +135,7 @@ namespace einsum {
              return *(static_cast<T*>(ptr));
         }
 
-        std::shared_ptr<Type> getType() override;
+        std::shared_ptr<Type> getType() const override;
 
         std::shared_ptr<Datatype> getDatatype() const {
             return std::dynamic_pointer_cast<Datatype>(type);
@@ -173,7 +174,7 @@ namespace einsum {
 
         std::map<std::string, std::set<std::shared_ptr<Expression>>> getIndexVarDims(IRContext* context) const override;
 
-        std::shared_ptr<Type> getType() override;
+        std::shared_ptr<Type> getType() const override;
 
     private:
         std::shared_ptr<Type> deduce_type() const {
@@ -267,26 +268,8 @@ namespace einsum {
         std::string dump() const override;
         std::vector<std::shared_ptr<IndexVar>> getIndices() override;
         std::map<std::string, std::set<std::shared_ptr<Expression>>> getIndexVarDims(IRContext* context) const override;
-        std::shared_ptr<Type> getType() override;
+        std::shared_ptr<Type> getType() const override;
     };
-
-//    struct NotExpression : Acceptor<NotExpression, UnaryOp> {
-//        explicit NotExpression(std::shared_ptr<Expression> expr) :
-//                Base(
-//                        std::move(expr),
-//                        std::make_shared<NotOp>(),
-//                        Type::make<Datatype>(Datatype::Kind::Bool)
-//                ) {};
-//
-//        NotExpression(std::shared_ptr<Expression> expr, std::shared_ptr<Operator> op) :
-//                Base(
-//                        std::move(expr),
-//                        std::move(op),
-//                        Type::make<Datatype>(Datatype::Kind::Bool)
-//                ) {};
-//
-//        //std::shared_ptr<Type> getType() override;
-//    };
 
     struct TensorVar : Acceptor<TensorVar> {
         std::string name;
@@ -322,7 +305,7 @@ namespace einsum {
 
         std::shared_ptr<Expression> getDimension(int i) const;
 
-        std::shared_ptr<Type> getType() override;
+        std::shared_ptr<Type> getType() const override;
     };
 
     struct Access: Acceptor<Access> {
@@ -355,7 +338,7 @@ namespace einsum {
 
         std::map<std::string, std::set<std::shared_ptr<Expression>>> getIndexVarDims(IRContext* context) const override;
 
-        std::shared_ptr<Type> getType() override;
+        std::shared_ptr<Type> getType() const override;
 
     };
 
@@ -447,7 +430,7 @@ namespace einsum {
 
         std::map<std::string, std::set<std::shared_ptr<Expression>>> getIndexVarDims(IRContext* context) const override;
 
-        std::shared_ptr<Type> getType() override;
+        std::shared_ptr<Type> getType() const override;
 
         std::shared_ptr<FuncDecl> function;
         std::vector<std::shared_ptr<Expression>> arguments;
@@ -459,6 +442,9 @@ namespace einsum {
 
         std::string dump() const override;
 
+        std::string dump_call() const {
+            return Call::dump();
+        }
         int numIterations;
     };
 
@@ -470,6 +456,10 @@ namespace einsum {
                 Base(std::move(function), std::move(arguments)), stopCondition(std::move(stopCondition)) {}
 
         std::string dump() const override;
+
+        std::string dump_call() const {
+            return Call::dump();
+        }
 
         std::shared_ptr<Expression> stopCondition;
     };

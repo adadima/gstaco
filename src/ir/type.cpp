@@ -4,6 +4,7 @@
 
 #include <einsum_taco/ir/type.h>
 #include <einsum_taco/ir/ir.h>
+#include <algorithm>
 
 namespace einsum {
     Datatype::Datatype(Kind kind) : kind(kind) {
@@ -67,7 +68,7 @@ namespace einsum {
                 types += ", ";
             }
         }
-        return "(" + types + ")";
+        return "<" + types + ">";
     }
 
     bool TensorType::isBool() const {

@@ -11,6 +11,7 @@
 #include<string>
 #include<array>
 #include<einsum_taco/base/assert.h>
+#include<memory>
 
 
 namespace einsum {
@@ -73,15 +74,15 @@ namespace einsum {
 
         size_t getNumBytes() const;
 
-        static std::shared_ptr<Type> intType() {
+        static std::shared_ptr<Datatype> intType() {
             return make<Datatype>(Kind::Int);
         }
 
-        static std::shared_ptr<Type> boolType() {
+        static std::shared_ptr<Datatype> boolType() {
             return make<Datatype>(Kind::Bool);
         }
 
-        static std::shared_ptr<Type> floatType() {
+        static std::shared_ptr<Datatype> floatType() {
             return make<Datatype>(Kind::Float);
         }
 

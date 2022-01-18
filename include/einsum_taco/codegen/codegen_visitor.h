@@ -12,6 +12,7 @@ namespace einsum {
         std::ostream &oss;
         std::string module_name;
         int indent_;
+        std::vector<std::string> outputs;
 
         CodeGenVisitor(std::ostream &oss, std::string module_name) : oss(oss), module_name(std::move(module_name)),
                                                                      indent_(0) {}
@@ -62,7 +63,11 @@ namespace einsum {
             return std::string(get_indent_lvl() * 4, ' ');
         }
 
-        void generate_for_loop(const std::shared_ptr<IndexVar>& ivar);
+        void generate_for_loop(const std::string& var, const std::shared_ptr<Expression>& dim);
+
+        void generate_while_loop(const std::shared_ptr<Expression>& condition);
+
+        void get_lambda_return(std::string output_type, int num_outputs);
 
     private:
 

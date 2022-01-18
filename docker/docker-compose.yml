@@ -1,0 +1,32 @@
+version: "3"
+
+services:
+  ubuntu_21.04:
+    image: adadima/gtaco_ubuntu_21_04
+    build:
+      context: .
+      dockerfile: ubuntu_21.04.Dockerfile
+
+  clang_13-ubuntu_20.04:
+    depends_on: [ubuntu_21.04]
+    image: adadima/gtaco_ubuntu_21_04
+    volumes: [..:/code]
+    environment: [CC=clang,CXX=clang++]
+    command: /code/docker/check.sh clang_13-ubuntu_21.04
+
+  gcc_9-ubuntu_20.04:
+    depends_on: [ubuntu_21.04]
+    image: adadima/gtaco_ubuntu_21_04
+    volumes: [..:/code]
+    environment: [CC=gcc,CXX=g++]
+    command: /code/docker/check.sh gcc_9-ubuntu_21.04
+
+  clion-remote-env:
+    depends_on: [ ubuntu_21.04 ]
+    image: adadima/gtaco_ubuntu_21_04
+    cap_add:
+      - sys_ptrace
+    ports:
+      - 127.0.0.1:2222:22
+    tty: true
+    command: /usr/sbin/sshd -D -e -f /etc/ssh/sshd_config_test_clion

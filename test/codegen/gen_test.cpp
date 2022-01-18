@@ -2,6 +2,7 @@
 // Created by Alexandra Dima on 11/15/21.
 #include <iostream>
 #include <sstream>
+#include <fstream>
 #include <gtest/gtest.h>
 #include "einsum_taco/ir/ir.h"
 #include "einsum_taco/ir/ir_rewriter.h"
@@ -47,13 +48,27 @@ public:
         EXPECT_EQ(output, expected);
     }
 
-    void assert_generated_defintion(const std::string& input, const std::string& expected) {
+    static std::string readFileIntoString(const string& path) {
+        std::ifstream input_file(path);
+        if (!input_file.is_open()) {
+            cerr << "Could not open the file - '"
+                 << path << "'" << endl;
+            exit(EXIT_FAILURE);
+        }
+        return string((std::istreambuf_iterator<char>(input_file)), std::istreambuf_iterator<char>());
+    }
+
+    void assert_generated_defintion(const std::string& input_filename, const std::string& expected_filename, int d = 0) {
+        auto input = input_filename; // readFileIntoString(input_filename);
+        auto expected = expected_filename; // readFileIntoString(expected_filename);
         auto mod = parse(input);
         mod.accept(&rewriter);
-        rewriter.module->accept(&printer);
+//        rewriter.module->accept(&printer);
 //        cout << printer.ast;
         auto new_module = rewriter.module;
-        auto def = new_module->decls[0];
+//        new_module->accept(&printer);
+//        cout << printer.ast;
+        auto def = new_module->decls[d];
         if (def->is_def()) {
             def->as_def().accept(&generator);
         } else if (def->is_decl()) {
@@ -78,7 +93,8 @@ End)";
     A[i] = init_j;
 }
 )";
-    assert_generated_defintion(in, expected);
+    auto p = std::filesystem::current_path().string();
+    assert_generated_defintion(p + "/inputs/definition1.txt", p + "/outputs/definition1.cpp");
 }
 
 TEST_F(GenTest, Definition2) {
@@ -130,4 +146,120 @@ End)";
 }
 )";
     assert_generated_defintion(in, expected);
+}
+
+TEST_F(GenTest, DefinitionCall) {
+    auto in = R"(Let fib(A int, B float) -> (C int, D float)
+
+End
+
+Let func(C int, D float) -> (A int, B float)
+    A, B = fib(C, D)
+End)";
+    auto expected = R"(auto out = fib(C, D);
+A = std::get<0>(out);
+B = std::get<1>(out);
+)";
+    assert_generated_defintion(in, expected, 1);
+}
+
+TEST_F(GenTest, DefinitionCallRepeat1) {
+    auto in = R"(Let fib(A int, B float) -> (C int, D float)
+
+End
+
+Let func(C int, D float) -> (A int, B float)
+    A, B = fib*(C, D) | 100
+End)";
+    auto expected = R"(auto out = ([&]{
+auto out = fib(C, D);
+auto& [out0, out1] = out;
+for(int iter=0; iter<99; iter++) {
+    std::tie(out0, out1) = fib(out0, out1);
+}
+return std::tuple<int, float>{out0, out1};
+}());
+A = std::get<0>(out);
+B = std::get<1>(out);
+)";
+    assert_generated_defintion(in, expected, 1);
+}
+
+
+TEST_F(GenTest, DefinitionCallRepeat2) {
+    auto in = R"(Let fib(A int, B int) -> (C int, D int)
+    C = A
+    D = B
+End
+
+Let func() -> (A int[N], B int[N])
+    A[i], B[i] = fib*(1, 2) | 3
+End)";
+    auto expected = R"(for(int i=0; i<N; i++) {
+    auto out = ([&]{
+auto out = fib(1, 2);
+auto& [out0, out1] = out;
+    for(int iter=0; iter<2; iter++) {
+        std::tie(out0, out1) = fib(out0, out1);
+    }
+return std::tuple<int, int>{out0, out1};
+}());
+    A[i] = std::get<0>(out);
+    B[i] = std::get<1>(out);
+}
+)";
+    assert_generated_defintion(in, expected, 1);
+}
+
+TEST_F(GenTest, DefinitionCallRepeat3) {
+    auto in = R"(Let fib(A int, B int) -> (C int, D int)
+    C = A
+    D = B
+End
+
+Let func() -> (A int[N], B int[N][M])
+    A[i], B[i][j] = fib*(1, 2) | 3
+End)";
+    auto expected = R"(for(int i=0; i<N; i++) {
+    for(int j=0; j<M; j++) {
+        auto out = ([&]{
+auto out = fib(1, 2);
+auto& [out0, out1] = out;
+for(int iter=0; iter<2; iter++) {
+    std::tie(out0, out1) = fib(out0, out1);
+}
+return std::tuple<int, int>{out0, out1};
+}());
+        A[i] = std::get<0>(out);
+        B[i][j] = std::get<1>(out);
+    }
+}
+)";
+    assert_generated_defintion(in, expected, 1);
+}
+
+TEST_F(GenTest, DefinitionCallStar) {
+    auto in = R"(Let fib(A int, B float) -> (C int, D float)
+
+End
+
+Let func(C int, D float) -> (A int, B float)
+    A, B = fib*(C, D) | (A == 0)
+End)";
+    auto expected = R"(auto out = fib(C, D);
+auto& [out0, out1] = out;
+while(!(A == 0)) {
+    auto out = ([&]{
+auto out = fib(C, D);
+auto& [out0, out1] = out;
+for(int iter=0; iter<99; iter++) {
+    std::tie(out0, out1) = fib(out0, out1);
+}
+return std::tuple<int, float>{out0, out1};
+}());
+}
+A = std::get<0>(out);
+B = std::get<1>(out);
+)";
+    assert_generated_defintion(in, expected, 1);
 }

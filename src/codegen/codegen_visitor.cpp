@@ -39,37 +39,180 @@ namespace einsum {
     // Does not support things like A[i], B[i] = 0; aka the rhs has to be a func call to support multiple outputs
     void CodeGenVisitor::visit(const Definition& node) {
         if (node.lhs.size() > 1) {
-            return;  // this is a function call, so rhs can be Call or one of its subtypes
-        }
-        // otherwise, rhs is a non-call expression.
-        auto lhs = node.lhs[0];
-        for(auto &&acc : lhs->indices) {
-            generate_for_loop(acc);
-            indent();
-        }
+            auto lhs = node.lhs[0];
+            for(auto &&acc : lhs->indices) {
+                generate_for_loop(acc->getName(), acc->dimension);
+                indent();
+            }
 
-        auto init_var = visit_reduced_expr(node.rhs, node.reduction_list);
-
-        oss << get_indent();
-        node.lhs[0]->accept(this);
-        oss << " = ";
-        oss << init_var;
-        oss << ";\n";
-
-        for(auto &&acc: lhs->indices) {
-            unindent();
             oss << get_indent();
-            oss << "}\n";
+            oss << "auto out = ";
+            node.rhs->accept(this);
+            oss << ";\n";
+
+            for(int i=0; i < node.lhs.size(); i++) {
+                oss << get_indent();
+                node.lhs[i]->accept(this);
+                oss << " = std::get<";
+                oss << std::to_string(i);
+                oss << ">(out);\n";
+            }
+
+            for(auto &&acc: lhs->indices) {
+                unindent();
+                oss << get_indent();
+                oss << "}\n";
+            }
+        } else {
+            auto lhs = node.lhs[0];
+            for(auto &&acc : lhs->indices) {
+                generate_for_loop(acc->getName(), acc->dimension);
+                indent();
+            }
+
+            auto init_var = visit_reduced_expr(node.rhs, node.reduction_list);
+
+            oss << get_indent();
+            node.lhs[0]->accept(this);
+            oss << " = ";
+            oss << init_var;
+            oss << ";\n";
+
+            for(auto &&acc: lhs->indices) {
+                unindent();
+                oss << get_indent();
+                oss << "}\n";
+            }
         }
     }
 
     void CodeGenVisitor::visit(const FuncDecl& node) {}
 
-    void CodeGenVisitor::visit(const Call& node) {}
+    void CodeGenVisitor::visit(const Call& node) {
+        oss << node.dump();
+    }
 
-    void CodeGenVisitor::visit(const CallStarRepeat& node) {}
+    void CodeGenVisitor::get_lambda_return(std::string output_type, int num_outputs) {
+        oss << "return std::tuple";
+        oss << output_type;
+        oss << "{";
+        for (int i=0; i < num_outputs; i++) {
+            if (i > 0) {
+                oss << ", ";
+            }
+            oss << "out" + std::to_string(i);
+        }
+        oss << "};";
+    }
 
-    void CodeGenVisitor::visit(const CallStarCondition& node) {}
+    void CodeGenVisitor::visit(const CallStarRepeat& node) {
+        oss << "([&]{\n";
+
+        oss << "auto out = ";
+        auto call = new Call(node.function, node.arguments);
+        call->accept(this);
+        oss << ";\n";
+
+        if (node.arguments.size() > 1) {
+            oss << "auto& [";
+            for(int i=0; i < node.arguments.size(); i++) {
+                if (i > 0) {
+                    oss << ", ";
+                }
+                auto var = "out" + std::to_string(i);
+                oss << var;
+            }
+            oss << "] = out;\n";
+        }
+
+        generate_for_loop("iter", IR::make<Literal>(node.numIterations - 1, Datatype::intType()));
+
+
+        indent();
+        oss << get_indent();
+        if (node.arguments.size() == 1) {
+            oss << "out";
+        } else {
+            oss << "std::tie(";
+            for(int i=0; i < node.arguments.size(); i++) {
+                if (i > 0) {
+                    oss << ", ";
+                }
+                auto var = "out" + std::to_string(i);
+                oss << var;
+            }
+            oss << ")";
+        }
+        oss << " = ";
+        auto args = std::vector<std::shared_ptr<Expression>>();
+        for(int i=0; i < node.arguments.size(); i++) {
+            args.push_back(IR::make<ReadAccess>("out" + std::to_string(i)));
+        }
+        auto call_ = new Call(node.function, args);
+        call_->accept(this);
+        oss << ";\n";
+
+        unindent();
+
+        oss << get_indent();
+        oss << "}\n";
+        get_lambda_return(node.getType()->dump(), node.arguments.size());
+        oss << "\n}())";
+    }
+
+    void CodeGenVisitor::visit(const CallStarCondition& node) {
+        oss << "([&]{\n";
+
+        oss << "auto out = ";
+        auto call = new Call(node.function, node.arguments);
+        call->accept(this);
+        oss << ";\n";
+
+        if (node.arguments.size() > 1) {
+            oss << "auto& [";
+            for(int i=0; i < node.arguments.size(); i++) {
+                if (i > 0) {
+                    oss << ", ";
+                }
+                auto var = "out" + std::to_string(i);
+                oss << var;
+            }
+            oss << "] = out;";
+        }
+
+        generate_while_loop(node.stopCondition);
+
+        indent();
+        oss << get_indent();
+        if (node.arguments.size() == 1) {
+            oss << "out";
+        } else {
+            oss << "std::tie(";
+            for(int i=0; i < node.arguments.size(); i++) {
+                if (i > 0) {
+                    oss << ", ";
+                }
+                auto var = "out" + std::to_string(i);
+                oss << var;
+            }
+            oss << ")";
+        }
+        oss << " = ";
+        auto args = std::vector<std::shared_ptr<Expression>>();
+        for(int i=0; i < node.arguments.size(); i++) {
+            args.push_back(IR::make<ReadAccess>("out" + std::to_string(i)));
+        }
+        auto call_ = new Call(node.function, args);
+        call_->accept(this);
+        oss << ";\n";
+
+        unindent();
+
+        oss << get_indent();
+        oss << "}\n";
+        get_lambda_return(node.getType()->dump(), node.arguments.size());
+        oss << "\n}())";
+    }
 
     void CodeGenVisitor::visit(const Module& node) {}
 
@@ -85,7 +228,7 @@ namespace einsum {
         node.reductionInit->accept(this);
         oss << ";\n";
 
-        generate_for_loop(node.reductionVar);
+        generate_for_loop(node.reductionVar->getName(), node.reductionVar->dimension);
     }
 
     std::string CodeGenVisitor::visit_reduced_expr(const std::shared_ptr<Expression>& expr, const std::vector<std::shared_ptr<Reduction>>& reductions) {
@@ -99,8 +242,8 @@ namespace einsum {
 
         std::string var;
 
-        for(int r=0; r < reductions.size(); r++) {
-            reductions[r]->accept(this);
+        for(const auto & reduction : reductions) {
+            reduction->accept(this);
             indent();
 
         }
@@ -151,14 +294,23 @@ namespace einsum {
         return IR::make<BinaryOp>(left, std::move(expr), op, op->type);
     }
 
-    void CodeGenVisitor::generate_for_loop(const std::shared_ptr<IndexVar>& ivar) {
+    void CodeGenVisitor::generate_for_loop(const std::string& var, const std::shared_ptr<Expression>& dim) {
         oss << get_indent();
         oss << "for(int ";
-        oss <<  ivar->getName();
+        oss <<  var;
         oss << "=0; ";
-        oss <<   ivar->getName();
+        oss <<  var;
         oss <<  "<";
-        ivar->dimension->accept(this);
-        oss << "; "; oss << ivar->getName(); oss << "++) {\n";
+        dim->accept(this);
+        oss << "; "; oss << var; oss << "++) {\n";
+    };
+
+    void CodeGenVisitor::generate_while_loop(const std::shared_ptr<Expression>& condition) {
+        oss << get_indent();
+        oss << "while(! ";
+        oss << "(";
+        condition->accept(this);
+        oss << ")";
+        oss <<  ") {\n";
     };
 }

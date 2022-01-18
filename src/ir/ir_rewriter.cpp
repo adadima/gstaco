@@ -5,6 +5,8 @@
 #include "einsum_taco/base/assert.h"
 #include <iostream>
 
+// TODO : rewrite IR to break up definitions of multiple inputs
+
 namespace einsum {
 
     template<typename T>
@@ -135,7 +137,7 @@ namespace einsum {
 
         func = std::make_shared<FuncDecl>(node.funcName, node.inputs, node.outputs, body);
 
-        context->exit_function();
+        context->exit_function(func);
 
     }
 
@@ -146,9 +148,8 @@ namespace einsum {
             arg->accept(this);
             new_args.push_back(expr);
         }
-
-        node.function->accept(this);
-        expr = std::make_shared<Call>(func, new_args);
+        auto function = context->get_function(node.function->funcName);
+        expr = std::make_shared<Call>(function, new_args);
     }
 
     void  IRRewriter::visit(CallStarRepeat& node) {
@@ -159,8 +160,8 @@ namespace einsum {
             new_args.push_back(expr);
         }
 
-        node.function->accept(this);
-        expr = std::make_shared<CallStarRepeat>(node.numIterations, func, new_args);
+        auto function = context->get_function(node.function->funcName);
+        expr = std::make_shared<CallStarRepeat>(node.numIterations, function, new_args);
 
     }
 
@@ -172,13 +173,18 @@ namespace einsum {
             new_args.push_back(expr);
         }
 
-        node.function->accept(this);
-        auto new_func = func;
+        auto new_func = context->get_function(node.function->funcName);
 
         node.stopCondition->accept(this);
         auto new_stop = expr;
 
-        expr = std::make_shared<CallStarCondition>(new_stop, new_func, new_args);
+        auto cond = std::dynamic_pointer_cast<Literal>(new_stop);
+        if (cond && cond->isInt()) {
+            expr = IR::make<CallStarRepeat>(cond->getValue<int>(), new_func, node.arguments);
+        } else {
+            expr = IR::make<CallStarCondition>(new_stop, new_func, new_args);
+        }
+
     }
 
     //TODO: remove this method and find a cleaner way to retrieve return type of visited module component

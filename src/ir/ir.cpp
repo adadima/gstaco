@@ -9,6 +9,7 @@
 #include <set>
 #include <map>
 #include <cxxabi.h>
+#include <algorithm>
 
 
 namespace einsum {
@@ -37,7 +38,7 @@ namespace einsum {
         return this->getDatatype()->isBool();
     }
 
-    std::shared_ptr<Type> Literal::getType() {
+    std::shared_ptr<Type> Literal::getType() const {
         return type;
     }
 
@@ -106,7 +107,7 @@ namespace einsum {
         return {this->indexVar};
     }
 
-    std::shared_ptr<Type> IndexVarExpr::getType() {
+    std::shared_ptr<Type> IndexVarExpr::getType() const {
         return std::make_shared<Datatype>(Datatype::Kind::Int);
     }
 
@@ -135,7 +136,7 @@ namespace einsum {
         return indices;
     }
 
-    std::shared_ptr<Type> ReadAccess::getType() {
+    std::shared_ptr<Type> ReadAccess::getType() const {
         std::vector<std::shared_ptr<Expression>> dims;
         int last = this->tensor->type->getOrder() - this->indices.size();
         if (last < 0) {
@@ -215,7 +216,7 @@ namespace einsum {
         return def + body + "End";
     }
 
-    std::shared_ptr<Type> Call::getType() {
+    std::shared_ptr<Type> Call::getType() const {
         return std::make_shared<TupleType>(this->function->getOutputType());
     }
 
@@ -263,8 +264,9 @@ namespace einsum {
 
     std::vector<std::shared_ptr<Type>> FuncDecl::getOutputType() const {
         std::vector<std::shared_ptr<Type>> types;
-        auto mapper = [](const std::shared_ptr<TensorVar> tvar) { return tvar->type; };
-        std::transform(this->outputs.begin(), this->outputs.end(), std::back_inserter(types), mapper);
+        for (auto &var : outputs) {
+            types.push_back(var->getType());
+        }
         return types;
     }
 
@@ -356,7 +358,7 @@ namespace einsum {
         return left_dims;
     }
 
-    std::shared_ptr<Type> BinaryOp::getType() {
+    std::shared_ptr<Type> BinaryOp::getType() const {
         return type;
     }
 
@@ -364,7 +366,7 @@ namespace einsum {
         return expr->getIndexVarDims(context);
     }
 
-    std::shared_ptr<Type> UnaryOp::getType() {
+    std::shared_ptr<Type> UnaryOp::getType() const {
         return type;
     }
 
