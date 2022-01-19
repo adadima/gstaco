@@ -45,33 +45,12 @@ namespace einsum {
     // Assumes IR has been rewritten to break up definitions of multiple inputs
     // Does not support things like A[i], B[i] = 0; aka the rhs has to be a func call to support multiple outputs
     void CodeGenVisitor::visit(const Definition& node) {
-        if (node.lhs.size() > 1) {
-            auto lhs = node.lhs[0];
-            for(auto &&acc : lhs->indices) {
-                generate_for_loop(acc->getName(), acc->dimension);
-                indent();
-            }
-
+        for(int a=0; a < node.lhs.size(); a++) {
             oss << get_indent();
-            oss << "auto out = ";
-            node.rhs->accept(this);
-            oss << ";\n";
+            oss << "{\n";
+            indent();
 
-            for(int i=0; i < node.lhs.size(); i++) {
-                oss << get_indent();
-                node.lhs[i]->accept(this);
-                oss << " = std::get<";
-                oss << std::to_string(i);
-                oss << ">(out);\n";
-            }
-
-            for(auto &&acc: lhs->indices) {
-                unindent();
-                oss << get_indent();
-                oss << "}\n";
-            }
-        } else {
-            auto lhs = node.lhs[0];
+            auto lhs = node.lhs[a];
             for(auto &&acc : lhs->indices) {
                 generate_for_loop(acc->getName(), acc->dimension);
                 indent();
@@ -80,9 +59,17 @@ namespace einsum {
             auto init_var = visit_reduced_expr(node.rhs, node.reduction_list);
 
             oss << get_indent();
-            node.lhs[0]->accept(this);
+            lhs->accept(this);
             oss << " = ";
-            oss << init_var;
+            if (node.lhs.size() > 1) {
+                oss << "std::get<";
+                oss << std::to_string(a);
+                oss << ">(";
+                oss << init_var;
+                oss << ")";
+            } else {
+                oss << init_var;
+            }
             oss << ";\n";
 
             for(auto &&acc: lhs->indices) {
@@ -90,6 +77,9 @@ namespace einsum {
                 oss << get_indent();
                 oss << "}\n";
             }
+            unindent();
+            oss << get_indent();
+            oss << "}\n";
         }
     }
 

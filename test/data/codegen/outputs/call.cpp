@@ -1,3 +1,8 @@
-auto out = fib(C, D);
-A = std::get<0>(out);
-B = std::get<1>(out);
+{
+    auto init = fib(C, D);
+    A = std::get<0>(init);
+}
+{
+    auto init = fib(C, D);
+    B = std::get<1>(init);
+}
