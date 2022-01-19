@@ -1,0 +1,7 @@
+Let f(A int) -> (C int)
+    C = A
+End
+
+Let func(B int[N][M]) -> (A int[N])
+    A[i] = (f*(j) | 6) * B[i][j] | j:(*, 1)
+End

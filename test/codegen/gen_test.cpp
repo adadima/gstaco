@@ -96,15 +96,16 @@ TEST_F(GenTest, DefinitionCallRepeat1) {
     assert_generated_defintion("codegen/inputs/call_repeat1.txt", "codegen/outputs/call_repeat1.cpp", 1);
 }
 
-
 TEST_F(GenTest, DefinitionCallRepeat2) {
     assert_generated_defintion("codegen/inputs/call_repeat2.txt", "codegen/outputs/call_repeat2.cpp", 1);
 }
 
-//TODO: assign multiple outputs separately
-//TODO: easy: all accesses on lhs need to have teh same indices; harder: only the intersection of index vars on the lhs can appear in the rhs
 TEST_F(GenTest, DefinitionCallRepeat3) {
     assert_generated_defintion("codegen/inputs/call_repeat3.txt", "codegen/outputs/call_repeat3.cpp", 1);
+}
+
+TEST_F(GenTest, DefinitionCallRepeat4) {
+    assert_generated_defintion("codegen/inputs/call_repeat4.txt", "codegen/outputs/call_repeat4.cpp", 1);
 }
 
 TEST_F(GenTest, DefinitionCallStar) {
