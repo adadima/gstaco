@@ -108,6 +108,10 @@ TEST_F(GenTest, DefinitionCallRepeat4) {
     assert_generated_defintion("codegen/inputs/call_repeat4.txt", "codegen/outputs/call_repeat4.cpp", 1);
 }
 
+TEST_F(GenTest, DefinitionCallRepeat5) {
+    assert_generated_defintion("codegen/inputs/call_repeat5.txt", "codegen/outputs/call_repeat5.cpp", 1);
+}
+
 TEST_F(GenTest, DefinitionCallStar) {
     assert_generated_defintion("codegen/inputs/call_condition1.txt", "codegen/outputs/call_condition1.cpp", 1);
 }
