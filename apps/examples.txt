@@ -66,3 +66,4 @@ for (int i=0; i < N; i++) {
     }
     A[i] = init_k;
 }
+

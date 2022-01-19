@@ -1,8 +1,7 @@
-Let fib(A int, B int) -> (C int, D int)
+Let f(A int) -> (C int)
     C = A
-    D = B
 End
 
-Let func() -> (A int[N], B int[N][M])
-    A[i], B[i][j] = fib*(1, 2) | 3
+Let func(B int[N]) -> (A int[N])
+    A[i] = (f*(2) | 6) * B[i]
 End

@@ -508,7 +508,6 @@ namespace einsum {
         virtual void visit(CallStarCondition& node) = 0;
         virtual void visit(Module& node) = 0;
         virtual void visit(Reduction& node) = 0;
-
     };
 
     template<typename T, typename parent, typename... mixins>

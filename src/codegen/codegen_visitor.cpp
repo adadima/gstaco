@@ -4,6 +4,8 @@
 
 #include "einsum_taco/codegen/codegen_visitor.h"
 
+#include<iostream>
+
 namespace einsum {
     template<typename T>
     std::shared_ptr<T> shared_from_ref(const T& ref) {
@@ -29,7 +31,12 @@ namespace einsum {
     }
 
     void CodeGenVisitor::visit(const ReadAccess& node) {
-        oss << node.dump();
+        oss << node.tensor->name;
+        for (const auto &indice : node.indices) {
+            oss << "[";
+            indice->accept(this);
+            oss << "]";
+        }
     }
 
     //
@@ -89,10 +96,22 @@ namespace einsum {
     void CodeGenVisitor::visit(const FuncDecl& node) {}
 
     void CodeGenVisitor::visit(const Call& node) {
-        oss << node.dump();
+        oss << node.function->funcName;
+        oss << "(";
+        for (int i=0; i < node.arguments.size(); i++) {
+            if (i > 0) {
+                oss << ", ";
+            }
+            node.arguments[i]->accept(this);
+        }
+        oss << ")";
     }
 
     void CodeGenVisitor::get_lambda_return(std::string output_type, int num_outputs) {
+        if (num_outputs == 1) {
+            oss << "return out0;";
+            return;
+        }
         oss << "return std::tuple";
         oss << output_type;
         oss << "{";
@@ -123,6 +142,8 @@ namespace einsum {
                 oss << var;
             }
             oss << "] = out;\n";
+        } else {
+            oss << "auto& out0 = out;\n";
         }
 
         generate_for_loop("iter", IR::make<Literal>(node.numIterations - 1, Datatype::intType()));
@@ -131,7 +152,7 @@ namespace einsum {
         indent();
         oss << get_indent();
         if (node.arguments.size() == 1) {
-            oss << "out";
+            oss << "out0";
         } else {
             oss << "std::tie(";
             for(int i=0; i < node.arguments.size(); i++) {
@@ -177,7 +198,9 @@ namespace einsum {
                 auto var = "out" + std::to_string(i);
                 oss << var;
             }
-            oss << "] = out;";
+            oss << "] = out;\n";
+        } else {
+            oss << "auto& out0 = out;\n";
         }
 
         generate_while_loop(node.stopCondition);
@@ -185,7 +208,7 @@ namespace einsum {
         indent();
         oss << get_indent();
         if (node.arguments.size() == 1) {
-            oss << "out";
+            oss << "out0";
         } else {
             oss << "std::tie(";
             for(int i=0; i < node.arguments.size(); i++) {
@@ -210,6 +233,8 @@ namespace einsum {
 
         oss << get_indent();
         oss << "}\n";
+
+        //TODO: dump() is no good enough for tensor types with complex expressions as dimensions
         get_lambda_return(node.getType()->dump(), node.arguments.size());
         oss << "\n}())";
     }
@@ -282,11 +307,30 @@ namespace einsum {
     }
 
     void CodeGenVisitor::visit(const BinaryOp &node) {
-        oss << node.dump();
+
+        if (node.left->precedence > node.precedence) {
+            oss << "(";
+            node.left->accept(this);
+            oss << ")";
+        } else {
+            node.left->accept(this);
+        }
+        oss << " ";
+        oss << node.op->sign;
+        oss << " ";
+        if ((node.right->precedence > node.precedence) ||  (node.right->precedence == node.precedence && node.isAsymmetric)){
+            oss << "(";
+            node.right->accept(this);
+            oss << ")";
+        } else {
+            node.right->accept(this);
+        }
     }
 
     void CodeGenVisitor::visit(const UnaryOp &node) {
-        oss << node.dump();
+        oss << node.op->sign;
+        oss << " ";
+        node.expr->accept(this);
     }
 
     std::shared_ptr<Expression> CodeGenVisitor::reduce_expression(const std::string& init_var, std::shared_ptr<Expression> expr, const std::shared_ptr<Operator>& op) {
@@ -307,10 +351,10 @@ namespace einsum {
 
     void CodeGenVisitor::generate_while_loop(const std::shared_ptr<Expression>& condition) {
         oss << get_indent();
-        oss << "while(! ";
+        oss << "while(!";
         oss << "(";
         condition->accept(this);
         oss << ")";
         oss <<  ") {\n";
-    };
+    }
 }

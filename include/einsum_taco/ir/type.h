@@ -18,19 +18,21 @@ namespace einsum {
 
     struct Type {
         virtual ~Type() = default;
+
         virtual bool isInt() const = 0;
 
         virtual bool isFloat() const = 0;
 
         virtual bool isBool() const = 0;
+
         virtual std::string dump() const = 0;
 
-        template<typename T, typename ... Types >
+        template<typename T, typename ... Types>
         static std::shared_ptr<T> make(Types... args) {
             return std::make_shared<T>(args...);
         }
 
-        template<typename T, typename ... Types >
+        template<typename T, typename ... Types>
         static std::vector<std::shared_ptr<T>> make_vec(Types... args) {
             std::vector<std::shared_ptr<T>> v = {args...};
             return v;
@@ -46,8 +48,10 @@ namespace einsum {
         };
 
         explicit Datatype(Kind kind);
+
         explicit Datatype(std::string type_name);
-        template <typename T>
+
+        template<typename T>
         static std::shared_ptr<Datatype> make_datatype() {
             if (std::is_same<T, int>()) {
                 return Type::make<Datatype>(Kind::Int);
@@ -110,14 +114,15 @@ namespace einsum {
 
 
     struct Operator {
-        Operator(int precedence, const char* sign, std::shared_ptr<Type> type) :
+        Operator(int precedence, const char *sign, std::shared_ptr<Type> type) :
                 precedence(precedence), sign(sign), isAsymmetric(false), type(std::move(type)) {}
 
-        Operator(int precedence, const char* sign, bool isAsymmetric, std::shared_ptr<Type> type) :
+        Operator(int precedence, const char *sign, bool isAsymmetric, std::shared_ptr<Type> type) :
                 precedence(precedence), sign(sign), isAsymmetric(isAsymmetric), type(std::move(type)) {}
 
-        Operator(int precedence, const char* sign, const char* reductionSign, std::shared_ptr<Type> type) :
-                precedence(precedence), sign(sign), reductionSign(reductionSign), isAsymmetric(false), type(std::move(type)) {}
+        Operator(int precedence, const char *sign, const char *reductionSign, std::shared_ptr<Type> type) :
+                precedence(precedence), sign(sign), reductionSign(reductionSign), isAsymmetric(false),
+                type(std::move(type)) {}
 
         std::string reductionSign;
         int precedence;
@@ -129,13 +134,17 @@ namespace einsum {
 
     };
 
-    struct BinaryOperator {};
+    struct BinaryOperator {
+    };
 
-    struct UnaryOperator {};
+    struct UnaryOperator {
+    };
 
-    struct LogicalOperator {};
+    struct LogicalOperator {
+    };
 
-    struct ComparisonOperator {};
+    struct ComparisonOperator {
+    };
 
     struct AddOp : Operator, BinaryOperator {
         AddOp() : Operator(4, "+", "+", nullptr) {}
@@ -158,7 +167,7 @@ namespace einsum {
     };
 
     struct AndOp : Operator, BinaryOperator, LogicalOperator {
-        AndOp() : Operator(11, "&&", "AND", Datatype::boolType())  {}
+        AndOp() : Operator(11, "&&", "AND", Datatype::boolType()) {}
     };
 
     struct OrOp : Operator, BinaryOperator, LogicalOperator {
@@ -199,8 +208,11 @@ namespace einsum {
     // TODO: allow users to write their own operators!!
     struct TensorType : public Type {
     public:
-        TensorType() : type(Type::make<Datatype>(Datatype::Kind::Int)), dimensions(std::vector<std::shared_ptr<einsum::Expression>>()) {}
-        TensorType(std::shared_ptr<Datatype> type, std::vector<std::shared_ptr<einsum::Expression>> dimensions) : type(std::move(type)), dimensions(std::move(dimensions)) {}
+        TensorType() : type(Type::make<Datatype>(Datatype::Kind::Int)),
+                       dimensions(std::vector<std::shared_ptr<einsum::Expression>>()) {}
+
+        TensorType(std::shared_ptr<Datatype> type, std::vector<std::shared_ptr<einsum::Expression>> dimensions) : type(
+                std::move(type)), dimensions(std::move(dimensions)) {}
 
         std::vector<std::shared_ptr<einsum::Expression>> getDimensions() const;
 
@@ -223,6 +235,7 @@ namespace einsum {
         std::shared_ptr<Datatype> type;
     };
 }
+
 //TODO: implement a templated utility class which says if something is a reduction or not
 // example; is_reduction<MulOp>::value\
 //

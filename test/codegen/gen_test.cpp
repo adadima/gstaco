@@ -57,7 +57,7 @@ public:
 //        cout << printer.ast;
         auto new_module = rewriter.module;
 //        new_module->accept(&printer);
-//        cout << printer.ast;
+//        cerr << printer.ast;
         auto def = new_module->decls[d];
         if (def->is_def()) {
             def->as_def().accept(&generator);
