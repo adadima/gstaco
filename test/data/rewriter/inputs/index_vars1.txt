@@ -1,0 +1,5 @@
+
+Let Frontier(edges int[N][N], frontier_list int[N][N], visited int[N], round_in int) -> (frontier int[N], round_out int)
+    frontier[j] = edges[j][k] * frontier_list[2][k] * (visited[j] == 0) | k:(OR, 0)
+    round_out = round_in * 2
+End

@@ -1,0 +1,7 @@
+Let fib(A int, B float) -> (C int, D float)
+
+End
+
+Let func(C int, D float) -> (A int, B float)
+    A, B = fib(C, D)
+End

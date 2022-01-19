@@ -1,0 +1,123 @@
+<Module
+	<Array
+			<FuncDecl
+				Frontier
+				<Array
+						<TensorVar edges int[N][N]>
+						<TensorVar frontier_list int[N][N]>
+						<TensorVar visited int[N]>
+						<TensorVar round_in int>
+				>
+				<Array
+						<TensorVar frontier int[N]>
+						<TensorVar round_out int>
+				>
+				<Array
+						<Definition
+							<Array
+									<Access
+										<TensorVar frontier int[N]>
+										<Array
+												<IndexVar
+													j
+													<ReadAccess
+														<TensorVar N int>
+														<Array>
+													>
+												>
+										>
+									>
+							>
+							<BinaryOp
+								<BinaryOp
+									<ReadAccess
+										<TensorVar edges int[N][N]>
+										<Array
+												<IndexVarExpr
+													<IndexVar
+														j
+														<ReadAccess
+															<TensorVar N int>
+															<Array>
+														>
+													>
+												>
+												<IndexVarExpr
+													<IndexVar
+														k
+														<ReadAccess
+															<TensorVar N int>
+															<Array>
+														>
+													>
+												>
+										>
+									>
+									*
+									<ReadAccess
+										<TensorVar frontier_list int[N][N]>
+										<Array
+												<Literal 2 int>
+												<IndexVarExpr
+													<IndexVar
+														k
+														<ReadAccess
+															<TensorVar N int>
+															<Array>
+														>
+													>
+												>
+										>
+									>
+								>
+								*
+								<BinaryOp
+									<ReadAccess
+										<TensorVar visited int[N]>
+										<Array
+												<IndexVarExpr
+													<IndexVar
+														j
+														<ReadAccess
+															<TensorVar N int>
+															<Array>
+														>
+													>
+												>
+										>
+									>
+									==
+									<Literal 0 int>
+								>
+							>
+							<Array
+									<IndexVar
+										k
+										<ReadAccess
+											<TensorVar N int>
+											<Array>
+										>
+									>
+							>
+						>
+						<Definition
+							<Array
+									<Access
+										<TensorVar round_out int>
+										<Array>
+									>
+							>
+							<BinaryOp
+								<ReadAccess
+									<TensorVar round_in int>
+									<Array>
+								>
+								*
+								<Literal 2 int>
+							>
+							<Array>
+						>
+				>
+			>
+	>
+>

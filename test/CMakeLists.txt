@@ -16,13 +16,14 @@ include(GoogleTest)
 
 add_library(test_interface STATIC config.cpp)
 target_link_libraries(test_interface PUBLIC gtest gtest_main parser_lib einsum_lib)
+add_compile_definitions(test_interface PUBLIC EINSUM_TACO_TEST_DATADIR="${CMAKE_CURRENT_SOURCE_DIR}/data/")
 
 function(add_einsum_test test_dir test_name)
     add_executable(${test_name} ${test_dir}/${test_name}.cpp)
     target_link_libraries(${test_name} PUBLIC test_interface)
     add_dependencies(check ${test_name})
-    gtest_discover_tests(${test_name})
-#    add_test(${test_name} ${test_name})
+#    gtest_discover_tests(${test_name})
+    add_test(${test_name} ${test_name})
 endfunction()
 
 add_einsum_test(ir dump_test)

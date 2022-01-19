@@ -1,0 +1,8 @@
+Let fib(A int, B int) -> (C int, D int)
+    C = A
+    D = B
+End
+
+Let func() -> (A int[N], B int[N])
+    A[i], B[i] = fib*(1, 2) | 3
+End

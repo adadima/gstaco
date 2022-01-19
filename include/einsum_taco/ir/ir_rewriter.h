@@ -8,6 +8,8 @@
 #include "einsum_taco/ir/ir.h"
 #include "einsum_taco/ir/context.h"
 
+//TODO: make a rewriter base clarr and overwrite rewrite for different use cases ( see taco, builtit)
+
 namespace einsum {
     class IRRewriter : public IRMutator {
     protected:

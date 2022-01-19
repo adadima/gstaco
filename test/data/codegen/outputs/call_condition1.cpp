@@ -1,0 +1,14 @@
+auto out = fib(C, D);
+auto& [out0, out1] = out;
+while(!(A == 0)) {
+    auto out = ([&]{
+auto out = fib(C, D);
+auto& [out0, out1] = out;
+    for(int iter=0; iter<99; iter++) {
+        std::tie(out0, out1) = fib(out0, out1);
+    }
+return std::tuple<int, float>{out0, out1};
+}());
+}
+A = std::get<0>(out);
+B = std::get<1>(out);
