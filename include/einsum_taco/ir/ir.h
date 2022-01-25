@@ -358,44 +358,25 @@ namespace einsum {
     };
 
     struct Definition : Acceptor<Definition, ModuleComponent> {
+        std::vector<std::shared_ptr<Reduction>> reduction_list;
+        std::vector<std::shared_ptr<Access>> lhs;
+        std::shared_ptr<Expression> rhs;
+
         Definition(std::shared_ptr<Access> lhs, std::shared_ptr<Expression> rhs) :
                     Definition({std::move(lhs)}, std::move(rhs), {}) {}
 
-//        Definition(std::shared_ptr<Access> lhs, std::shared_ptr<Expression> rhs, const std::vector<std::shared_ptr<Reduction>>& reds) :
-//                Definition({std::move(lhs)}, std::move(rhs), reds) {}
-
-        Definition(std::vector<std::shared_ptr<Access>> lhs,
-                   std::shared_ptr<Expression> rhs,
-                   const std::vector<std::shared_ptr<Reduction>>& reds) :
+        Definition(const std::vector<std::shared_ptr<Access>>& lhs,
+                   const std::shared_ptr<Expression>& rhs,
+                   const std::vector<std::shared_ptr<Reduction>>&  reds) :
                    lhs(std::move(lhs)),
                    rhs(std::move(rhs)),
-                   reduction_list(reds) {
-            for (auto & lh : this->lhs) {
-                auto inds = lh->indices;
-                for (const auto & ind : inds) {
-                    leftIndices.push_back(ind);
-                }
-            }
-            rightIndices = this->rhs->getIndices();
-
-            for (auto &red : reds) {
-                reductionVars.push_back(red->reductionVar);
-                reductions[red->reductionVar] = red;
-            }
-        }
+                   reduction_list(std::move(reds)) {}
 
         std::string dump() const override;
 
         std::map<std::string, std::set<std::shared_ptr<Expression>>> getIndexVarDims(IRContext* context) const;
         std::set<std::string> getLeftIndexVars() const;
         std::set<std::string> getReductionVars() const;
-        std::vector<std::shared_ptr<IndexVar>> leftIndices;
-        std::vector<std::shared_ptr<IndexVar>> rightIndices;
-        std::vector<std::shared_ptr<IndexVar>> reductionVars;
-        std::map<std::shared_ptr<IndexVar>, std::shared_ptr<Reduction>> reductions;
-        std::vector<std::shared_ptr<Reduction>> reduction_list;
-        std::vector<std::shared_ptr<Access>> lhs;
-        std::shared_ptr<Expression> rhs;
     };
 
     struct FuncDecl : Acceptor<FuncDecl, ModuleComponent> {

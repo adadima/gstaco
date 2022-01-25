@@ -15,9 +15,20 @@ namespace einsum {
             std::shared_ptr<Definition> def;
             std::set<std::string> leftIndexVars;
             std::set<std::string> reductionIndexVars;
+            std::map<std::string, std::set<std::shared_ptr<Expression>>> index_var_dimensions_;
 
             [[nodiscard]] bool has_index_var(const std::string& i) const {
                 return leftIndexVars.count(i) || reductionIndexVars.count(i);
+            }
+
+            std::shared_ptr<Expression> getDimension(const std::string& name) {
+                if (index_var_dimensions_.count(name)) {
+                    auto dims = index_var_dimensions_[name];
+                    if (!dims.empty()) {
+                        return *dims.begin();
+                    }
+                }
+                return nullptr;
             }
 
         };
@@ -28,12 +39,11 @@ namespace einsum {
         std::shared_ptr<FuncDecl> func_scope_;
         DefinitionScope* def_scope_;
         std::shared_ptr<Access> access_scope_;
+        std::shared_ptr<ReadAccess> read_access_scope_;
         std::stack<std::shared_ptr<TensorVar>> tensor_scope_;
         std::map<std::string, std::shared_ptr<IndexVar>> reduction_dimensions_;
 
         int coordinate_;
-
-        std::map<std::string, std::shared_ptr<Expression>> index_var_dimensions_;
 
         static std::shared_ptr<TensorVar> get_param(const TensorVar& tensor, const std::vector<std::shared_ptr<TensorVar>>& param_list) {
 
@@ -61,6 +71,10 @@ namespace einsum {
             return access_scope_;
         }
 
+        std::shared_ptr<ReadAccess>& read_access_scope() {
+            return read_access_scope_;
+        }
+
         std::stack<std::shared_ptr<TensorVar>>& tensor_scope() {
             return tensor_scope_;
         }
@@ -81,16 +95,12 @@ namespace einsum {
         }
 
         void enter_function(const std::shared_ptr<FuncDecl>& func) {
-            // functions_.emplace(func->funcName, func);
-
             func_scope() = func;
-
-
         }
 
         void enter_definition(const std::shared_ptr<Definition>& def) {
 
-            auto scope = new DefinitionScope{def, def->getLeftIndexVars(), def->getReductionVars()};
+            auto scope = new DefinitionScope{def, def->getReductionVars(), def->getLeftIndexVars(), def->getIndexVarDims(this)};
             def_scope() = scope;
 
             if (!func_scope()) {
@@ -101,16 +111,29 @@ namespace einsum {
         }
 
         std::shared_ptr<IndexVar> get_index_var(std::string name) {
+            if (tensor_scope().empty()) {
+                auto dim = def_scope()->getDimension(name);
+                if (dim) {
+                    return std::make_shared<IndexVar>(name, dim);
+                }
+                return nullptr;
+            }
 
             auto tensor = get_write_tensor(*tensor_scope().top());
             if (tensor) {
                 auto dim = tensor->getType()->getDimension(coordinate_);
-                return std::make_shared<IndexVar>(name, dim);
+                return IR::make<IndexVar>(name, dim);
             }
+
             return nullptr;
         }
 
         std::shared_ptr<IndexVarExpr> get_index_var_expr(std::string name) {
+            if (tensor_scope().empty()) {
+                auto dim = def_scope()->getDimension(name);
+                auto index_var = std::make_shared<IndexVar>(name, dim);
+                return std::make_shared<IndexVarExpr>(index_var);
+            }
             auto tensor = get_read_tensor(*tensor_scope().top());
             if (tensor) {
                 auto dim = tensor->getType()->getDimension(coordinate_);
@@ -136,7 +159,7 @@ namespace einsum {
             def_scope() = nullptr;
         }
 
-        void exit_function(const std::shared_ptr<FuncDecl> func) {
+        void exit_function(const std::shared_ptr<FuncDecl>& func) {
             functions_.emplace(func->funcName, func);
             func_scope() = nullptr;
         }
@@ -153,7 +176,6 @@ namespace einsum {
         }
 
         void enter_access(const std::shared_ptr<Access>& access) {
-
             access_scope() = access;
             tensor_scope().push(access->tensor);
             coordinate() = -1;
@@ -166,6 +188,11 @@ namespace einsum {
 
         void enter_read_access(const std::shared_ptr<ReadAccess>& raccess) {
             tensor_scope().push(raccess->tensor);
+            // TODO:: do this in a separate pass, will have to splitup visitors
+//            for (int i=0; i < raccess->indices.size(); i++) {
+//                auto dim = raccess->tensor->getType()->getDimension(i);
+//                index_var_dimensions_
+//            }
             coordinate() = -1;
 
         }

@@ -1,5 +1,4 @@
 {Already in scope: edges[N][N], weights[N][N], source int}
-
 Let Init(source int) -> (frontier_list int[N][N], num_paths int[N], deps int[N], visited int[N])
    num_paths[j] = (j == source)
    deps[j] = 0
@@ -29,11 +28,7 @@ Let Backwards_Vertex(frontier_list int[N][N], num_paths int[N], deps int[N], vis
 End
 
 Let Backwards_Edge(frontier_list int[N][N], num_paths int[N], deps int[N], visited int[N], round int) -> (backward_deps int[N], backward_round int)
-
-
 	backward_deps[j] = edges[k][j] * frontier_list[round][k] * visited[k] * deps[k] | k:(+, deps[j])
-
-
 	backward_round = round - 1
 
 End
@@ -41,7 +36,6 @@ End
 Let Backward_Step(frontier_list int[N][N], num_paths int[N], deps int[N], visited int[N], round int) -> (final_frontier_list int[N][N], final_num_paths int[N], final_deps int[N], final_visited int[N], final_round int)
 	final_frontier_list[r][j] = frontier_list[r][j]
 	final_num_paths[j] = num_paths[j]
-
 	backward_deps, final_visited = Backwards_Vertex(frontier_list, num_paths, deps, visited, round)
 	final_deps, final_round = Backwards_Edge(frontier_list, num_paths, backward_deps, final_visited, round)
 End

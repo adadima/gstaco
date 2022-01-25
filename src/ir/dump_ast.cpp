@@ -109,7 +109,7 @@ void einsum::DumpAstVisitor::visit(const einsum::Definition &node) {
     auto lhs = visit_array(node.lhs);
     node.rhs->accept(this);
     auto rhs = ast;
-    auto reds = visit_array(node.reductionVars);
+    auto reds = visit_array(node.reduction_list);
 
     ast = get_indent() + "<" + node.class_name() + "\n";
     array_ast(lhs);

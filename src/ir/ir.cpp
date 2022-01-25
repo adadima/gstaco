@@ -169,18 +169,18 @@ namespace einsum {
         }
 
         def += " = " + this->rhs->dump();
-        if (this->reductions.empty()) {
+        if (this->reduction_list.empty()) {
             return def;
         }
         def += " | ";
         first = true;
-        for (std::pair<std::shared_ptr<IndexVar>, std::shared_ptr<Reduction>> element : this->reductions) {
+        for (auto& red: this->reduction_list) {
             if (!first) {
                 def += ", ";
             } else {
                 first = false;
             }
-            def += element.second->dump();
+            def += red->dump();
         }
         return def;
     }
@@ -431,16 +431,18 @@ namespace einsum {
 
     std::set<std::string> Definition::getLeftIndexVars() const {
         auto s = std::set<std::string>();
-        for (auto &&var: leftIndices) {
-            s.insert(var->getName());
+        for (auto &acc: lhs) {
+            for(auto &idx: acc->indices) {
+                s.insert(idx->getName());
+            }
         }
         return s;
     }
 
     std::set<std::string> Definition::getReductionVars() const {
         auto s = std::set<std::string>();
-        for (auto &&var: reductionVars) {
-            s.insert(var->getName());
+        for (auto &&var: reduction_list) {
+            s.insert(var->reductionVar->getName());
         }
         return s;
     }

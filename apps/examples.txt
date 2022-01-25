@@ -67,3 +67,16 @@ for (int i=0; i < N; i++) {
     A[i] = init_k;
 }
 
+Let BFS_Step(F_in int[N], P_in int[N]) -> (F_out int[N], P_out int[N])
+    V[j] = P_in[j] == -1
+    F_out[j] = G[j][k] * F_in[k] * !V[j] | k: (OR, 0)
+    P_out[j] = G[j][k] * F[k] * 1v[j] * k | k:(CHOOSE, P_in[j])
+End
+
+Let Init() -> (F int[N], P int[N])
+    F[j] = (j == source)
+    P[j] = -1
+End
+
+F_in, P_in = Init()
+_, P_out = BFS_Step*(F_in, P_in) | (#1 == 0)

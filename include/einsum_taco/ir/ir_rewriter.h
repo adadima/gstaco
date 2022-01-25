@@ -7,6 +7,7 @@
 
 #include "einsum_taco/ir/ir.h"
 #include "einsum_taco/ir/context.h"
+#include <type_traits>
 
 //TODO: make a rewriter base clarr and overwrite rewrite for different use cases ( see taco, builtit)
 
@@ -14,6 +15,14 @@ namespace einsum {
     class IRRewriter : public IRMutator {
     protected:
         IRContext* context;
+
+        template<typename T>
+        std::shared_ptr<T> shared_from_ref(T& ref);
+        std::shared_ptr<BinaryOp> rewrite_binary(BinaryOp& node);
+        std::shared_ptr<UnaryOp> rewrite_unary(UnaryOp& node);
+
+        template<typename T>
+        void visit_call(T& node);
 
     public:
         std::shared_ptr<Definition> def;
@@ -23,8 +32,53 @@ namespace einsum {
         std::shared_ptr<TensorVar> tensor;
         std::shared_ptr<Access> access;
         std::shared_ptr<IndexVar> index_var;
+        std::shared_ptr<Reduction> reduction;
 
         explicit IRRewriter(IRContext* context) : context(context) {}
+
+        template<typename T>
+        std::shared_ptr<T>& get(const std::shared_ptr<T>& node) {
+            if constexpr(std::is_same_v<T, IndexVar>) {
+                return index_var;
+            } else
+            if constexpr(std::is_base_of_v<Access, T>) {
+                return access;
+            } else
+            if constexpr(std::is_base_of_v<TensorVar, T>) {
+                return tensor;
+            } else
+            if constexpr(std::is_base_of_v<Module, T>) {
+                return module;
+            } else
+            if constexpr(std::is_base_of_v<FuncDecl, T>) {
+                return func;
+            } else
+            if constexpr(std::is_base_of_v<Definition, T>) {
+                return def;
+            } else
+            if constexpr(std::is_base_of_v<Expression, T>) {
+                return expr;
+            } else
+            if constexpr(std::is_base_of_v<Reduction, T>) {
+                return reduction;
+            } else {
+
+            }
+        }
+
+        template <typename T = IR>
+        std::shared_ptr<T> rewrite(const std::shared_ptr<T>& node) {
+            if (!node) {
+                return node;
+            }
+            auto &ref = get(node);
+            auto tmp = ref;
+            ref.reset();
+            node->accept(this);
+            auto ret = std::dynamic_pointer_cast<T>(ref);
+            ref = tmp;
+            return ret;
+        }
 
         void visit(IndexVar& node) override;
         void visit(Literal& node) override;
@@ -41,12 +95,6 @@ namespace einsum {
         void visit(CallStarCondition& node) override;
         void visit(Module& node) override;
         void visit(Reduction& node) override;
-        std::shared_ptr<ModuleComponent> visit(ModuleComponent& node);
-        std::shared_ptr<Expression> visit(Expression& node);
-
-        std::shared_ptr<BinaryOp> rewrite_binary(BinaryOp& node);
-
-        std::shared_ptr<UnaryOp> rewrite_unary(UnaryOp& node);
     };
 
 }
