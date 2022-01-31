@@ -82,9 +82,14 @@ namespace einsum {
 
     struct IndexVar : Acceptor<IndexVar> {
         std::string name;
+        int* coordinate;
         std::shared_ptr<Expression> dimension;
 
-        IndexVar(std::string name, std::shared_ptr<Expression> dimension) : name(std::move(name)), dimension(std::move(dimension)) {}
+        IndexVar(std::string name, std::shared_ptr<Expression> dimension) :
+            name(std::move(name)), dimension(std::move(dimension)), coordinate(nullptr) {}
+
+        IndexVar(std::string name, std::shared_ptr<Expression> dimension, int* coordinate) :
+            name(std::move(name)), dimension(std::move(dimension)), coordinate(coordinate) {}
 
         std::string getName() const;
 
@@ -418,6 +423,9 @@ namespace einsum {
     };
 
     struct CallStarRepeat : Acceptor<CallStarRepeat, Call> {
+        CallStarRepeat(int numIterations, std::string name, std::vector<std::shared_ptr<Expression>> arguments) :
+        Base(std::move(name), std::move(arguments)), numIterations(numIterations) {}
+
         CallStarRepeat(int numIterations, std::shared_ptr<FuncDecl> function, std::vector<std::shared_ptr<Expression>> arguments) :
             Base(std::move(function), std::move(arguments)), numIterations(numIterations) {}
 

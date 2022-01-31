@@ -224,7 +224,7 @@ namespace einsum {
         oss << get_indent();
         oss << "}\n";
 
-        //TODO: dump() is no good enough for tensor types with complex expressions as dimensions
+        //TODO: dump() is not good enough for tensor types with complex expressions as dimensions
         get_lambda_return(node.getType()->dump(), node.arguments.size());
         oss << "\n}())";
     }

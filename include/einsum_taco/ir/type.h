@@ -5,7 +5,7 @@
 #ifndef EINSUM_TACO_TYPE_H
 #define EINSUM_TACO_TYPE_H
 
-#include <utility>
+#include<utility>
 #include<vector>
 #include<map>
 #include<string>

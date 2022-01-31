@@ -47,6 +47,7 @@
 %type	<expr_vec>  args
 %type   <expression> call
 %type   <expression> call_star
+%type   <expression> call_repeat
 %type   <inds_vec>   write_access
 %type   <red>	     reduction
 %type   <reds_vec>   reduction_list
@@ -195,6 +196,12 @@ call: IDENTIFIER OPEN_PAREN CLOSED_PAREN	{new einsum::Call(*$1, std::vector<std:
 | IDENTIFIER OPEN_PAREN orexp args CLOSED_PAREN   {$4->insert($4->begin(), std::shared_ptr<einsum::Expression>($3));
 						$$ = new einsum::Call(*$1, *$4);}
 
+call_repeat: STAR_CALL OPEN_PAREN CLOSED_PAREN PIPE INTEGER_LITERAL	{$1->pop_back(); new einsum::CallStarRepeat($5, *$1, std::vector<std::shared_ptr<einsum::Expression>>());}
+             | STAR_CALL OPEN_PAREN orexp args CLOSED_PAREN PIPE INTEGER_LITERAL	{ $1->pop_back();
+             							$4->insert($4->begin(), std::shared_ptr<einsum::Expression>($3));
+             							$$ = new einsum::CallStarRepeat($7, *$1, *$4);}
+
+
 call_star: STAR_CALL OPEN_PAREN CLOSED_PAREN PIPE orexp	{$1->pop_back(); new einsum::CallStarCondition(std::shared_ptr<einsum::Expression>($5), *$1, std::vector<std::shared_ptr<einsum::Expression>>());}
 | STAR_CALL OPEN_PAREN orexp args CLOSED_PAREN PIPE orexp	{ $1->pop_back();
 							$4->insert($4->begin(), std::shared_ptr<einsum::Expression>($3));
@@ -214,6 +221,7 @@ exp:		OPEN_PAREN orexp CLOSED_PAREN { $$ = $2;}
 							);
 					}
 		| call	{$$ = $1;}
+		| call_repeat	{$$ = $1;}
 		| call_star	{$$ = $1;}
 		;
 

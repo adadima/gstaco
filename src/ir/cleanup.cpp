@@ -11,7 +11,7 @@ namespace einsum {
     void TensorVarRewriter::visit(TensorVar &node) {
         if (context->access_scope()) {
             tensor = context->get_write_tensor(node);
-        } else if (!context->tensor_scope().empty())  {
+        } else if (!context->tensor_scope().empty() && context->func_scope()) {
             tensor = context->get_read_tensor(node);
         } else {
             tensor = shared_from_ref(node);
@@ -28,12 +28,7 @@ namespace einsum {
     }
 
     void FuncDeclRewriter::visit(FuncDecl &node) {
-        auto f = context->get_function(node.funcName);
-        if (f) {
-            func = f;
-        } else {
-            IRRewriter::visit(node);
-        }
+        IRRewriter::visit(node);
     }
 
     void IndexDimensionRewriter::visit(IndexVar &node) {

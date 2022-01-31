@@ -19,29 +19,27 @@ using namespace std;
 class GenTest : public testing::Test {
 public:
     std::stringstream oss;
-    IRContext context;
     CodeGenVisitor generator;
     std::vector<IRRewriter*> rewriters;
-    // IndexVarRewriter rewriter;
     DumpAstVisitor printer;
 
     // GenTest() : generator(oss, "test"), rewriters{new IndexVarRewriter(&context)} {}
 
     GenTest() : generator(oss, "test"),
                 rewriters{
-                        new TensorVarRewriter(&context),
-                        new FuncDeclRewriter(&context),
-                        new IndexDimensionRewriter(&context)} {}
+                        new TensorVarRewriter(new IRContext()),
+                        new FuncDeclRewriter(new IRContext()),
+                        new IndexDimensionRewriter(new IRContext())} {}
 
     void assert_generated(const std::string& input, const std::string& expected) {
         // parse
-        auto mod = parse(input);
+        auto mod = std::make_shared<Module>(parse(input));
 
         // cleanup
         auto new_module = apply_rewriters(mod, rewriters);
 
         // code generation
-        new_module.accept(&generator);
+        new_module->accept(&generator);
         auto output = oss.str();
 
         // check output code
@@ -52,17 +50,17 @@ public:
         // parse
         auto input = *readFileIntoString(input_filename);
         auto expected = *readFileIntoString(expected_filename);
-        auto mod = parse(input);
+        auto mod = std::make_shared<Module>(parse(input));
 
         // cleanup
         auto new_module = apply_rewriters(mod, rewriters);
 
         // print IR
-        new_module.accept(&printer);
-        cerr << printer.ast;
+        new_module->accept(&printer);
+        // cerr << printer.ast;
 
         // selective code generation
-        auto def = new_module.decls[d];
+        auto def = new_module->decls[d];
         if (def->is_def()) {
             def->as_def().accept(&generator);
         } else if (def->is_decl()) {

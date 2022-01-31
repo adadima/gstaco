@@ -30,10 +30,10 @@ namespace einsum {
         void visit(IndexVarExpr& node) override;
     };
 
-    Module apply_rewriters(Module& mod, const std::vector<IRRewriter*>& rewriters) {
+    std::shared_ptr<Module> apply_rewriters(std::shared_ptr<Module> mod, const std::vector<IRRewriter*>& rewriters) {
         for (auto& rewriter: rewriters) {
-            mod.accept(rewriter);
-            mod = *rewriter->module;
+            mod->accept(rewriter);
+            mod = rewriter->module;
         }
         return mod;
     }

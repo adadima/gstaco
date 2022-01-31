@@ -47,6 +47,7 @@ namespace einsum {
         context->enter_access(shared_from_ref(node));
         node.tensor = rewrite(node.tensor);
         for(auto &indice : node.indices) {
+            context->advance_access();
             indice = rewrite(indice);
         }
         access = shared_from_ref(node);
@@ -57,6 +58,7 @@ namespace einsum {
         context->enter_read_access(shared_from_ref(node));
         node.tensor = rewrite(node.tensor);
         for(auto &indice : node.indices) {
+            context->advance_access();
             indice = rewrite(indice);
         }
         expr = shared_from_ref(node);
@@ -77,19 +79,24 @@ namespace einsum {
     }
 
     void  IRRewriter::visit(FuncDecl& node) {
-        context->enter_function(shared_from_ref(node));
-        for(auto& input: node.inputs) {
-            input = rewrite(input);
+        auto f = context->get_function(node.funcName);
+        if (f) {
+            func = f;
+        } else {
+            context->enter_function(shared_from_ref(node));
+            for(auto& input: node.inputs) {
+                input = rewrite(input);
+            }
+            for(auto& output: node.outputs) {
+                output = rewrite(output);
+            }
+            for(auto& stmt: node.body) {
+                einsum_iassert(context->func_scope() != nullptr);
+                stmt = rewrite(stmt);
+            }
+            func = shared_from_ref(node);
+            context->exit_function(func);
         }
-        for(auto& output: node.outputs) {
-            std::cerr << "Rewriting output: " << output;
-            output = rewrite(output);
-        }
-        for(auto& stmt: node.body) {
-            stmt = rewrite(stmt);
-        }
-        func = shared_from_ref(node);
-        context->exit_function(shared_from_ref(node));
     }
 
     template<typename T>

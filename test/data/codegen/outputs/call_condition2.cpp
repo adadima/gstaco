@@ -7,7 +7,7 @@
                 init_k = init_k + (([&]{
 auto out = f(i);
 auto& out0 = out;
-                while(!(i < 99)) {
+                while(!(i < 100)) {
                     out0 = f(out0);
                 }
 return out0;
