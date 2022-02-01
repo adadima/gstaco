@@ -33,7 +33,7 @@ namespace einsum {
     std::shared_ptr<Module> apply_rewriters(std::shared_ptr<Module> mod, const std::vector<IRRewriter*>& rewriters) {
         for (auto& rewriter: rewriters) {
             mod->accept(rewriter);
-            mod = rewriter->module;
+            mod = std::dynamic_pointer_cast<Module>(rewriter->node_);
         }
         return mod;
     }

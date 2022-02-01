@@ -22,20 +22,20 @@ namespace einsum {
 
     void IRRewriter::visit(std::shared_ptr<IndexVar> node) {
         node->dimension = rewrite(node->dimension);
-        index_var = node;
+        node_ = node;
     }
 
     void  IRRewriter::visit(std::shared_ptr<Literal> node) {
-        expr = node;
+        node_ = node;
     }
 
     void  IRRewriter::visit(std::shared_ptr<TensorVar> node) {
-        tensor = node;
+        node_ = node;
     }
 
     void  IRRewriter::visit(std::shared_ptr<IndexVarExpr> node) {
         node->indexVar = rewrite(node->indexVar);
-        expr = node;
+        node_ = node;
     }
 
     void  IRRewriter::visit(std::shared_ptr<Access> node) {
@@ -45,7 +45,7 @@ namespace einsum {
             context->advance_access();
             indice = rewrite(indice);
         }
-        access = node;
+        node_ = node;
         context->exit_access();
     }
 
@@ -56,7 +56,7 @@ namespace einsum {
             context->advance_access();
             indice = rewrite(indice);
         }
-        expr = node;
+        node_ = node;
         context->exit_read_access();
     }
 
@@ -69,14 +69,14 @@ namespace einsum {
         for(auto& red: node->reduction_list) {
             red = rewrite(red);
         }
-        def = node;
+        node_ = node;
         context->exit_definition();
     }
 
     void  IRRewriter::visit(std::shared_ptr<FuncDecl> node) {
         auto f = context->get_function(node->funcName);
         if (f) {
-            func = f;
+            node_ = f;
         } else {
             context->enter_function(node);
             for(auto& input: node->inputs) {
@@ -89,8 +89,8 @@ namespace einsum {
                 einsum_iassert(context->func_scope() != nullptr);
                 stmt = rewrite(stmt);
             }
-            func = node;
-            context->exit_function(func);
+            node_ = node;
+            context->exit_function(node);
         }
     }
 
@@ -100,7 +100,7 @@ namespace einsum {
         for(auto& arg: node->arguments) {
             arg = rewrite(arg);
         }
-        expr = node;
+        node_ = node;
     }
 
     void  IRRewriter::visit(std::shared_ptr<Call> node) {
@@ -128,21 +128,21 @@ namespace einsum {
                 comp = rewrite(comp->as_expr());
             }
         }
-        module = node;
+        node_ = node;
     }
 
     void IRRewriter::visit(std::shared_ptr<Reduction> node) {
         node->reductionVar = rewrite(node->reductionVar);
         node->reductionInit = rewrite(node->reductionInit);
-        reduction = node;
+        node_ = node;
     }
 
     void IRRewriter::visit(std::shared_ptr<BinaryOp> node) {
-        expr = rewrite_binary(node);
+        node_ = rewrite_binary(node);
     }
 
     void IRRewriter::visit(std::shared_ptr<UnaryOp> node) {
-        expr = rewrite_unary(node);
+        node_ = rewrite_unary(node);
     }
 
 }

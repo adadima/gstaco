@@ -25,58 +25,20 @@ namespace einsum {
         void visit_call(T& node);
 
     public:
-        std::shared_ptr<Definition> def;
-        std::shared_ptr<Expression> expr;
-        std::shared_ptr<FuncDecl> func;
-        std::shared_ptr<Module> module;
-        std::shared_ptr<TensorVar> tensor;
-        std::shared_ptr<Access> access;
-        std::shared_ptr<IndexVar> index_var;
-        std::shared_ptr<Reduction> reduction;
+          std::shared_ptr<IR> node_;
 
         explicit IRRewriter(IRContext* context) : context(context) {}
-
-        template<typename T>
-        std::shared_ptr<T>& get(const std::shared_ptr<T>& node) {
-            if constexpr(std::is_same_v<T, IndexVar>) {
-                return index_var;
-            } else
-            if constexpr(std::is_base_of_v<Access, T>) {
-                return access;
-            } else
-            if constexpr(std::is_base_of_v<TensorVar, T>) {
-                return tensor;
-            } else
-            if constexpr(std::is_base_of_v<Module, T>) {
-                return module;
-            } else
-            if constexpr(std::is_base_of_v<FuncDecl, T>) {
-                return func;
-            } else
-            if constexpr(std::is_base_of_v<Definition, T>) {
-                return def;
-            } else
-            if constexpr(std::is_base_of_v<Expression, T>) {
-                return expr;
-            } else
-            if constexpr(std::is_base_of_v<Reduction, T>) {
-                return reduction;
-            } else {
-
-            }
-        }
 
         template <typename T = IR>
         std::shared_ptr<T> rewrite(const std::shared_ptr<T>& node) {
             if (!node) {
                 return node;
             }
-            auto &ref = get(node);
-            auto tmp = ref;
-            ref.reset();
+            auto tmp = node_;
+            node_.reset();
             node->accept(this);
-            auto ret = std::dynamic_pointer_cast<T>(ref);
-            ref = tmp;
+            auto ret = std::dynamic_pointer_cast<T>(node_);
+            node_ = tmp;
             return ret;
         }
 
