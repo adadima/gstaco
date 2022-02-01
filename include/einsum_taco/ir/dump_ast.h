@@ -13,22 +13,22 @@ namespace einsum{
         std::string ast;
         int indent_ = 0;
 
-        void visit(const IndexVar& node) override;
+        void visit(std::shared_ptr<IndexVar> node) override;
 
-        void visit(const Literal& node) override;
-        void visit(const TensorVar& node) override;
-        void visit(const IndexVarExpr& node) override;
-        void visit(const Access& node) override;
-        void visit(const ReadAccess& node) override;
-        void visit(const BinaryOp& node) override;
-        void visit(const UnaryOp& node) override;
-        void visit(const Definition& node) override;
-        void visit(const FuncDecl& node) override;
-        void visit(const Call& node) override;
-        void visit(const CallStarRepeat& node) override;
-        void visit(const CallStarCondition& node) override;
-        void visit(const Module& node) override;
-        void visit(const Reduction& node) override;
+        void visit(std::shared_ptr<Literal> node) override;
+        void visit(std::shared_ptr<TensorVar> node) override;
+        void visit(std::shared_ptr<IndexVarExpr> node) override;
+        void visit(std::shared_ptr<Access> node) override;
+        void visit(std::shared_ptr<ReadAccess> node) override;
+        void visit(std::shared_ptr<BinaryOp> node) override;
+        void visit(std::shared_ptr<UnaryOp> node) override;
+        void visit(std::shared_ptr<Definition> node) override;
+        void visit(std::shared_ptr<FuncDecl> node) override;
+        void visit(std::shared_ptr<Call> node) override;
+        void visit(std::shared_ptr<CallStarRepeat> node) override;
+        void visit(std::shared_ptr<CallStarCondition> node) override;
+        void visit(std::shared_ptr<Module> node) override;
+        void visit(std::shared_ptr<Reduction> node) override;
 
         std::string get_indent() const;
 

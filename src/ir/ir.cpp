@@ -288,44 +288,36 @@ namespace einsum {
         return dynamic_cast<const FuncDecl*>(this) != nullptr;
     }
 
-    FuncDecl& ModuleComponent::as_decl() {
-        return dynamic_cast<FuncDecl&>(*this);
-    }
-
-    const FuncDecl& ModuleComponent::as_decl() const {
-        return dynamic_cast<const FuncDecl&>(*this);
+    std::shared_ptr<FuncDecl> ModuleComponent::as_decl() {
+        try {
+            return std::dynamic_pointer_cast<FuncDecl>(this->shared_from_this());
+        } catch (const std::bad_weak_ptr& exp) {
+            std::abort();
+        }
     }
 
     bool ModuleComponent::is_def() const {
         return dynamic_cast<const Definition*>(this) != nullptr;
     }
 
-    Definition& ModuleComponent::as_def() {
-        return dynamic_cast<Definition&>(*this);
-    }
-
-    const Definition& ModuleComponent::as_def() const {
-        return dynamic_cast<const Definition&>(*this);
+    std::shared_ptr<Definition> ModuleComponent::as_def() {
+        try {
+            return std::dynamic_pointer_cast<Definition>(this->shared_from_this());
+        } catch (const std::bad_weak_ptr& exp) {
+            std::abort();
+        }
     }
 
     bool ModuleComponent::is_expr() const {
         return dynamic_cast<const Expression*>(this) != nullptr;
     }
 
-    Expression& ModuleComponent::as_expr() {
-        return dynamic_cast<Expression&>(*this);
-    }
-
-    const Expression& ModuleComponent::as_expr() const {
-        return dynamic_cast<const Expression&>(*this);
-    }
-
-    std::shared_ptr<FuncDecl> as_decl(const std::shared_ptr<ModuleComponent>& component) {
-        return std::dynamic_pointer_cast<FuncDecl>(component);
-    }
-
-    std::shared_ptr<Definition> as_def(const std::shared_ptr<ModuleComponent>& component) {
-        return std::dynamic_pointer_cast<Definition>(component);
+    std::shared_ptr<Expression> ModuleComponent::as_expr() {
+        try {
+            return std::dynamic_pointer_cast<Expression>(this->shared_from_this());
+        } catch (const std::bad_weak_ptr& exp) {
+            std::abort();
+        }
     }
 
     std::string IndexVar::getName() const {
@@ -387,7 +379,7 @@ namespace einsum {
     }
 
     std::map<std::string, std::set<std::shared_ptr<Expression>>>  ReadAccess::getIndexVarDims(IRContext* context) const {
-        return getDimsFromAccess<IndexVarExpr, Expression>(context->get_read_tensor(*tensor), indices);
+        return getDimsFromAccess<IndexVarExpr, Expression>(context->get_read_tensor(tensor), indices);
     }
 
     std::map<std::string, std::set<std::shared_ptr<Expression>>>  IndexVarExpr::getIndexVarDims(IRContext* context) const {
@@ -408,7 +400,7 @@ namespace einsum {
     }
 
     std::map<std::string, std::set<std::shared_ptr<Expression>>>  Access::getIndexVarDims(IRContext* context) const {
-        return getDimsFromAccess<IndexVar, IndexVar>(context->get_write_tensor(*tensor), indices);
+        return getDimsFromAccess<IndexVar, IndexVar>(context->get_write_tensor(tensor), indices);
     }
 
     std::map<std::string, std::set<std::shared_ptr<Expression>>> Definition::getIndexVarDims(IRContext* context) const {

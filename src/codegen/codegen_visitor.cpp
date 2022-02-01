@@ -7,32 +7,28 @@
 #include<iostream>
 
 namespace einsum {
-    template<typename T>
-    std::shared_ptr<T> shared_from_ref(const T& ref) {
-        return std::dynamic_pointer_cast<T>(ref.shared_from_this());
+
+    void CodeGenVisitor::visit(std::shared_ptr<IndexVar> node) {
+        oss << node->dump();
+    }
+    void CodeGenVisitor::visit(std::shared_ptr<Literal> node) {
+        oss << node->dump();
+    }
+    void CodeGenVisitor::visit(std::shared_ptr<TensorVar> node) {
+        oss << node->dump();
     }
 
-    void CodeGenVisitor::visit(const IndexVar& node) {
-        oss << node.dump();
-    }
-    void CodeGenVisitor::visit(const Literal& node) {
-        oss << node.dump();
-    }
-    void CodeGenVisitor::visit(const TensorVar& node) {
-        oss << node.dump();
+    void CodeGenVisitor::visit(std::shared_ptr<IndexVarExpr> node) {
+        node->indexVar->accept(this);
     }
 
-    void CodeGenVisitor::visit(const IndexVarExpr& node) {
-        node.indexVar->accept(this);
+    void CodeGenVisitor::visit(std::shared_ptr<Access> node) {
+        oss << node->dump();
     }
 
-    void CodeGenVisitor::visit(const Access& node) {
-        oss << node.dump();
-    }
-
-    void CodeGenVisitor::visit(const ReadAccess& node) {
-        oss << node.tensor->name;
-        for (const auto &indice : node.indices) {
+    void CodeGenVisitor::visit(std::shared_ptr<ReadAccess> node) {
+        oss << node->tensor->name;
+        for (const auto &indice : node->indices) {
             oss << "[";
             indice->accept(this);
             oss << "]";
@@ -44,24 +40,24 @@ namespace einsum {
     // frontier[j] = edges[j][k] * frontier_list[round][k] * (visited[j] == 0) | k:(OR, 0)
     // Assumes IR has been rewritten to break up definitions of multiple inputs
     // Does not support things like A[i], B[i] = 0; aka the rhs has to be a func call to support multiple outputs
-    void CodeGenVisitor::visit(const Definition& node) {
-        for(int a=0; a < node.lhs.size(); a++) {
+    void CodeGenVisitor::visit(std::shared_ptr<Definition> node) {
+        for(int a=0; a < node->lhs.size(); a++) {
             oss << get_indent();
             oss << "{\n";
             indent();
 
-            auto lhs = node.lhs[a];
+            auto lhs = node->lhs[a];
             for(auto &&acc : lhs->indices) {
                 generate_for_loop(acc->getName(), acc->dimension);
                 indent();
             }
 
-            auto init_var = visit_reduced_expr(node.rhs, node.reduction_list);
+            auto init_var = visit_reduced_expr(node->rhs, node->reduction_list);
 
             oss << get_indent();
             lhs->accept(this);
             oss << " = ";
-            if (node.lhs.size() > 1) {
+            if (node->lhs.size() > 1) {
                 oss << "std::get<";
                 oss << std::to_string(a);
                 oss << ">(";
@@ -83,16 +79,16 @@ namespace einsum {
         }
     }
 
-    void CodeGenVisitor::visit(const FuncDecl& node) {}
+    void CodeGenVisitor::visit(std::shared_ptr<FuncDecl> node) {}
 
-    void CodeGenVisitor::visit(const Call& node) {
-        oss << node.function->funcName;
+    void CodeGenVisitor::visit(std::shared_ptr<Call> node) {
+        oss << node->function->funcName;
         oss << "(";
-        for (int i=0; i < node.arguments.size(); i++) {
+        for (int i=0; i < node->arguments.size(); i++) {
             if (i > 0) {
                 oss << ", ";
             }
-            node.arguments[i]->accept(this);
+            node->arguments[i]->accept(this);
         }
         oss << ")";
     }
@@ -114,17 +110,17 @@ namespace einsum {
         oss << "};";
     }
 
-    void CodeGenVisitor::visit(const CallStarRepeat& node) {
+    void CodeGenVisitor::visit(std::shared_ptr<CallStarRepeat> node) {
         oss << "([&]{\n";
 
         oss << "auto out = ";
-        auto call = new Call(node.function, node.arguments);
+        auto call = IR::make<Call>(node->function, node->arguments);
         call->accept(this);
         oss << ";\n";
 
-        if (node.arguments.size() > 1) {
+        if (node->arguments.size() > 1) {
             oss << "auto& [";
-            for(int i=0; i < node.arguments.size(); i++) {
+            for(int i=0; i < node->arguments.size(); i++) {
                 if (i > 0) {
                     oss << ", ";
                 }
@@ -136,16 +132,16 @@ namespace einsum {
             oss << "auto& out0 = out;\n";
         }
 
-        generate_for_loop("iter", IR::make<Literal>(node.numIterations - 1, Datatype::intType()));
+        generate_for_loop("iter", IR::make<Literal>(node->numIterations - 1, Datatype::intType()));
 
 
         indent();
         oss << get_indent();
-        if (node.arguments.size() == 1) {
+        if (node->arguments.size() == 1) {
             oss << "out0";
         } else {
             oss << "std::tie(";
-            for(int i=0; i < node.arguments.size(); i++) {
+            for(int i=0; i < node->arguments.size(); i++) {
                 if (i > 0) {
                     oss << ", ";
                 }
@@ -156,10 +152,10 @@ namespace einsum {
         }
         oss << " = ";
         auto args = std::vector<std::shared_ptr<Expression>>();
-        for(int i=0; i < node.arguments.size(); i++) {
+        for(int i=0; i < node->arguments.size(); i++) {
             args.push_back(IR::make<ReadAccess>("out" + std::to_string(i)));
         }
-        auto call_ = new Call(node.function, args);
+        auto call_ = IR::make<Call>(node->function, args);
         call_->accept(this);
         oss << ";\n";
 
@@ -167,21 +163,21 @@ namespace einsum {
 
         oss << get_indent();
         oss << "}\n";
-        get_lambda_return(node.getType()->dump(), node.arguments.size());
+        get_lambda_return(node->getType()->dump(), node->arguments.size());
         oss << "\n}())";
     }
 
-    void CodeGenVisitor::visit(const CallStarCondition& node) {
+    void CodeGenVisitor::visit(std::shared_ptr<CallStarCondition> node) {
         oss << "([&]{\n";
 
         oss << "auto out = ";
-        auto call = new Call(node.function, node.arguments);
+        auto call = IR::make<Call>(node->function, node->arguments);
         call->accept(this);
         oss << ";\n";
 
-        if (node.arguments.size() > 1) {
+        if (node->arguments.size() > 1) {
             oss << "auto& [";
-            for(int i=0; i < node.arguments.size(); i++) {
+            for(int i=0; i < node->arguments.size(); i++) {
                 if (i > 0) {
                     oss << ", ";
                 }
@@ -193,15 +189,15 @@ namespace einsum {
             oss << "auto& out0 = out;\n";
         }
 
-        generate_while_loop(node.stopCondition);
+        generate_while_loop(node->stopCondition);
 
         indent();
         oss << get_indent();
-        if (node.arguments.size() == 1) {
+        if (node->arguments.size() == 1) {
             oss << "out0";
         } else {
             oss << "std::tie(";
-            for(int i=0; i < node.arguments.size(); i++) {
+            for(int i=0; i < node->arguments.size(); i++) {
                 if (i > 0) {
                     oss << ", ";
                 }
@@ -212,10 +208,10 @@ namespace einsum {
         }
         oss << " = ";
         auto args = std::vector<std::shared_ptr<Expression>>();
-        for(int i=0; i < node.arguments.size(); i++) {
+        for(int i=0; i < node->arguments.size(); i++) {
             args.push_back(IR::make<ReadAccess>("out" + std::to_string(i)));
         }
-        auto call_ = new Call(node.function, args);
+        auto call_ = IR::make<Call>(node->function, args);
         call_->accept(this);
         oss << ";\n";
 
@@ -225,14 +221,14 @@ namespace einsum {
         oss << "}\n";
 
         //TODO: dump() is not good enough for tensor types with complex expressions as dimensions
-        get_lambda_return(node.getType()->dump(), node.arguments.size());
+        get_lambda_return(node->getType()->dump(), node->arguments.size());
         oss << "\n}())";
     }
 
-    void CodeGenVisitor::visit(const Module& node) {}
+    void CodeGenVisitor::visit(std::shared_ptr<Module> node) {}
 
-    void CodeGenVisitor::visit(const Reduction &node) {
-        auto i = node.reductionVar->getName();
+    void CodeGenVisitor::visit(std::shared_ptr<Reduction> node) {
+        auto i = node->reductionVar->getName();
 
         std::string init_var = "init_";
         init_var += i;
@@ -240,10 +236,10 @@ namespace einsum {
         oss << "auto ";
         oss << init_var;
         oss << " = ";
-        node.reductionInit->accept(this);
+        node->reductionInit->accept(this);
         oss << ";\n";
 
-        generate_for_loop(node.reductionVar->getName(), node.reductionVar->dimension);
+        generate_for_loop(node->reductionVar->getName(), node->reductionVar->dimension);
     }
 
     std::string CodeGenVisitor::visit_reduced_expr(const std::shared_ptr<Expression>& expr, const std::vector<std::shared_ptr<Reduction>>& reductions) {
@@ -296,31 +292,31 @@ namespace einsum {
         return var;
     }
 
-    void CodeGenVisitor::visit(const BinaryOp &node) {
+    void CodeGenVisitor::visit(std::shared_ptr<BinaryOp> node) {
 
-        if (node.left->precedence > node.precedence) {
+        if (node->left->precedence > node->precedence) {
             oss << "(";
-            node.left->accept(this);
+            node->left->accept(this);
             oss << ")";
         } else {
-            node.left->accept(this);
+            node->left->accept(this);
         }
         oss << " ";
-        oss << node.op->sign;
+        oss << node->op->sign;
         oss << " ";
-        if ((node.right->precedence > node.precedence) ||  (node.right->precedence == node.precedence && node.isAsymmetric)){
+        if ((node->right->precedence > node->precedence) ||  (node->right->precedence == node->precedence && node->isAsymmetric)){
             oss << "(";
-            node.right->accept(this);
+            node->right->accept(this);
             oss << ")";
         } else {
-            node.right->accept(this);
+            node->right->accept(this);
         }
     }
 
-    void CodeGenVisitor::visit(const UnaryOp &node) {
-        oss << node.op->sign;
+    void CodeGenVisitor::visit(std::shared_ptr<UnaryOp> node) {
+        oss << node->op->sign;
         oss << " ";
-        node.expr->accept(this);
+        node->expr->accept(this);
     }
 
     std::shared_ptr<Expression> CodeGenVisitor::reduce_expression(const std::string& init_var, std::shared_ptr<Expression> expr, const std::shared_ptr<Operator>& op) {

@@ -12,14 +12,14 @@
 //TODO: make a rewriter base clarr and overwrite rewrite for different use cases ( see taco, builtit)
 
 namespace einsum {
-    class IRRewriter : public IRMutator {
+    class IRRewriter : public IRVisitor {
     protected:
         IRContext* context;
 
         template<typename T>
         std::shared_ptr<T> shared_from_ref(T& ref);
-        std::shared_ptr<BinaryOp> rewrite_binary(BinaryOp& node);
-        std::shared_ptr<UnaryOp> rewrite_unary(UnaryOp& node);
+        std::shared_ptr<BinaryOp> rewrite_binary(std::shared_ptr<BinaryOp> node);
+        std::shared_ptr<UnaryOp> rewrite_unary(std::shared_ptr<UnaryOp> node);
 
         template<typename T>
         void visit_call(T& node);
@@ -80,21 +80,21 @@ namespace einsum {
             return ret;
         }
 
-        void visit(IndexVar& node) override;
-        void visit(Literal& node) override;
-        void visit(TensorVar& node) override;
-        void visit(IndexVarExpr& node) override;
-        void visit(Access& node) override;
-        void visit(ReadAccess& node) override;
-        void visit(Definition& node) override;
-        void visit(BinaryOp& node) override;
-        void visit(UnaryOp& node) override;
-        void visit(FuncDecl& node) override;
-        void visit(Call& node) override;
-        void visit(CallStarRepeat& node) override;
-        void visit(CallStarCondition& node) override;
-        void visit(Module& node) override;
-        void visit(Reduction& node) override;
+        void visit(std::shared_ptr<IndexVar> node) override;
+        void visit(std::shared_ptr<Literal> node) override;
+        void visit(std::shared_ptr<TensorVar> node) override;
+        void visit(std::shared_ptr<IndexVarExpr> node) override;
+        void visit(std::shared_ptr<Access> node) override;
+        void visit(std::shared_ptr<ReadAccess> node) override;
+        void visit(std::shared_ptr<Definition> node) override;
+        void visit(std::shared_ptr<BinaryOp> node) override;
+        void visit(std::shared_ptr<UnaryOp> node) override;
+        void visit(std::shared_ptr<FuncDecl> node) override;
+        void visit(std::shared_ptr<Call> node) override;
+        void visit(std::shared_ptr<CallStarRepeat> node) override;
+        void visit(std::shared_ptr<CallStarCondition> node) override;
+        void visit(std::shared_ptr<Module> node) override;
+        void visit(std::shared_ptr<Reduction> node) override;
     };
 
 }

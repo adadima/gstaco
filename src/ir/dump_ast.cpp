@@ -20,38 +20,38 @@ void einsum::DumpAstVisitor::unindent() {
     einsum_iassert(indent_ >= 0);
 }
 
-void einsum::DumpAstVisitor::visit(const einsum::IndexVar &node) {
+void einsum::DumpAstVisitor::visit(std::shared_ptr<IndexVar> node) {
     indent();
-    node.dimension->accept(this);
+    node->dimension->accept(this);
     auto dim = ast;
-    ast = get_indent() + "<" + node.class_name() + "\n";
+    ast = get_indent() + "<" + node->class_name() + "\n";
     indent();
-    ast += get_indent() + node.name + "\n";
+    ast += get_indent() + node->name + "\n";
     unindent();
     ast += dim + "\n";
     ast += get_indent() + ">";
     unindent();
 }
 
-void einsum::DumpAstVisitor::visit(const einsum::Literal &node) {
+void einsum::DumpAstVisitor::visit(std::shared_ptr<Literal> node) {
     indent();
-    ast = get_indent() + "<" + node.class_name() + " " + node.dump() + " " + node.getDatatype()->dump() + ">";
+    ast = get_indent() + "<" + node->class_name() + " " + node->dump() + " " + node->getDatatype()->dump() + ">";
     unindent();
 }
 
-void einsum::DumpAstVisitor::visit(const einsum::Reduction &node) {
+void einsum::DumpAstVisitor::visit(std::shared_ptr<Reduction> node) {
     indent();
 
-    node.reductionVar->accept(this);
+    node->reductionVar->accept(this);
     auto red_var = ast;
 
-    node.reductionInit->accept(this);
+    node->reductionInit->accept(this);
     auto red_init = ast;
 
-    ast = get_indent() + "<" + node.class_name() + "\n" +
+    ast = get_indent() + "<" + node->class_name() + "\n" +
             red_var + "\n";
     indent();
-    ast += get_indent() + node.reductionOp->reductionSign + "\n";
+    ast += get_indent() + node->reductionOp->reductionSign + "\n";
     unindent();
     ast += red_init + "\n";
     ast += get_indent() + ">";
@@ -59,18 +59,18 @@ void einsum::DumpAstVisitor::visit(const einsum::Reduction &node) {
     unindent();
 }
 
-void einsum::DumpAstVisitor::visit(const einsum::TensorVar &node) {
+void einsum::DumpAstVisitor::visit(std::shared_ptr<TensorVar> node) {
     indent();
-    ast = get_indent() + "<" + node.class_name() + " " + node.name + " " + node.getType()->dump() + ">";
+    ast = get_indent() + "<" + node->class_name() + " " + node->name + " " + node->getType()->dump() + ">";
     unindent();
 }
 
-void einsum::DumpAstVisitor::visit(const einsum::IndexVarExpr &node) {
+void einsum::DumpAstVisitor::visit(std::shared_ptr<IndexVarExpr> node) {
     indent();
-    node.indexVar->accept(this);
+    node->indexVar->accept(this);
     auto ivar = ast;
 
-    ast = get_indent() + "<" + node.class_name() + "\n" +
+    ast = get_indent() + "<" + node->class_name() + "\n" +
             ivar + "\n" +
             get_indent() + ">";
 
@@ -80,12 +80,12 @@ void einsum::DumpAstVisitor::visit(const einsum::IndexVarExpr &node) {
 template<typename T>
 void einsum::DumpAstVisitor::visit_access(const T& node) {
     indent();
-    node.tensor->accept(this);
+    node->tensor->accept(this);
     auto tensor = ast;
 
-    auto indice_asts = visit_array(node.indices);
+    auto indice_asts = visit_array(node->indices);
 
-    ast = get_indent() + "<" + node.class_name() + "\n" +
+    ast = get_indent() + "<" + node->class_name() + "\n" +
           tensor + "\n";
 
     array_ast(indice_asts);
@@ -95,23 +95,23 @@ void einsum::DumpAstVisitor::visit_access(const T& node) {
     unindent();
 }
 
-void einsum::DumpAstVisitor::visit(const einsum::Access &node) {
+void einsum::DumpAstVisitor::visit(std::shared_ptr<Access> node) {
     visit_access(node);
 }
 
-void einsum::DumpAstVisitor::visit(const einsum::ReadAccess &node) {
+void einsum::DumpAstVisitor::visit(std::shared_ptr<ReadAccess> node) {
     visit_access(node);
 }
 
-void einsum::DumpAstVisitor::visit(const einsum::Definition &node) {
+void einsum::DumpAstVisitor::visit(std::shared_ptr<Definition> node) {
     indent();
 
-    auto lhs = visit_array(node.lhs);
-    node.rhs->accept(this);
+    auto lhs = visit_array(node->lhs);
+    node->rhs->accept(this);
     auto rhs = ast;
-    auto reds = visit_array(node.reduction_list);
+    auto reds = visit_array(node->reduction_list);
 
-    ast = get_indent() + "<" + node.class_name() + "\n";
+    ast = get_indent() + "<" + node->class_name() + "\n";
     array_ast(lhs);
     ast += "\n";
     ast += rhs + "\n";
@@ -121,16 +121,16 @@ void einsum::DumpAstVisitor::visit(const einsum::Definition &node) {
     unindent();
 }
 
-void einsum::DumpAstVisitor::visit(const einsum::FuncDecl &node) {
+void einsum::DumpAstVisitor::visit(std::shared_ptr<FuncDecl> node) {
     indent();
 
-    auto inputs = visit_array(node.inputs);
-    auto outputs = visit_array(node.outputs);
-    auto body = visit_array(node.body);
+    auto inputs = visit_array(node->inputs);
+    auto outputs = visit_array(node->outputs);
+    auto body = visit_array(node->body);
 
-    ast = get_indent() + "<" + node.class_name() + "\n";
+    ast = get_indent() + "<" + node->class_name() + "\n";
     indent();
-    ast += get_indent() + node.funcName + "\n";
+    ast += get_indent() + node->funcName + "\n";
     unindent();
     array_ast(inputs);
     ast += "\n";
@@ -143,14 +143,14 @@ void einsum::DumpAstVisitor::visit(const einsum::FuncDecl &node) {
     unindent();
 }
 
-void einsum::DumpAstVisitor::visit(const einsum::Call &node) {
+void einsum::DumpAstVisitor::visit(std::shared_ptr<Call> node) {
     indent();
-    auto args = visit_array(node.arguments);
+    auto args = visit_array(node->arguments);
 
-    node.function->accept(this);
+    node->function->accept(this);
     auto func = ast;
 
-    ast = get_indent() + "<" + node.class_name() + "\n" +
+    ast = get_indent() + "<" + node->class_name() + "\n" +
             func + "\n";
     array_ast(args);
     ast += "\n" + get_indent() + ">";
@@ -159,36 +159,36 @@ void einsum::DumpAstVisitor::visit(const einsum::Call &node) {
 
 }
 
-void einsum::DumpAstVisitor::visit(const einsum::CallStarRepeat &node) {
+void einsum::DumpAstVisitor::visit(std::shared_ptr<CallStarRepeat> node) {
     indent();
-    auto args = visit_array(node.arguments);
+    auto args = visit_array(node->arguments);
 
-    node.function->accept(this);
+    node->function->accept(this);
     auto func = ast;
 
-    ast = get_indent() + "<" + node.class_name() + "\n" +
+    ast = get_indent() + "<" + node->class_name() + "\n" +
           func + "\n";
     array_ast(args);
     ast += "\n";
     indent();
-    ast += get_indent() + std::to_string(node.numIterations) + "\n";
+    ast += get_indent() + std::to_string(node->numIterations) + "\n";
     unindent();
     ast += get_indent() + ">";
 
     unindent();
 }
 
-void einsum::DumpAstVisitor::visit(const einsum::CallStarCondition &node) {
+void einsum::DumpAstVisitor::visit(std::shared_ptr<CallStarCondition> node) {
     indent();
-    auto args = visit_array(node.arguments);
+    auto args = visit_array(node->arguments);
 
-    node.function->accept(this);
+    node->function->accept(this);
     auto func = ast;
 
-    node.stopCondition->accept(this);
+    node->stopCondition->accept(this);
     auto stop = ast;
 
-    ast = get_indent() + "<" + node.class_name() + "\n" +
+    ast = get_indent() + "<" + node->class_name() + "\n" +
           func + "\n";
     array_ast(args);
     ast += "\n" + stop + "\n";
@@ -197,10 +197,10 @@ void einsum::DumpAstVisitor::visit(const einsum::CallStarCondition &node) {
     unindent();
 }
 
-void einsum::DumpAstVisitor::visit(const einsum::Module &node) {
-    auto components = visit_array(node.decls);
+void einsum::DumpAstVisitor::visit(std::shared_ptr<Module> node) {
+    auto components = visit_array(node->decls);
 
-    ast = "<" + node.class_name() + "\n";
+    ast = "<" + node->class_name() + "\n";
     array_ast(components);
     ast += "\n>";
 
@@ -242,19 +242,19 @@ void einsum::DumpAstVisitor::array_ast(const std::vector<std::string>& arr) {
     unindent();
 }
 
-void einsum::DumpAstVisitor::visit(const einsum::BinaryOp &node) {
+void einsum::DumpAstVisitor::visit(std::shared_ptr<BinaryOp> node) {
     indent();
 
-    node.left->accept(this);
+    node->left->accept(this);
     auto left = ast;
 
-    node.right->accept(this);
+    node->right->accept(this);
     auto right = ast;
 
-    ast = get_indent() + "<" + node.class_name() + "\n" +
+    ast = get_indent() + "<" + node->class_name() + "\n" +
           left + "\n";
     indent();
-    ast += get_indent() + node.op->sign + "\n";
+    ast += get_indent() + node->op->sign + "\n";
     unindent();
     ast += right + "\n";
     ast += get_indent() + ">";
@@ -262,15 +262,15 @@ void einsum::DumpAstVisitor::visit(const einsum::BinaryOp &node) {
     unindent();
 }
 
-void einsum::DumpAstVisitor::visit(const einsum::UnaryOp &node) {
+void einsum::DumpAstVisitor::visit(std::shared_ptr<UnaryOp> node) {
     indent();
 
-    node.expr->accept(this);
+    node->expr->accept(this);
     auto exp = ast;
 
-    ast = get_indent() + "<" + node.class_name() + "\n";
+    ast = get_indent() + "<" + node->class_name() + "\n";
     indent();
-    ast += get_indent() + node.op->sign + "\n";
+    ast += get_indent() + node->op->sign + "\n";
     unindent();
     ast += exp + "\n";
     ast += get_indent() + ">";

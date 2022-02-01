@@ -45,12 +45,12 @@ namespace einsum {
 
         int coordinate_;
 
-        static std::shared_ptr<TensorVar> get_param(const TensorVar& tensor, const std::vector<std::shared_ptr<TensorVar>>& param_list) {
+        static std::shared_ptr<TensorVar> get_param(const std::shared_ptr<TensorVar>& tensor, const std::vector<std::shared_ptr<TensorVar>>& param_list) {
 
 
             for (auto &&value : param_list) {
 
-                if (value->name == tensor.name) {
+                if (value->name == tensor->name) {
                     return value;
                 }
             }
@@ -119,7 +119,7 @@ namespace einsum {
                 return nullptr;
             }
 
-            auto tensor = get_write_tensor(*tensor_scope().top());
+            auto tensor = get_write_tensor(tensor_scope().top());
             if (tensor) {
                 auto dim = tensor->getType()->getDimension(coordinate_);
                 return IR::make<IndexVar>(name, dim);
@@ -134,7 +134,7 @@ namespace einsum {
                 auto index_var = std::make_shared<IndexVar>(name, dim);
                 return std::make_shared<IndexVarExpr>(index_var);
             }
-            auto tensor = get_read_tensor(*tensor_scope().top());
+            auto tensor = get_read_tensor(tensor_scope().top());
             if (tensor) {
                 auto dim = tensor->getType()->getDimension(coordinate_);
                 auto index_var = std::make_shared<IndexVar>(name, dim);
@@ -164,14 +164,14 @@ namespace einsum {
             func_scope() = nullptr;
         }
 
-        std::shared_ptr<TensorVar> get_read_tensor(const TensorVar& tensor) {
-            if (globals_.count(tensor.name)) {
-                return globals_[tensor.name];
+        std::shared_ptr<TensorVar> get_read_tensor(const std::shared_ptr<TensorVar>& tensor) {
+            if (globals_.count(tensor->name)) {
+                return globals_[tensor->name];
             }
             return get_param(tensor, func_scope()->inputs);
         }
 
-        std::shared_ptr<TensorVar> get_write_tensor(const TensorVar& tensor) {
+        std::shared_ptr<TensorVar> get_write_tensor(const std::shared_ptr<TensorVar>& tensor) {
             return get_param(tensor, func_scope()->outputs);
         }
 

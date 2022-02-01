@@ -29,9 +29,7 @@ namespace einsum {
         // TODO: make this a visitor instead
         virtual std::string dump() const = 0;
 
-        virtual void accept(IRVisitor* v) const = 0;
-
-        virtual void accept(IRMutator* v) = 0;
+        virtual void accept(IRVisitor* v) = 0;
 
         std::string class_name() const;
 
@@ -53,8 +51,7 @@ namespace einsum {
     struct Acceptor : parent, mixins... {
         using Base = Acceptor<T, parent, mixins...>;
         using parent :: parent;
-        void accept(IRVisitor* v) const override;
-        void accept(IRMutator* v) override;
+        void accept(IRVisitor* v) override;
         ~Acceptor() override = default;
     };
 
@@ -64,21 +61,15 @@ namespace einsum {
 
     struct ModuleComponent : IR {
         bool is_decl() const;
-        FuncDecl& as_decl();
-        const FuncDecl& as_decl() const;
+        std::shared_ptr<FuncDecl> as_decl();
 
         bool is_def() const;
-        Definition& as_def();
-        const Definition& as_def() const;
+        std::shared_ptr<Definition> as_def();
 
         bool is_expr() const;
-        Expression& as_expr();
-        const Expression& as_expr() const;
+        std::shared_ptr<Expression> as_expr();
     };
 
-    std::shared_ptr<FuncDecl> as_decl(const std::shared_ptr<ModuleComponent>& component);
-
-    std::shared_ptr<Definition> as_def(const std::shared_ptr<ModuleComponent>& component);
 
     struct IndexVar : Acceptor<IndexVar> {
         std::string name;
@@ -464,49 +455,31 @@ namespace einsum {
     };
 
     struct IRVisitor {
-        virtual void visit(const IndexVar& node) = 0;
-        virtual void visit(const Literal& node) = 0;
-        virtual void visit(const TensorVar& node) = 0;
-        virtual void visit(const IndexVarExpr& node) = 0;
-        virtual void visit(const Access& node) = 0;
-        virtual void visit(const ReadAccess& node) = 0;
-        virtual void visit(const BinaryOp& node) = 0;
-        virtual void visit(const UnaryOp& node) = 0;
-        virtual void visit(const Definition& node) = 0;
-        virtual void visit(const FuncDecl& node) = 0;
-        virtual void visit(const Call& node) = 0;
-        virtual void visit(const CallStarRepeat& node) = 0;
-        virtual void visit(const CallStarCondition& node) = 0;
-        virtual void visit(const Module& node) = 0;
-        virtual void visit(const Reduction& node) = 0;
-    };
-
-    struct IRMutator {
-        virtual void visit(IndexVar& node) = 0;
-        virtual void visit(Literal& node) = 0;
-        virtual void visit(TensorVar& node) = 0;
-        virtual void visit(IndexVarExpr& node) = 0;
-        virtual void visit(Access& node) = 0;
-        virtual void visit(ReadAccess& node) = 0;
-        virtual void visit(BinaryOp& node) = 0;
-        virtual void visit(UnaryOp& node) = 0;
-        virtual void visit(Definition& node) = 0;
-        virtual void visit(FuncDecl& node) = 0;
-        virtual void visit(Call& node) = 0;
-        virtual void visit(CallStarRepeat& node) = 0;
-        virtual void visit(CallStarCondition& node) = 0;
-        virtual void visit(Module& node) = 0;
-        virtual void visit(Reduction& node) = 0;
+        virtual void visit(std::shared_ptr<IndexVar> node) = 0;
+        virtual void visit(std::shared_ptr<Literal> node) = 0;
+        virtual void visit(std::shared_ptr<TensorVar> node) = 0;
+        virtual void visit(std::shared_ptr<IndexVarExpr> node) = 0;
+        virtual void visit(std::shared_ptr<Access> node) = 0;
+        virtual void visit(std::shared_ptr<ReadAccess> node) = 0;
+        virtual void visit(std::shared_ptr<BinaryOp> node) = 0;
+        virtual void visit(std::shared_ptr<UnaryOp> node) = 0;
+        virtual void visit(std::shared_ptr<Definition> node) = 0;
+        virtual void visit(std::shared_ptr<FuncDecl> node) = 0;
+        virtual void visit(std::shared_ptr<Call> node) = 0;
+        virtual void visit(std::shared_ptr<CallStarRepeat> node) = 0;
+        virtual void visit(std::shared_ptr<CallStarCondition> node) = 0;
+        virtual void visit(std::shared_ptr<Module> node) = 0;
+        virtual void visit(std::shared_ptr<Reduction> node) = 0;
     };
 
     template<typename T, typename parent, typename... mixins>
-    void Acceptor<T, parent, mixins...>::accept(IRVisitor* v) const {
-        v->visit(static_cast<const T&>(*this));
-    }
+    void Acceptor<T, parent, mixins...>::accept(IRVisitor* v) {
+        try {
+            v->visit(std::static_pointer_cast<T>(this->shared_from_this()));
+        } catch (const std::bad_weak_ptr& exp) {
+            std::abort();
+        }
 
-    template<typename T, typename parent, typename... mixins>
-    void Acceptor<T, parent, mixins...>::accept(IRMutator* v) {
-        v->visit(static_cast<T&>(*this));
     }
 }
 

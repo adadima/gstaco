@@ -12,22 +12,22 @@ namespace einsum {
     struct TensorVarRewriter : public IRRewriter {
         explicit TensorVarRewriter(IRContext* context) : IRRewriter(context) {}
 
-        void visit(TensorVar& node) override;
-        void visit(ReadAccess& node) override;
+        void visit(std::shared_ptr<TensorVar> node) override;
+        void visit(std::shared_ptr<ReadAccess> node) override;
     };
 
     struct FuncDeclRewriter : public IRRewriter {
         explicit FuncDeclRewriter(IRContext* context) : IRRewriter(context) {}
 
-        void visit(FuncDecl& node) override;
+        void visit(std::shared_ptr<FuncDecl> node) override;
     };
 
     struct IndexDimensionRewriter : public IRRewriter {
 
         explicit IndexDimensionRewriter(IRContext* context) : IRRewriter(context) {}
 
-        void visit(IndexVar& node) override;
-        void visit(IndexVarExpr& node) override;
+        void visit(std::shared_ptr<IndexVar> node) override;
+        void visit(std::shared_ptr<IndexVarExpr> node) override;
     };
 
     std::shared_ptr<Module> apply_rewriters(std::shared_ptr<Module> mod, const std::vector<IRRewriter*>& rewriters) {

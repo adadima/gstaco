@@ -6,7 +6,6 @@
 #include <utility>
 #include <gtest/gtest.h>
 #include "einsum_taco/ir/ir.h"
-#include "einsum_taco/ir/ir_rewriter_.h"
 #include "einsum_taco/ir/cleanup.h"
 #include "einsum_taco/codegen/codegen_visitor.h"
 #include "einsum_taco/ir/dump_ast.h"
@@ -62,9 +61,9 @@ public:
         // selective code generation
         auto def = new_module->decls[d];
         if (def->is_def()) {
-            def->as_def().accept(&generator);
+            def->as_def()->accept(&generator);
         } else if (def->is_decl()) {
-            auto defs = def->as_decl().body;
+            auto defs = def->as_decl()->body;
             for (auto& stmt: defs) {
                 stmt->accept(&generator);
             }
