@@ -153,7 +153,7 @@ namespace einsum {
         oss << " = ";
         auto args = std::vector<std::shared_ptr<Expression>>();
         for(int i=0; i < node->arguments.size(); i++) {
-            args.push_back(IR::make<ReadAccess>("out" + std::to_string(i)));
+            args.push_back(IR::make<ReadAccess>("out" + std::to_string(i), false));
         }
         auto call_ = IR::make<Call>(node->function, args);
         call_->accept(this);
@@ -209,7 +209,7 @@ namespace einsum {
         oss << " = ";
         auto args = std::vector<std::shared_ptr<Expression>>();
         for(int i=0; i < node->arguments.size(); i++) {
-            args.push_back(IR::make<ReadAccess>("out" + std::to_string(i)));
+            args.push_back(IR::make<ReadAccess>("out" + std::to_string(i), false));
         }
         auto call_ = IR::make<Call>(node->function, args);
         call_->accept(this);
@@ -271,7 +271,7 @@ namespace einsum {
                 exp = reduce_expression(init_var, expr, red->reductionOp);
             } else {
                 auto next_var = "init_" + reductions[r+1]->reductionVar->getName();
-                exp = reduce_expression(init_var, IR::make<ReadAccess>(next_var), red->reductionOp);
+                exp = reduce_expression(init_var, IR::make<ReadAccess>(next_var, false), red->reductionOp);
             }
 
             oss << get_indent();
@@ -320,7 +320,7 @@ namespace einsum {
     }
 
     std::shared_ptr<Expression> CodeGenVisitor::reduce_expression(const std::string& init_var, std::shared_ptr<Expression> expr, const std::shared_ptr<Operator>& op) {
-        std::shared_ptr<Expression> left = IR::make<ReadAccess>(init_var);
+        std::shared_ptr<Expression> left = IR::make<ReadAccess>(init_var, false);
         return IR::make<BinaryOp>(left, std::move(expr), op, op->type);
     }
 

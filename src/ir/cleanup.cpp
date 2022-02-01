@@ -9,13 +9,16 @@
 namespace einsum {
 
     void TensorVarRewriter::visit(std::shared_ptr<TensorVar> node) {
+        std::shared_ptr<TensorVar> tensor;
         if (context->access_scope()) {
-            node_ = context->get_write_tensor(node);
+            tensor = context->get_write_tensor(node);
         } else if (!context->tensor_scope().empty() && context->func_scope()) {
-            node_ = context->get_read_tensor(node);
+            tensor = context->get_read_tensor(node);
         } else {
-            node_ = node;
+            tensor = node;
         }
+        tensor->is_global = context->is_global(tensor);
+        node_ = tensor;
     }
 
     void TensorVarRewriter::visit(std::shared_ptr<ReadAccess> node) {

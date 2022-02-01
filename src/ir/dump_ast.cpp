@@ -61,7 +61,7 @@ void einsum::DumpAstVisitor::visit(std::shared_ptr<Reduction> node) {
 
 void einsum::DumpAstVisitor::visit(std::shared_ptr<TensorVar> node) {
     indent();
-    ast = get_indent() + "<" + node->class_name() + " " + node->name + " " + node->getType()->dump() + ">";
+    ast = get_indent() + "<" + node->class_name() + " " + node->name + " " + node->getType()->dump() + " " + std::to_string(node->is_global) + ">";
     unindent();
 }
 

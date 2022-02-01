@@ -22,7 +22,6 @@ public:
     std::vector<IRRewriter*> rewriters;
     DumpAstVisitor printer;
 
-    // GenTest() : generator(oss, "test"), rewriters{new IndexVarRewriter(&context)} {}
 
     GenTest() : generator(oss, "test"),
                 rewriters{
@@ -85,7 +84,7 @@ TEST_F(GenTest, Definition2) {
 }
 
 TEST_F(GenTest, Definition3) {
-    assert_generated_defintion("codegen/inputs/definition3.txt", "codegen/outputs/definition3.cpp");
+    assert_generated_defintion("codegen/inputs/definition3.txt", "codegen/outputs/definition3.cpp", 1);
 }
 
 TEST_F(GenTest, Definition4) {
@@ -118,7 +117,7 @@ TEST_F(GenTest, DefinitionCallRepeat4) {
 }
 
 TEST_F(GenTest, DefinitionCallRepeat5) {
-    assert_generated_defintion("codegen/inputs/call_repeat5.txt", "codegen/outputs/call_repeat5.cpp", 1);
+    assert_generated_defintion("codegen/inputs/call_repeat5.txt", "codegen/outputs/call_repeat5.cpp", 3);
 }
 
 TEST_F(GenTest, DefinitionCallCondition2) {

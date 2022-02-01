@@ -87,11 +87,31 @@ namespace einsum {
             globals_.emplace(tensor->name, tensor);
         }
 
+        bool is_global(const std::shared_ptr<TensorVar>& tensor) {
+            if (func_scope() && (get_param(tensor, func_scope()->inputs) || get_param(tensor, func_scope()->outputs))) {
+                return false;
+            }
+            if (globals_.count(tensor->name) != 0) {
+                return true;
+            }
+            std::abort();
+        }
+
         std::shared_ptr<FuncDecl> get_function(const std::string& name) {
             if (functions_.count(name)) {
                 return functions_[name];
             }
             return nullptr;
+        }
+
+        void enter_module(const std::shared_ptr<Module>& module) {
+            for (auto &global : module->get_globals()) {
+                add_global(global);
+            }
+        }
+
+        void exit_module() {
+            globals_.clear();
         }
 
         void enter_function(const std::shared_ptr<FuncDecl>& func) {
@@ -102,12 +122,6 @@ namespace einsum {
 
             auto scope = new DefinitionScope{def, def->getReductionVars(), def->getLeftIndexVars(), def->getIndexVarDims(this)};
             def_scope() = scope;
-
-            if (!func_scope()) {
-                for(auto &&acc : def->lhs) {
-                    add_global(acc->tensor);
-                }
-            }
         }
 
         std::shared_ptr<IndexVar> get_index_var(std::string name) {

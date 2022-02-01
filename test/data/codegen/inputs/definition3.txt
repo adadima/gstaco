@@ -1,3 +1,5 @@
-Let func(edges int[N][M], frontier_list int[10][M], visited int[N], round int) -> (frontier int[N])
+edges int[N][M]
+
+Let func(frontier_list int[10][M], visited int[N], round int) -> (frontier int[N])
     frontier[j] = edges[j][k] * frontier_list[round][k] * (visited[j] == 0) | k:(OR, 0)
 End

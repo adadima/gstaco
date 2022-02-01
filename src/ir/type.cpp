@@ -5,6 +5,7 @@
 #include <einsum_taco/ir/type.h>
 #include <einsum_taco/ir/ir.h>
 #include <algorithm>
+#include <iostream>
 
 namespace einsum {
     Datatype::Datatype(Kind kind) : kind(kind) {

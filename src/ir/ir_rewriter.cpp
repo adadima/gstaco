@@ -117,9 +117,13 @@ namespace einsum {
     }
 
     void  IRRewriter::visit(std::shared_ptr<Module> node) {
+        context->enter_module(node);
         for(auto &comp: node->decls) {
             if (comp->is_decl()) {
                 comp = rewrite(comp->as_decl());
+            }
+            if (comp->is_var()) {
+                comp = rewrite(comp->as_var());
             }
             if (comp->is_def()) {
                 comp = rewrite(comp->as_def());
@@ -129,6 +133,7 @@ namespace einsum {
             }
         }
         node_ = node;
+        context->exit_module();
     }
 
     void IRRewriter::visit(std::shared_ptr<Reduction> node) {

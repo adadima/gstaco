@@ -1,4 +1,6 @@
-Already in scope: edges[N][N], weights[N][N], source int
+edges int[N][N]
+weights int[N][N]
+source int
 
 Let Init(source int) -> (dist int[N], priorityQ int[N][N])
     dist[j] = (j != source) * inf

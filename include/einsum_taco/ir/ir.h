@@ -58,10 +58,14 @@ namespace einsum {
     struct FuncDecl;
     struct Definition;
     struct Expression;
+    struct TensorVar;
 
     struct ModuleComponent : IR {
         bool is_decl() const;
         std::shared_ptr<FuncDecl> as_decl();
+
+        bool is_var() const;
+        std::shared_ptr<TensorVar> as_var();
 
         bool is_def() const;
         std::shared_ptr<Definition> as_def();
@@ -181,79 +185,6 @@ namespace einsum {
         }
     };
 
-//    struct ArithmeticExpression : Acceptor<ArithmeticExpression, BinaryOp> {
-//        //template <typename OpT>
-//        ArithmeticExpression(std::shared_ptr<Expression> left, std::shared_ptr<Expression> right, std::shared_ptr<Operator> op) :
-//                Base(
-//                        std::move(left),
-//                        std::move(right),
-//                        std::move(op),
-//                        compute_type(left, right)
-//                        ) {
-////            static_assert(std::is_base_of<Operator, OpT>::value, "operator of boolean expression has wrong type");
-////            static_assert(std::is_base_of<BinaryOperator, OpT>::value, "operator of boolean expression has wrong type");
-//        }
-//
-//        static std::shared_ptr<Type> compute_type(const std::shared_ptr<Expression>& left, const std::shared_ptr<Expression>& right) {
-//            if (left->getType()->isFloat() || right->getType()->isFloat()) {
-//                return std::make_shared<Datatype>(Datatype::Kind::Float);
-//            }
-//            return std::make_shared<Datatype>(Datatype::Kind::Int);
-//        }
-//    };
-//
-//    struct ModuloExpression : Acceptor<ModuloExpression, BinaryOp> {
-//        ModuloExpression(std::shared_ptr<Expression> left, std::shared_ptr<Expression> right, std::shared_ptr<Operator> op) :
-//                Base(
-//                        std::move(left),
-//                        std::move(right),
-//                        std::move(op),
-//                        Type::make<Datatype>(Datatype::Kind::Int)
-//                ) {};
-//
-//        ModuloExpression(std::shared_ptr<Expression> left, std::shared_ptr<Expression> right) :
-//                Base(
-//                        std::move(left),
-//                        std::move(right),
-//                        std::make_shared<ModOp>(),
-//                        Type::make<Datatype>(Datatype::Kind::Int)
-//                ) {};
-//
-//        //std::shared_ptr<Type> getType() override;
-//    };
-//
-//    struct LogicalExpression : Acceptor<LogicalExpression, BinaryOp> {
-//        //template <typename OpT>
-//        LogicalExpression(std::shared_ptr<Expression> left, std::shared_ptr<Expression> right, std::shared_ptr<Operator> op) :
-//                Base(
-//                        std::move(left),
-//                        std::move(right),
-//                        std::move(op),
-//                        Type::make<Datatype>(Datatype::Kind::Bool)
-//                ) {
-////                    static_assert(std::is_base_of<Operator, OpT>::value, "operator of boolean expression has wrong type");
-////                    static_assert(std::is_base_of<LogicalOperator, OpT>::value, "operator of boolean expression has wrong type");
-//        };
-//
-//        //std::shared_ptr<Type> getType() override;
-//    };
-//
-//    struct ComparisonExpression : Acceptor<ComparisonExpression, BinaryOp> {
-//        //template<typename OpT>
-//        ComparisonExpression(std::shared_ptr<Expression> left, std::shared_ptr<Expression> right, std::shared_ptr<Operator> op) :
-//                Base(
-//                        std::move(left),
-//                        std::move(right),
-//                        std::move(op),
-//                        Type::make<Datatype>(Datatype::Kind::Bool)
-//                ) {
-////                    static_assert(std::is_base_of<Operator, OpT>::value, "operator of arithmetic expression has wrong type");
-////                    static_assert(std::is_base_of<ComparisonOperator, OpT>::value, "operator of arithmetic expression has wrong type");
-//        };
-//
-//        //std::shared_ptr<Type> getType() override;
-//    };
-
     struct UnaryOp : Acceptor<UnaryOp, Expression> {
         std::shared_ptr<Expression> expr;
         std::shared_ptr<Operator> op;
@@ -267,16 +198,19 @@ namespace einsum {
         std::shared_ptr<Type> getType() const override;
     };
 
-    struct TensorVar : Acceptor<TensorVar> {
+    struct TensorVar : Acceptor<TensorVar, ModuleComponent> {
         std::string name;
         std::shared_ptr<TensorType>  type;
+        bool is_global;
 
-        explicit TensorVar(std::string name) : name(std::move(name)), type(Type::make<TensorType>()) {}
-        TensorVar(std::string name, std::shared_ptr<TensorType>  type) : name(std::move(name)), type(std::move(type)) {}
+        explicit TensorVar(std::string name, bool is_global) : name(std::move(name)), type(Type::make<TensorType>()), is_global(is_global) {}
+        TensorVar(std::string name, std::shared_ptr<TensorType>  type, bool is_global) : name(std::move(name)), type(std::move(type)), is_global(is_global) {}
 
         std::string dump() const override;
 
         std::shared_ptr<TensorType> getType() const;
+
+        bool is_global_var() const;
 
         template <typename V>
         static std::shared_ptr<einsum::TensorVar> make(std::string name, std::initializer_list<std::shared_ptr<einsum::Expression>> dimensions) {
@@ -308,7 +242,7 @@ namespace einsum {
         std::shared_ptr<TensorVar> tensor;
         std::vector<std::shared_ptr<IndexVar>> indices;
 
-        explicit Access(std::string tensor) : tensor(make<TensorVar>(std::move(tensor), std::shared_ptr<TensorType>(new TensorType()))), indices(std::vector<std::shared_ptr<IndexVar>>()) {}
+        explicit Access(std::string tensor, bool is_global) : tensor(make<TensorVar>(std::move(tensor), std::shared_ptr<TensorType>(new TensorType()), is_global)), indices(std::vector<std::shared_ptr<IndexVar>>()) {}
 
         Access(std::shared_ptr<TensorVar> tensor, std::vector<std::shared_ptr<IndexVar>> indices) : tensor(std::move(tensor)), indices(std::move(indices)) {}
 
@@ -322,9 +256,9 @@ namespace einsum {
         std::shared_ptr<TensorVar> tensor;
         std::vector<std::shared_ptr<Expression>> indices;
 
-        explicit ReadAccess(std::string tensor) : Base(1), tensor(make<TensorVar>(std::move(tensor), std::shared_ptr<TensorType>(new TensorType()))), indices(std::vector<std::shared_ptr<Expression>>()) {}
+        explicit ReadAccess(std::string tensor, bool is_global) : Base(1), tensor(make<TensorVar>(std::move(tensor), std::shared_ptr<TensorType>(new TensorType()), is_global)), indices(std::vector<std::shared_ptr<Expression>>()) {}
 
-        ReadAccess(std::string tensor, std::vector<std::shared_ptr<Expression>> indices) : Base(1), tensor(make<TensorVar>(std::move(tensor), std::shared_ptr<TensorType>(new TensorType()))), indices(std::move(indices)) {}
+        ReadAccess(std::string tensor, std::vector<std::shared_ptr<Expression>> indices, bool is_global) : Base(1), tensor(make<TensorVar>(std::move(tensor), std::shared_ptr<TensorType>(new TensorType()), is_global)), indices(std::move(indices)) {}
 
         ReadAccess(std::shared_ptr<TensorVar> tensor, std::vector<std::shared_ptr<Expression>> indices) : Base(1), tensor(std::move(tensor)), indices(std::move(indices)) {}
 
@@ -343,11 +277,8 @@ namespace einsum {
         std::shared_ptr<Operator> reductionOp;
         std::shared_ptr<Expression> reductionInit;
 
-        // template<typename OpT>
         Reduction(std::shared_ptr<IndexVar> reductionVar, std::shared_ptr<Operator> reductionOp, std::shared_ptr<Expression> reductionInit) :
             reductionVar(std::move(reductionVar)), reductionOp(std::move(reductionOp)), reductionInit(std::move(reductionInit)) {
-            // static_assert(std::is_base_of<Operator, OpT>::value, "operator of reduction has wrong type");
-            // static_assert(std::is_base_of<ReductionOperator, OpT>::value, "operator of reduction has wrong type");
         }
 
         std::string dump() const override;
@@ -452,6 +383,8 @@ namespace einsum {
         std::string dump() const override;
 
         void add(std::shared_ptr<ModuleComponent> decl);
+
+        std::vector<std::shared_ptr<TensorVar>> get_globals() const;
     };
 
     struct IRVisitor {

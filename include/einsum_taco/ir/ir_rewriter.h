@@ -16,8 +16,6 @@ namespace einsum {
     protected:
         IRContext* context;
 
-        template<typename T>
-        std::shared_ptr<T> shared_from_ref(T& ref);
         std::shared_ptr<BinaryOp> rewrite_binary(std::shared_ptr<BinaryOp> node);
         std::shared_ptr<UnaryOp> rewrite_unary(std::shared_ptr<UnaryOp> node);
 

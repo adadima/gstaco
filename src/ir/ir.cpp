@@ -95,6 +95,10 @@ namespace einsum {
         return this->type;
     }
 
+    bool TensorVar::is_global_var() const {
+        return is_global;
+    }
+
     std::string IndexVar::dump() const {
         return this->name;
     }
@@ -275,6 +279,9 @@ namespace einsum {
         for (const auto &d: decls) {
             code += "\n";
             code += d->dump();
+            if (d->is_var()) {
+                code += " " + d->as_var()->type->dump();
+            }
             code += "\n";
         }
         return code;
@@ -282,6 +289,24 @@ namespace einsum {
 
     void Module::add(std::shared_ptr<ModuleComponent> decl) {
         decls.push_back(std::move(decl));
+    }
+
+    std::vector<std::shared_ptr<TensorVar>> Module::get_globals() const {
+        auto globals = std::vector<std::shared_ptr<TensorVar>>();
+        for (auto &comp : decls) {
+            if (comp->is_var()) {
+                globals.push_back(comp->as_var());
+            }
+            if (comp->is_def()) {
+                auto def = comp->as_def();
+                auto lhs = std::vector<std::shared_ptr<TensorVar>>();
+                for(auto &acc: def->lhs) {
+                    lhs.push_back(acc->tensor);
+                }
+                globals.insert(globals.end(), lhs.begin(), lhs.end());
+            }
+        }
+        return globals;
     }
 
     bool ModuleComponent::is_decl() const {
@@ -315,6 +340,18 @@ namespace einsum {
     std::shared_ptr<Expression> ModuleComponent::as_expr() {
         try {
             return std::dynamic_pointer_cast<Expression>(this->shared_from_this());
+        } catch (const std::bad_weak_ptr& exp) {
+            std::abort();
+        }
+    }
+
+    bool ModuleComponent::is_var() const {
+        return dynamic_cast<const TensorVar*>(this) != nullptr;
+    }
+
+    std::shared_ptr<TensorVar> ModuleComponent::as_var() {
+        try {
+            return std::dynamic_pointer_cast<TensorVar>(this->shared_from_this());
         } catch (const std::bad_weak_ptr& exp) {
             std::abort();
         }

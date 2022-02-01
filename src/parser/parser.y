@@ -62,6 +62,7 @@
 %type   <r_access>   read_tensor_access
 %type   <w_access>   write_tensor_access
 %type   <definition> def
+%type   <tvar> 	tensor
 %token  <int_val> INTEGER_LITERAL
 %token  <bool_val> BOOL_LITERAL
 %token  <float_val> FLOAT_LITERAL
@@ -101,6 +102,7 @@ input: | blank
        | input func blank  {state.module->add(std::shared_ptr<ModuleComponent>($2));}
        | input orexp blank {state.module->add(std::shared_ptr<ModuleComponent>($2));}
        | input def blank   {state.module->add(std::shared_ptr<ModuleComponent>($2));}
+       | input tensor blank {state.module->add(std::shared_ptr<ModuleComponent>($2));}
  ;
 
 blank:
@@ -171,7 +173,8 @@ write_tensor_access: IDENTIFIER write_access { $$ = new einsum::Access(
 def_lhs: IDENTIFIER write_access		{auto acc =  new einsum::Access(
 								std::shared_ptr<einsum::TensorVar>(new einsum::TensorVar(
 									*$1,
-									std::shared_ptr<einsum::TensorType>(new einsum::TensorType())
+									std::shared_ptr<einsum::TensorType>(new einsum::TensorType()),
+									false
 								)),
 								*$2
 							);
@@ -182,7 +185,8 @@ def_lhs: IDENTIFIER write_access		{auto acc =  new einsum::Access(
 					auto acc =  new einsum::Access(
 						std::shared_ptr<einsum::TensorVar>(new einsum::TensorVar(
 							*$1,
-							std::shared_ptr<einsum::TensorType>(new einsum::TensorType())
+							std::shared_ptr<einsum::TensorType>(new einsum::TensorType()),
+							false
 						)),
 						*$2
 					);
@@ -215,7 +219,8 @@ exp:		OPEN_PAREN orexp CLOSED_PAREN { $$ = $2;}
 		| IDENTIFIER access 	{ $$ = new einsum::ReadAccess(
 								std::shared_ptr<einsum::TensorVar>(new einsum::TensorVar(
 									*$1,
-									std::shared_ptr<einsum::TensorType>(new einsum::TensorType())
+									std::shared_ptr<einsum::TensorType>(new einsum::TensorType()),
+									false
 								)),
 								*$2
 							);
@@ -269,7 +274,7 @@ type: IDENTIFIER				{
 						 $$ = new einsum::TensorType($1->getElementType(), dims);
 						}
 
-param: IDENTIFIER type				{$$ = new einsum::TensorVar(*$1, std::shared_ptr<einsum::TensorType>($2));}
+param: IDENTIFIER type				{$$ = new einsum::TensorVar(*$1, std::shared_ptr<einsum::TensorType>($2), false);}
 
 param_list:					{$$ = new std::vector<std::shared_ptr<einsum::TensorVar>>();}
 | COM param param_list				{$3->insert($3->begin(), std::shared_ptr<einsum::TensorVar>($2));
@@ -288,6 +293,8 @@ statements:					{$$ = new std::vector<std::shared_ptr<einsum::Definition>>();}
 						 $$ = $4;}
 
 func:		LET IDENTIFIER input_params RARROW output_params EOL blank statements END {$$ = new einsum::FuncDecl(*$2, *$3, *$5, *$8);}
+
+tensor:	IDENTIFIER type				{$$ = new einsum::TensorVar(*$1, std::shared_ptr<einsum::TensorType>($2), true);}
 %%
 
 int yyerror(State state, string s)

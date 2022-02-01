@@ -50,7 +50,7 @@ public:
                         einsum::Datatype::make_datatype<V>(),
                         dimensions
                     );
-        return einsum::IR::make<einsum::TensorVar>(name, tType);
+        return einsum::IR::make<einsum::TensorVar>(name, tType, false);
     }
 
     static inline const auto A = make_tensor<int>("A",
@@ -106,10 +106,10 @@ public:
     }
 
     std::shared_ptr<einsum::FuncDecl> func1() {
-        auto frontier = make_tensor<int>("frontier", {einsum::Type::make<einsum::ReadAccess>("N")});
-        auto visited = make_tensor<int>("visited", {einsum::Type::make<einsum::ReadAccess>("N")});
-        auto frontier_list = make_tensor<int>("frontier_list", {einsum::Type::make<einsum::ReadAccess>("N"),
-                                                                einsum::Type::make<einsum::ReadAccess>("N")});
+        auto frontier = make_tensor<int>("frontier", {einsum::Type::make<einsum::ReadAccess>("N", false)});
+        auto visited = make_tensor<int>("visited", {einsum::Type::make<einsum::ReadAccess>("N", false)});
+        auto frontier_list = make_tensor<int>("frontier_list", {einsum::Type::make<einsum::ReadAccess>("N", false),
+                                                                einsum::Type::make<einsum::ReadAccess>("N", false)});
 
         return einsum::IR::make<einsum::FuncDecl>(
                 "Frontier",
