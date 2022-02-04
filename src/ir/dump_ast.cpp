@@ -61,7 +61,14 @@ void einsum::DumpAstVisitor::visit(std::shared_ptr<Reduction> node) {
 
 void einsum::DumpAstVisitor::visit(std::shared_ptr<TensorVar> node) {
     indent();
-    ast = get_indent() + "<" + node->class_name() + " " + node->name + " " + node->getType()->dump() + " " + std::to_string(node->is_global) + ">";
+
+    node->type->accept(this);
+    auto type = ast;
+
+    ast = get_indent() + "<" + node->class_name() + " " + node->name + "\n";
+    ast += type + "\n";
+    ast += get_indent() + "isGlobal " + std::to_string(node->is_global) + ">";
+
     unindent();
 }
 
@@ -251,11 +258,12 @@ void einsum::DumpAstVisitor::visit(std::shared_ptr<BinaryOp> node) {
     node->right->accept(this);
     auto right = ast;
 
-    ast = get_indent() + "<" + node->class_name() + "\n" +
-          left + "\n";
-    indent();
-    ast += get_indent() + node->op->sign + "\n";
-    unindent();
+    node->op->accept(this);
+    auto op = ast;
+
+    ast = get_indent() + "<" + node->class_name() + "\n";
+    ast += left + "\n";
+    ast += op + "\n";
     ast += right + "\n";
     ast += get_indent() + ">";
 
@@ -267,14 +275,52 @@ void einsum::DumpAstVisitor::visit(std::shared_ptr<UnaryOp> node) {
 
     node->expr->accept(this);
     auto exp = ast;
+    node->op->accept(this);
+    auto op = ast;
 
     ast = get_indent() + "<" + node->class_name() + "\n";
-    indent();
-    ast += get_indent() + node->op->sign + "\n";
-    unindent();
+    ast += op + "\n";
     ast += exp + "\n";
     ast += get_indent() + ">";
 
     unindent();
+}
+
+void einsum::DumpAstVisitor::visit(shared_ptr<Datatype> node) {
+    ast = get_indent() + "<" + node->class_name() + "\n";
+    indent();
+    ast += get_indent() + node->dump() + "\n";
+    unindent();
+    ast += get_indent() + ">";
+}
+
+void einsum::DumpAstVisitor::visit(shared_ptr<TensorType> node) {
+
+    node->getElementType()->accept(this);
+    auto type = ast;
+
+    auto dimensions = visit_array(node->getDimensions());
+
+    ast = get_indent() + "<" + node->class_name() + "\n";
+    ast += type + "\n";
+    array_ast(dimensions);
+    ast += get_indent() + ">";
+}
+
+void einsum::DumpAstVisitor::visit(shared_ptr<TupleType> node) {
+    auto types = visit_array(node->tuple);
+
+    ast = get_indent() + "<" + node->class_name() + "\n";
+    array_ast(types);
+    ast += get_indent() + ">";
+
+}
+
+void einsum::DumpAstVisitor::visit(shared_ptr<Operator> node) {
+    ast = get_indent() + "<" + node->class_name() + "\n";
+    indent();
+    ast += get_indent() + node->sign + "\n";
+    unindent();
+    ast += get_indent() + ">";
 }
 

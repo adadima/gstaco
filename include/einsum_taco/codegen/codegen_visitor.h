@@ -47,6 +47,15 @@ namespace einsum {
 
         void visit(std::shared_ptr<Reduction> node) override;
 
+        void visit(std::shared_ptr<Datatype> node) override;
+
+
+        void visit(std::shared_ptr<TensorType> node) override;
+
+        void visit(std::shared_ptr<TupleType> node) override;
+
+        void visit(std::shared_ptr<Operator> node) override;
+
         int &get_indent_lvl() {
             return indent_;
         }

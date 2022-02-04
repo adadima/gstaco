@@ -11,12 +11,14 @@ namespace einsum {
 
     std::shared_ptr<BinaryOp> IRRewriter::rewrite_binary(std::shared_ptr<BinaryOp> node) {
         node->left = rewrite(node->left);
+        node->op = rewrite(node->op);
         node->right = rewrite(node->right);
         return node;
     }
 
     std::shared_ptr<UnaryOp> IRRewriter::rewrite_unary(std::shared_ptr<UnaryOp> node) {
         node->expr = rewrite(node->expr);
+        node->op = rewrite(node->op);
         return node;
     }
 
@@ -139,6 +141,7 @@ namespace einsum {
     void IRRewriter::visit(std::shared_ptr<Reduction> node) {
         node->reductionVar = rewrite(node->reductionVar);
         node->reductionInit = rewrite(node->reductionInit);
+        node->reductionOp = rewrite(node->reductionOp);
         node_ = node;
     }
 
@@ -148,6 +151,22 @@ namespace einsum {
 
     void IRRewriter::visit(std::shared_ptr<UnaryOp> node) {
         node_ = rewrite_unary(node);
+    }
+
+    void IRRewriter::visit(std::shared_ptr<Datatype> node) {
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<TensorType> node) {
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<TupleType> node) {
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<Operator> node) {
+        node_ = node;
     }
 
 }

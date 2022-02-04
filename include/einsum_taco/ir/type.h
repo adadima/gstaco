@@ -11,12 +11,15 @@
 #include<string>
 #include<array>
 #include<einsum_taco/base/assert.h>
+#include<einsum_taco/ir/acceptor.h>
 #include<memory>
 
 
 namespace einsum {
 
-    struct Type {
+    struct Type : IR {
+        virtual void accept(IRVisitor* v) override = 0;
+
         virtual ~Type() = default;
 
         virtual bool isInt() const = 0;
@@ -25,21 +28,21 @@ namespace einsum {
 
         virtual bool isBool() const = 0;
 
-        virtual std::string dump() const = 0;
+        virtual std::string dump() const override = 0;
 
         template<typename T, typename ... Types>
-        static std::shared_ptr<T> make(Types... args) {
+        static std::shared_ptr<T> make(Types... args)  {
             return std::make_shared<T>(args...);
         }
 
         template<typename T, typename ... Types>
-        static std::vector<std::shared_ptr<T>> make_vec(Types... args) {
+        static std::vector<std::shared_ptr<T>> make_vec(Types... args)  {
             std::vector<std::shared_ptr<T>> v = {args...};
             return v;
         }
     };
 
-    class Datatype : public Type {
+    class Datatype : public Acceptor<Datatype, Type> {
     public:
         enum class Kind {
             Bool,
@@ -94,7 +97,7 @@ namespace einsum {
         Kind kind;
     };
 
-    struct TupleType : public Type {
+    struct TupleType : Acceptor<TupleType, Type> {
         std::vector<std::shared_ptr<Type>> tuple;
 
         explicit TupleType(std::vector<std::shared_ptr<Type>> tuple) : tuple(std::move(tuple)) {};
@@ -113,7 +116,7 @@ namespace einsum {
     };
 
 
-    struct Operator {
+    struct Operator : Acceptor<Operator> {
         Operator(int precedence, const char *sign, std::shared_ptr<Type> type) :
                 precedence(precedence), sign(sign), isAsymmetric(false), type(std::move(type)) {}
 
@@ -130,75 +133,67 @@ namespace einsum {
         std::string sign;
         std::shared_ptr<Type> type;
 
+        std::string dump() const {
+            return sign;
+        }
+
         [[nodiscard]] bool isArithmetic() const;
-
     };
 
-    struct BinaryOperator {
-    };
 
-    struct UnaryOperator {
-    };
-
-    struct LogicalOperator {
-    };
-
-    struct ComparisonOperator {
-    };
-
-    struct AddOp : Operator, BinaryOperator {
+    struct AddOp : Operator {
         AddOp() : Operator(4, "+", "+", nullptr) {}
     };
 
-    struct SubOp : Operator, BinaryOperator {
+    struct SubOp : Operator {
         SubOp() : Operator(4, "-", true, nullptr) {}
     };
 
-    struct MulOp : Operator, BinaryOperator {
+    struct MulOp : Operator {
         MulOp() : Operator(3, "*", "*", nullptr) {}
     };
 
-    struct DivOp : Operator, BinaryOperator {
+    struct DivOp : Operator {
         DivOp() : Operator(3, "/", true, nullptr) {}
     };
 
-    struct ModOp : Operator, BinaryOperator {
+    struct ModOp : Operator {
         ModOp() : Operator(3, "%", Datatype::intType()) {}
     };
 
-    struct AndOp : Operator, BinaryOperator, LogicalOperator {
+    struct AndOp : Operator {
         AndOp() : Operator(11, "&&", "AND", Datatype::boolType()) {}
     };
 
-    struct OrOp : Operator, BinaryOperator, LogicalOperator {
+    struct OrOp : Operator {
         OrOp() : Operator(12, "||", "OR", Datatype::boolType()) {}
     };
 
-    struct NotOp : Operator, LogicalOperator, UnaryOperator {
+    struct NotOp : Operator {
         NotOp() : Operator(2, "!", Datatype::boolType()) {}
     };
 
-    struct LtOp : Operator, ComparisonOperator {
+    struct LtOp : Operator {
         LtOp() : Operator(6, "<", Datatype::boolType()) {}
     };
 
-    struct LteOp : Operator, ComparisonOperator {
+    struct LteOp : Operator {
         LteOp() : Operator(6, "<=", Datatype::boolType()) {}
     };
 
-    struct GtOp : Operator, ComparisonOperator {
+    struct GtOp : Operator {
         GtOp() : Operator(6, ">", Datatype::boolType()) {}
     };
 
-    struct GteOp : Operator, ComparisonOperator {
+    struct GteOp : Operator {
         GteOp() : Operator(6, ">=", Datatype::boolType()) {}
     };
 
-    struct EqOp : Operator, ComparisonOperator {
+    struct EqOp : Operator {
         EqOp() : Operator(7, "==", Datatype::boolType()) {}
     };
 
-    struct NeqOp : Operator, ComparisonOperator {
+    struct NeqOp : Operator {
         NeqOp() : Operator(7, "!=", Datatype::boolType()) {}
     };
 
@@ -206,7 +201,7 @@ namespace einsum {
 
 
     // TODO: allow users to write their own operators!!
-    struct TensorType : public Type {
+    struct TensorType : public Acceptor<TensorType, Type> {
     public:
         TensorType() : type(Type::make<Datatype>(Datatype::Kind::Int)),
                        dimensions(std::vector<std::shared_ptr<einsum::Expression>>()) {}

@@ -343,4 +343,20 @@ namespace einsum {
         oss << ")";
         oss <<  ") {\n";
     }
+
+    void CodeGenVisitor::visit(std::shared_ptr<Datatype> node) {
+
+    }
+
+    void CodeGenVisitor::visit(std::shared_ptr<TensorType> node) {
+
+    }
+
+    void CodeGenVisitor::visit(std::shared_ptr<TupleType> node) {
+
+    }
+
+    void CodeGenVisitor::visit(std::shared_ptr<Operator> node) {
+
+    }
 }
