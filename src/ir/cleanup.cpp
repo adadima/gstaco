@@ -45,5 +45,39 @@ namespace einsum {
         context->add_reduction_var(ivar->indexVar);
         node_ = ivar;
     }
+
+    std::shared_ptr<Allocate> allocations_for_def(const std::shared_ptr<Definition>& def) {
+        auto vars = std::vector<std::shared_ptr<TensorVar>>();
+        for (auto &acc : def->lhs) {
+            vars.push_back(acc->tensor);
+        }
+        return IR::make<Allocate>(vars);
+    }
+
+    void AllocateInserter::visit(std::shared_ptr<Module> node) {
+        context->enter_module(node);
+        auto new_comps = std::vector<std::shared_ptr<ModuleComponent>>();
+        for(auto &comp: node->decls) {
+            if (comp->is_def()) {
+                auto alloc = allocations_for_def(comp->as_def());
+                new_comps.push_back(alloc);
+            }
+            new_comps.push_back(IRRewriter::visit(comp));
+        }
+        node_ = node;
+        context->exit_module();
+    }
+
+    void AllocateInserter::visit_decl(const std::shared_ptr<FuncDecl> &node) {
+        auto new_stmts = std::vector<std::shared_ptr<Statement>>();
+        for (auto &stmt: node->body) {
+            if (stmt->is_def()) {
+                new_stmts.push_back(allocations_for_def(stmt->as_def()));
+            }
+            new_stmts.push_back(IRRewriter::visit(stmt));
+        }
+        node->body = new_stmts;
+        node_ = node;
+    }
 }
 

@@ -28,7 +28,7 @@
   einsum::Reduction 				*red;
   einsum::TensorType				*ttype;
   einsum::FuncDecl				*fdecl;
-  std::vector<std::shared_ptr<einsum::Definition>>	*defs_vec;
+  std::vector<std::shared_ptr<einsum::Statement>>	*stmt_vec;
   std::vector<std::shared_ptr<einsum::TensorVar>>	*tvar_vec;
   einsum::TensorVar				*tvar;
 }
@@ -53,7 +53,7 @@
 %type   <reds_vec>   reduction_list
 %type   <ttype> 	type
 %type   <fdecl> 	func
-%type   <defs_vec>      statements
+%type   <stmt_vec>      statements
 %type   <tvar_vec> 	input_params
 %type   <tvar_vec>	output_params
 %type   <tvar_vec>	param_list
@@ -288,8 +288,8 @@ output_params:					{$$ = new std::vector<std::shared_ptr<einsum::TensorVar>>();}
 | OPEN_PAREN param param_list CLOSED_PAREN	{$3->insert($3->begin(), std::shared_ptr<einsum::TensorVar>($2));
                                                  $$ = $3;}
 
-statements:					{$$ = new std::vector<std::shared_ptr<einsum::Definition>>();}
-|  def EOL blank statements				{$4->insert($4->begin(), std::shared_ptr<einsum::Definition>($1));
+statements:					{$$ = new std::vector<std::shared_ptr<einsum::Statement>>();}
+|  def EOL blank statements				{$4->insert($4->begin(), std::shared_ptr<einsum::Statement>($1));
 						 $$ = $4;}
 
 func:		LET IDENTIFIER input_params RARROW output_params EOL blank statements END {$$ = new einsum::FuncDecl(*$2, *$3, *$5, *$8);}

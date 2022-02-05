@@ -23,6 +23,7 @@ namespace einsum{
         void visit(std::shared_ptr<BinaryOp> node) override;
         void visit(std::shared_ptr<UnaryOp> node) override;
         void visit(std::shared_ptr<Definition> node) override;
+        void visit(std::shared_ptr<Allocate> node) override;
         void visit(std::shared_ptr<FuncDecl> node) override;
         void visit(std::shared_ptr<Call> node) override;
         void visit(std::shared_ptr<CallStarRepeat> node) override;

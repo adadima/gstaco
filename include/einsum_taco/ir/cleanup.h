@@ -30,13 +30,32 @@ namespace einsum {
         void visit(std::shared_ptr<IndexVarExpr> node) override;
     };
 
-    std::shared_ptr<Module> apply_rewriters(std::shared_ptr<Module> mod, const std::vector<IRRewriter*>& rewriters) {
+    struct AllocateInserter : public IRRewriter {
+        explicit AllocateInserter(IRContext* context) : IRRewriter(context) {}
+
+        void visit_decl(const std::shared_ptr<FuncDecl>& node) override;
+        void visit(std::shared_ptr<Module> node) override;
+    };
+
+    std::shared_ptr<Module> apply_custom_rewriters(std::shared_ptr<Module> mod, const std::vector<IRRewriter*>& rewriters) {
         for (auto& rewriter: rewriters) {
             mod->accept(rewriter);
             mod = std::dynamic_pointer_cast<Module>(rewriter->node_);
         }
         return mod;
     }
+
+    std::shared_ptr<Module> apply_default_rewriters(std::shared_ptr<Module> mod) {
+        std::vector<IRRewriter*> rewriters = {
+                new TensorVarRewriter(new IRContext()),
+                new FuncDeclRewriter(new IRContext()),
+                new IndexDimensionRewriter(new IRContext()),
+                new AllocateInserter(new IRContext())
+        };
+        return apply_custom_rewriters(mod, rewriters);
+    }
+
+
 }
 
 

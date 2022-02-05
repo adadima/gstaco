@@ -81,17 +81,7 @@ namespace einsum {
             node_ = f;
         } else {
             context->enter_function(node);
-            for(auto& input: node->inputs) {
-                input = rewrite(input);
-            }
-            for(auto& output: node->outputs) {
-                output = rewrite(output);
-            }
-            for(auto& stmt: node->body) {
-                einsum_iassert(context->func_scope() != nullptr);
-                stmt = rewrite(stmt);
-            }
-            node_ = node;
+            visit_decl(node);
             context->exit_function(node);
         }
     }
@@ -121,18 +111,7 @@ namespace einsum {
     void  IRRewriter::visit(std::shared_ptr<Module> node) {
         context->enter_module(node);
         for(auto &comp: node->decls) {
-            if (comp->is_decl()) {
-                comp = rewrite(comp->as_decl());
-            }
-            if (comp->is_var()) {
-                comp = rewrite(comp->as_var());
-            }
-            if (comp->is_def()) {
-                comp = rewrite(comp->as_def());
-            }
-            if (comp->is_expr()) {
-                comp = rewrite(comp->as_expr());
-            }
+            comp = visit(comp);
         }
         node_ = node;
         context->exit_module();
@@ -168,5 +147,55 @@ namespace einsum {
     void IRRewriter::visit(std::shared_ptr<Operator> node) {
         node_ = node;
     }
+
+    void IRRewriter::visit(std::shared_ptr<Allocate> node) {
+        node_ = node;
+    }
+
+    std::shared_ptr<ModuleComponent> IRRewriter::visit(const std::shared_ptr<ModuleComponent>& node) {
+        std::shared_ptr<ModuleComponent> comp;
+        if (node->is_decl()) {
+            comp = rewrite(node->as_decl());
+        }
+        if (node->is_var()) {
+            comp = rewrite(node->as_var());
+        }
+        if (node->is_def()) {
+            comp = rewrite(node->as_def());
+        }
+        if (node->is_expr()) {
+            comp = rewrite(node->as_expr());
+        }
+        if (node->is_allocate()) {
+            comp = rewrite(node->as_allocate());
+        }
+        return comp;
+    }
+
+    std::shared_ptr<Statement> IRRewriter::visit(const std::shared_ptr<Statement> &node) {
+        std::shared_ptr<Statement> stmt;
+        if (node->is_allocate()) {
+            stmt = rewrite(node->as_allocate());
+        }
+        if (node->is_def()) {
+            stmt = rewrite(node->as_def());
+        }
+        return stmt;
+    }
+
+    void IRRewriter::visit_decl(const std::shared_ptr<FuncDecl>& node) {
+        for(auto& input: node->inputs) {
+            input = rewrite(input);
+        }
+        for(auto& output: node->outputs) {
+            output = rewrite(output);
+        }
+        for(auto& stmt: node->body) {
+            einsum_iassert(context->func_scope() != nullptr);
+            stmt = rewrite(stmt);
+        }
+        node_ = node;
+    }
+
 
 }

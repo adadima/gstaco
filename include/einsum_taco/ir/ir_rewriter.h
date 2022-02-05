@@ -18,6 +18,9 @@ namespace einsum {
 
         std::shared_ptr<BinaryOp> rewrite_binary(std::shared_ptr<BinaryOp> node);
         std::shared_ptr<UnaryOp> rewrite_unary(std::shared_ptr<UnaryOp> node);
+        std::shared_ptr<ModuleComponent> visit(const std::shared_ptr<ModuleComponent>& node);
+        std::shared_ptr<Statement> visit(const std::shared_ptr<Statement>& node);
+        virtual void visit_decl(const std::shared_ptr<FuncDecl>& node);
 
         template<typename T>
         void visit_call(T& node);
@@ -47,6 +50,7 @@ namespace einsum {
         void visit(std::shared_ptr<Access> node) override;
         void visit(std::shared_ptr<ReadAccess> node) override;
         void visit(std::shared_ptr<Definition> node) override;
+        void visit(std::shared_ptr<Allocate> node) override;
         void visit(std::shared_ptr<BinaryOp> node) override;
         void visit(std::shared_ptr<UnaryOp> node) override;
         void visit(std::shared_ptr<FuncDecl> node) override;

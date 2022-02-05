@@ -215,7 +215,10 @@ namespace einsum {
 
         std::string body;
         for (const auto &i : this->body) {
-            body += "    " + i->dump() + "\n";
+            if (i->is_def()) {
+                body += "    " + i->dump();
+            }
+            body += "\n";
         }
         return def + body + "End";
     }
@@ -357,6 +360,18 @@ namespace einsum {
         }
     }
 
+    bool ModuleComponent::is_allocate() const {
+        return dynamic_cast<const Allocate*>(this) != nullptr;
+    }
+
+    std::shared_ptr<Allocate> ModuleComponent::as_allocate() {
+        try {
+            return std::dynamic_pointer_cast<Allocate>(this->shared_from_this());
+        } catch (const std::bad_weak_ptr& exp) {
+            std::abort();
+        }
+    }
+
     std::string IndexVar::getName() const {
         return name;
     }
@@ -476,5 +491,7 @@ namespace einsum {
         return s;
     }
 
-
+    std::string Allocate::dump() const {
+        return "";
+    }
 }

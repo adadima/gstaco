@@ -24,6 +24,7 @@ namespace einsum {
     struct Definition;
     struct Expression;
     struct TensorVar;
+    struct Allocate;
 
     struct ModuleComponent : IR {
         bool is_decl() const;
@@ -37,6 +38,9 @@ namespace einsum {
 
         bool is_expr() const;
         std::shared_ptr<Expression> as_expr();
+
+        bool is_allocate() const;
+        std::shared_ptr<Allocate> as_allocate();
     };
 
 
@@ -249,7 +253,22 @@ namespace einsum {
         std::string dump() const override;
     };
 
-    struct Definition : Acceptor<Definition, ModuleComponent> {
+    struct Allocate;
+
+    struct Statement : ModuleComponent {
+
+    };
+
+    struct Allocate : Acceptor<Allocate, Statement> {
+        std::vector<std::shared_ptr<TensorVar>> tensors;
+
+        explicit Allocate(std::vector<std::shared_ptr<TensorVar>>  tensors) : tensors(std::move(tensors)) {}
+
+        std::string dump() const override;
+
+    };
+
+    struct Definition : Acceptor<Definition, Statement> {
         std::vector<std::shared_ptr<Reduction>> reduction_list;
         std::vector<std::shared_ptr<Access>> lhs;
         std::shared_ptr<Expression> rhs;
@@ -275,9 +294,9 @@ namespace einsum {
         std::string funcName;
         std::vector<std::shared_ptr<TensorVar>> inputs;
         std::vector<std::shared_ptr<TensorVar>> outputs;
-        std::vector<std::shared_ptr<Definition>> body;
+        std::vector<std::shared_ptr<Statement>> body;
 
-        FuncDecl(std::string funcName, std::vector<std::shared_ptr<TensorVar>> inputs, std::vector<std::shared_ptr<TensorVar>> outputs, std::vector<std::shared_ptr<Definition>> body)
+        FuncDecl(std::string funcName, std::vector<std::shared_ptr<TensorVar>> inputs, std::vector<std::shared_ptr<TensorVar>> outputs, std::vector<std::shared_ptr<Statement>> body)
             : funcName(std::move(funcName)), inputs(std::move(inputs)), outputs(std::move(outputs)), body(std::move(body)) {}
 
         std::string dump() const override;
@@ -289,7 +308,7 @@ namespace einsum {
 
     struct Call : Acceptor<Call, Expression> {
         Call(std::string function, std::vector<std::shared_ptr<Expression>> arguments) : Base(1) {
-            this->function = IR::make<FuncDecl>(std::move(function), std::vector<std::shared_ptr<TensorVar>>(), std::vector<std::shared_ptr<TensorVar>>(), std::vector<std::shared_ptr<Definition>>()),
+            this->function = IR::make<FuncDecl>(std::move(function), std::vector<std::shared_ptr<TensorVar>>(), std::vector<std::shared_ptr<TensorVar>>(), std::vector<std::shared_ptr<Statement>>()),
             this->arguments = std::move(arguments);
         };
 
@@ -362,6 +381,7 @@ namespace einsum {
         virtual void visit(std::shared_ptr<BinaryOp> node) = 0;
         virtual void visit(std::shared_ptr<UnaryOp> node) = 0;
         virtual void visit(std::shared_ptr<Definition> node) = 0;
+        virtual void visit(std::shared_ptr<Allocate> node) = 0;
         virtual void visit(std::shared_ptr<FuncDecl> node) = 0;
         virtual void visit(std::shared_ptr<Call> node) = 0;
         virtual void visit(std::shared_ptr<CallStarRepeat> node) = 0;

@@ -128,6 +128,19 @@ void einsum::DumpAstVisitor::visit(std::shared_ptr<Definition> node) {
     unindent();
 }
 
+void einsum::DumpAstVisitor::visit(std::shared_ptr<Allocate> node) {
+    indent();
+
+    auto lhs = visit_array(node->tensors);
+
+    ast = get_indent() + "<" + node->class_name() + "\n";
+    array_ast(lhs);
+    ast += "\n";
+    ast += get_indent() + ">";
+
+    unindent();
+}
+
 void einsum::DumpAstVisitor::visit(std::shared_ptr<FuncDecl> node) {
     indent();
 
@@ -323,4 +336,5 @@ void einsum::DumpAstVisitor::visit(shared_ptr<Operator> node) {
     unindent();
     ast += get_indent() + ">";
 }
+
 

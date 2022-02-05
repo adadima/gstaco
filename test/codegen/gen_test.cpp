@@ -19,22 +19,17 @@ class GenTest : public testing::Test {
 public:
     std::stringstream oss;
     CodeGenVisitor generator;
-    std::vector<IRRewriter*> rewriters;
     DumpAstVisitor printer;
 
 
-    GenTest() : generator(oss, "test"),
-                rewriters{
-                        new TensorVarRewriter(new IRContext()),
-                        new FuncDeclRewriter(new IRContext()),
-                        new IndexDimensionRewriter(new IRContext())} {}
+    GenTest() : generator(oss, "test") {}
 
     void assert_generated(const std::string& input, const std::string& expected) {
         // parse
         auto mod = std::make_shared<Module>(parse(input));
 
         // cleanup
-        auto new_module = apply_rewriters(mod, rewriters);
+        auto new_module = apply_default_rewriters(mod);
 
         // code generation
         new_module->accept(&generator);
@@ -51,7 +46,7 @@ public:
         auto mod = std::make_shared<Module>(parse(input));
 
         // cleanup
-        auto new_module = apply_rewriters(mod, rewriters);
+        auto new_module = apply_default_rewriters(mod);
 
         // print IR
         new_module->accept(&printer);

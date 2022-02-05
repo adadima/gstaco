@@ -359,4 +359,8 @@ namespace einsum {
     void CodeGenVisitor::visit(std::shared_ptr<Operator> node) {
 
     }
+
+    void CodeGenVisitor::visit(std::shared_ptr<Allocate> node) {
+
+    }
 }

@@ -119,7 +119,7 @@ public:
                         make_tensor<int>("round_in", {})
                 ),
                 einsum::IR::make_vec<einsum::TensorVar>(frontier, make_tensor<int>("round_out", {})),
-                einsum::IR::make_vec<einsum::Definition>(definition1(), definition2())
+                einsum::IR::make_vec<einsum::Statement>(definition1(), definition2())
         );
     }
 
@@ -255,7 +255,7 @@ TEST_F(DumpTest, FuncDeclTest1) {
                     round_in
             ),
             einsum::IR::make_vec<einsum::TensorVar>(round_out),
-            einsum::IR::make_vec<einsum::Definition>(definition2())
+            einsum::IR::make_vec<einsum::Statement>(definition2())
     );
     EXPECT_EQ(func->dump(),
               "Let Round(round_in int) -> (round_out int)\n"
@@ -281,7 +281,7 @@ TEST_F(DumpTest, CallTest) {
                                  make_tensor<int>("round_in", {})
                          ),
                          einsum::IR::make_vec<einsum::TensorVar>(make_tensor<int>("round_out", {})),
-                         einsum::IR::make_vec<einsum::Definition>(definition2())
+                         einsum::IR::make_vec<einsum::Statement>(definition2())
                  ),
                 einsum::IR::make_vec<einsum::Expression>(zero)
              );
@@ -312,7 +312,7 @@ TEST_F(DumpTest, CallMultipleInputsTest) {
                            round_out,
                            unused_out
                     ),
-                    einsum::IR::make_vec<einsum::Definition>(definition2())
+                    einsum::IR::make_vec<einsum::Statement>(definition2())
             ),
             args
     );
@@ -346,7 +346,7 @@ TEST_F(DumpTest, CallStarRepeatTest) {
                             round_in
                     ),
                     einsum::IR::make_vec<einsum::TensorVar>(round_out),
-                    einsum::IR::make_vec<einsum::Definition>(definition2())
+                    einsum::IR::make_vec<einsum::Statement>(definition2())
             ),
             args
     );
@@ -394,7 +394,7 @@ TEST_F(DumpTest, CallStarConditionTest) {
                             round_out,
                             unused_out
                     ),
-                    einsum::IR::make_vec<einsum::Definition>(definition2())
+                    einsum::IR::make_vec<einsum::Statement>(definition2())
             ),
             args
     );

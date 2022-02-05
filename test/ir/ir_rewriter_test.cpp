@@ -16,14 +16,9 @@ using namespace std;
 class Cleanup : public testing::Test {
 public:
     DumpAstVisitor* printer;
-    std::vector<IRRewriter*> rewriters;
 
     Cleanup() :
-        printer(new DumpAstVisitor()),
-        rewriters{
-                new TensorVarRewriter(new IRContext()),
-                new FuncDeclRewriter(new IRContext()),
-                new IndexDimensionRewriter(new IRContext())} {}
+        printer(new DumpAstVisitor()) {}
 };
 
 //TODO: write more visitor tests!
@@ -31,7 +26,7 @@ public:
 TEST_F(Cleanup, IndexVars1) {
     auto input = *readFileIntoString("rewriter/inputs/index_vars1.txt");
     auto mod = std::make_shared<Module>(parse(input));
-    auto module = apply_rewriters(mod, rewriters);
+    auto module = apply_default_rewriters(mod);
     EXPECT_EQ(module->dump(), input);
 
     auto ast = *readFileIntoString("rewriter/outputs/index_vars1.txt");
