@@ -97,6 +97,44 @@ namespace einsum {
         Kind kind;
     };
 
+
+    inline std::shared_ptr<Datatype> intType = std::make_shared<Datatype>(Datatype::Kind::Int);
+
+    inline std::shared_ptr<Datatype> boolType = std::make_shared<Datatype>(Datatype::Kind::Bool);
+
+    inline std::shared_ptr<Datatype> floatType = std::make_shared<Datatype>(Datatype::Kind::Float);
+
+    struct Expression;
+
+    struct TensorType : public Acceptor<TensorType, Type> {
+    public:
+        TensorType() : type(intType),
+                       dimensions(std::vector<std::shared_ptr<einsum::Expression>>()) {}
+
+        TensorType(std::shared_ptr<Datatype> type, std::vector<std::shared_ptr<einsum::Expression>> dimensions) : type(
+                std::move(type)), dimensions(std::move(dimensions)) {}
+
+        std::vector<std::shared_ptr<einsum::Expression>> getDimensions() const;
+
+        std::shared_ptr<einsum::Expression> getDimension(int i) const;
+
+        std::shared_ptr<Datatype> getElementType() const;
+
+        int getOrder() const;
+
+        bool isInt() const override;
+
+        bool isFloat() const override;
+
+        bool isBool() const override;
+
+        std::string dump() const override;
+
+    private:
+        std::vector<std::shared_ptr<einsum::Expression>> dimensions;
+        std::shared_ptr<Datatype> type;
+    };
+
     struct TupleType : Acceptor<TupleType, Type> {
         std::vector<std::shared_ptr<Type>> tuple;
 
@@ -197,38 +235,37 @@ namespace einsum {
         NeqOp() : Operator(7, "!=", Datatype::boolType()) {}
     };
 
-    struct Expression;
+    inline std::shared_ptr<AddOp> add = std::make_shared<AddOp>();
+    
+    inline std::shared_ptr<SubOp> sub = std::make_shared<SubOp>();
+
+    inline std::shared_ptr<MulOp> mul = std::make_shared<MulOp>();
+
+    inline std::shared_ptr<DivOp> div = std::make_shared<DivOp>();
+
+    inline std::shared_ptr<ModOp> mod = std::make_shared<ModOp>();
+
+    inline std::shared_ptr<AndOp> and_ = std::make_shared<AndOp>();
+
+    inline std::shared_ptr<OrOp> or_ = std::make_shared<OrOp>();
+
+    inline std::shared_ptr<NotOp> not_ = std::make_shared<NotOp>();
+
+    inline std::shared_ptr<LtOp> lt = std::make_shared<LtOp>();
+
+    inline std::shared_ptr<LteOp> lte = std::make_shared<LteOp>();
+
+    inline std::shared_ptr<GtOp> gt = std::make_shared<GtOp>();
+
+    inline std::shared_ptr<GteOp> gte = std::make_shared<GteOp>();
+
+    inline std::shared_ptr<EqOp> eq = std::make_shared<EqOp>();
+
+    inline std::shared_ptr<NeqOp> neq = std::make_shared<NeqOp>();
+
 
 
     // TODO: allow users to write their own operators!!
-    struct TensorType : public Acceptor<TensorType, Type> {
-    public:
-        TensorType() : type(Type::make<Datatype>(Datatype::Kind::Int)),
-                       dimensions(std::vector<std::shared_ptr<einsum::Expression>>()) {}
-
-        TensorType(std::shared_ptr<Datatype> type, std::vector<std::shared_ptr<einsum::Expression>> dimensions) : type(
-                std::move(type)), dimensions(std::move(dimensions)) {}
-
-        std::vector<std::shared_ptr<einsum::Expression>> getDimensions() const;
-
-        std::shared_ptr<einsum::Expression> getDimension(int i) const;
-
-        std::shared_ptr<Datatype> getElementType() const;
-
-        int getOrder() const;
-
-        bool isInt() const override;
-
-        bool isFloat() const override;
-
-        bool isBool() const override;
-
-        std::string dump() const override;
-
-    private:
-        std::vector<std::shared_ptr<einsum::Expression>> dimensions;
-        std::shared_ptr<Datatype> type;
-    };
 }
 
 //TODO: implement a templated utility class which says if something is a reduction or not
