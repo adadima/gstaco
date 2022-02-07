@@ -190,6 +190,14 @@ namespace einsum {
             );
             return einsum::IR::make<einsum::TensorVar>(name, tType);
         }
+
+        int getOrder() const {
+            return getType()->getOrder();
+        }
+
+        std::vector<std::shared_ptr<Expression>> getDimensions() {
+            return getType()->getDimensions();
+        }
     };
 
 
@@ -303,7 +311,7 @@ namespace einsum {
 
         std::vector<std::shared_ptr<Type>> getInputType() const;
 
-        std::vector<std::shared_ptr<Type>> getOutputType() const;
+        std::shared_ptr<TupleType> getOutputType() const;
     };
 
     struct Call : Acceptor<Call, Expression> {

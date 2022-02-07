@@ -50,7 +50,6 @@ namespace einsum {
 
         void visit(std::shared_ptr<Datatype> node) override;
 
-
         void visit(std::shared_ptr<TensorType> node) override;
 
         void visit(std::shared_ptr<TupleType> node) override;
@@ -77,7 +76,9 @@ namespace einsum {
 
         void generate_while_loop(const std::shared_ptr<Expression>& condition);
 
-        void get_lambda_return(std::string output_type, int num_outputs);
+        void get_lambda_return(const std::shared_ptr<TupleType>& output_type, int num_outputs);
+
+        void generate_tensor_template();
 
     private:
 
@@ -85,6 +86,11 @@ namespace einsum {
 
         static std::shared_ptr<Expression> reduce_expression(const std::string &init_var, std::shared_ptr<Expression> expr,
                                                       const std::shared_ptr<Operator> &op);
+
+        void visit_tensor_declaration(const std::shared_ptr<TensorVar>& tensor);
+
+        template<typename T>
+        void visit_tensor_access(const std::shared_ptr<T>& access);
 
     };
 }

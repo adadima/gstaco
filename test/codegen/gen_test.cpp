@@ -9,11 +9,14 @@
 #include "einsum_taco/ir/cleanup.h"
 #include "einsum_taco/codegen/codegen_visitor.h"
 #include "einsum_taco/ir/dump_ast.h"
+#include "einsum_taco/gstrt/tensor.h"
 #include <einsum_taco/parser/heading.h>
 #include "../utils.h"
+#include <filesystem>
 
 using namespace std;
 
+namespace fs = std::filesystem;
 
 class GenTest : public testing::Test {
 public:
@@ -24,7 +27,46 @@ public:
 
     GenTest() : generator(oss, "test") {}
 
-    void assert_generated(const std::string& input, const std::string& expected) {
+    static std::string readFileIntoString(const std::string& path) {
+//        std::ifstream f(path);
+//        std::string str;
+//        if(f) {
+//            std::ostringstream ss;
+//            ss << f.rdbuf();
+//            str = ss.str();
+//            return str;
+//        }
+//        std::abort();
+        FILE *fp = fopen(path.c_str(), "r");
+        if (fp == nullptr) {
+            std::cout << "Failed to open file for reading " << path << std::endl;
+            std::abort();
+        }
+        auto size = fs::file_size(path);
+        std::string contents = std::string(size, 0);
+        fread(contents.data(), 1, size, fp);
+        fclose(fp);
+        return contents;
+    }
+
+    static std::string get_runtime_dir() {
+        return {GSTACO_RUNTIME};
+    }
+
+    static std::string readDataIntoString(const std::string& path) {
+        return readFileIntoString(get_test_data_dir() + path);
+    }
+
+    static std::string get_tensor_template() {
+        return readFileIntoString(get_runtime_dir() + "tensor.h");
+    }
+
+    std::string tensor_template = get_tensor_template();
+
+    void assert_generated(const std::string& input_filename, const std::string& expected_filename) {
+        auto input = readDataIntoString(input_filename);
+        auto expected = tensor_template + readDataIntoString(expected_filename);
+
         // parse
         auto mod = std::make_shared<Module>(parse(input));
 
@@ -41,8 +83,8 @@ public:
 
     void assert_generated_defintion(const std::string& input_filename, const std::string& expected_filename, int d = 0) {
         // parse
-        auto input = *readFileIntoString(input_filename);
-        auto expected = *readFileIntoString(expected_filename);
+        auto input = readDataIntoString(input_filename);
+        auto expected = readDataIntoString(expected_filename);
         auto mod = std::make_shared<Module>(parse(input));
 
         // cleanup

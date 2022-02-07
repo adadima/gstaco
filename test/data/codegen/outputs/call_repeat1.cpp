@@ -1,3 +1,5 @@
+int A;
+float B;
 {
     auto init = ([&]{
 auto out = fib(C, D);

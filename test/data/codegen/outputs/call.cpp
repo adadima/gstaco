@@ -1,3 +1,5 @@
+int A;
+float B;
 {
     auto init = fib(C, D);
     A = std::get<0>(init);

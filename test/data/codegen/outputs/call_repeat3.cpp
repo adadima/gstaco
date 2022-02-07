@@ -1,3 +1,4 @@
+Tensor<int, 1> A({N});
 {
     for(int i=0; i<N; i++) {
         auto init = ([&]{
@@ -7,7 +8,7 @@ auto& out0 = out;
             out0 = f(out0);
         }
 return out0;
-}()) * B[i];
-        A[i] = init;
+}()) * B.at({i});
+        A.at({i}) = init;
     }
 }

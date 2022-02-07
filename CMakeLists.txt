@@ -24,6 +24,7 @@ if (EINSUM_SHARED_LIBRARY)
 else ()
     add_library(einsum_lib STATIC ${EINSUM_SOURCES})
 endif()
+add_compile_definitions(einsum_lib PUBLIC GSTACO_RUNTIME="${EINSUM_INCLUDE_DIR}/einsum_taco/gstrt/")
 target_include_directories(einsum_lib PUBLIC ${EINSUM_INCLUDE_DIR})
 install(TARGETS einsum_lib DESTINATION lib)
 

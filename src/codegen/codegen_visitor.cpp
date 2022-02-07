@@ -5,8 +5,31 @@
 #include "einsum_taco/codegen/codegen_visitor.h"
 
 #include<iostream>
+#include <string_view>
+#include <fstream>
 
 namespace einsum {
+
+    static std::string* readFileIntoString(const std::string& path) {
+        std::ifstream f(path);
+        auto str = new std::string();
+        if(f) {
+            std::ostringstream ss;
+            ss << f.rdbuf();
+            *str = ss.str();
+            return str;
+        }
+        return nullptr;
+    }
+
+    std::string get_runtime_dir() {
+        return {GSTACO_RUNTIME};
+    }
+
+    void CodeGenVisitor::generate_tensor_template() {
+        auto tensor_template = readFileIntoString(get_runtime_dir() + "tensor.h");
+        oss << tensor_template;
+    }
 
     void CodeGenVisitor::visit(std::shared_ptr<IndexVar> node) {
         oss << node->dump();
@@ -22,24 +45,32 @@ namespace einsum {
         node->indexVar->accept(this);
     }
 
+    template<typename T>
+    void CodeGenVisitor::visit_tensor_access(const std::shared_ptr<T>& access) {
+        oss << access->tensor->name;
+        if (access->tensor->getOrder() == 0) {
+            return;
+        }
+        oss << ".at({";
+        auto indices = access->indices;
+        for (int i=0; i < indices.size(); i++) {
+            if (i > 0) {
+                oss << ", ";
+            }
+            indices[i]->accept(this);
+        }
+        oss << "})";
+    }
+
     void CodeGenVisitor::visit(std::shared_ptr<Access> node) {
-        oss << node->dump();
+        visit_tensor_access(node);
     }
 
     void CodeGenVisitor::visit(std::shared_ptr<ReadAccess> node) {
-        oss << node->tensor->name;
-        for (const auto &indice : node->indices) {
-            oss << "[";
-            indice->accept(this);
-            oss << "]";
-        }
+        visit_tensor_access(node);
     }
 
-    //
     // TODO: generate asserts that index var dimensions match
-    // frontier[j] = edges[j][k] * frontier_list[round][k] * (visited[j] == 0) | k:(OR, 0)
-    // Assumes IR has been rewritten to break up definitions of multiple inputs
-    // Does not support things like A[i], B[i] = 0; aka the rhs has to be a func call to support multiple outputs
     void CodeGenVisitor::visit(std::shared_ptr<Definition> node) {
         for(int a=0; a < node->lhs.size(); a++) {
             oss << get_indent();
@@ -79,7 +110,28 @@ namespace einsum {
         }
     }
 
-    void CodeGenVisitor::visit(std::shared_ptr<FuncDecl> node) {}
+    void CodeGenVisitor::visit(std::shared_ptr<FuncDecl> node) {
+        auto return_type = node->getOutputType();
+        return_type->accept(this);
+        oss << " ";
+        oss << node->funcName;
+        oss << "(";
+        for (int i=0; i < node->inputs.size(); i++) {
+            if (i > 0) {
+                oss << ", ";
+            }
+            auto input = node->inputs[i];
+            input->getType()->accept(this);
+            oss << " ";
+            oss << input->name;
+        }
+        oss << ") {\n";
+        for (auto &stmt: node->body) {
+            stmt->accept(this);
+            oss << "\n";
+        }
+        oss << "}\n";
+    }
 
     void CodeGenVisitor::visit(std::shared_ptr<Call> node) {
         oss << node->function->funcName;
@@ -93,13 +145,13 @@ namespace einsum {
         oss << ")";
     }
 
-    void CodeGenVisitor::get_lambda_return(std::string output_type, int num_outputs) {
+    void CodeGenVisitor::get_lambda_return(const std::shared_ptr<TupleType>& output_type, int num_outputs) {
         if (num_outputs == 1) {
             oss << "return out0;";
             return;
         }
-        oss << "return std::tuple";
-        oss << output_type;
+        oss << "return ";
+        output_type->accept(this);
         oss << "{";
         for (int i=0; i < num_outputs; i++) {
             if (i > 0) {
@@ -163,7 +215,7 @@ namespace einsum {
 
         oss << get_indent();
         oss << "}\n";
-        get_lambda_return(node->getType()->dump(), node->arguments.size());
+        get_lambda_return(node->function->getOutputType(), node->arguments.size());
         oss << "\n}())";
     }
 
@@ -221,11 +273,17 @@ namespace einsum {
         oss << "}\n";
 
         //TODO: dump() is not good enough for tensor types with complex expressions as dimensions
-        get_lambda_return(node->getType()->dump(), node->arguments.size());
+        get_lambda_return(node->function->getOutputType(), node->arguments.size());
         oss << "\n}())";
     }
 
-    void CodeGenVisitor::visit(std::shared_ptr<Module> node) {}
+    void CodeGenVisitor::visit(std::shared_ptr<Module> node) {
+        generate_tensor_template();
+
+        for(auto &comp: node->decls) {
+            comp->accept(this);
+        }
+    }
 
     void CodeGenVisitor::visit(std::shared_ptr<Reduction> node) {
         auto i = node->reductionVar->getName();
@@ -242,6 +300,8 @@ namespace einsum {
         generate_for_loop(node->reductionVar->getName(), node->reductionVar->dimension);
     }
 
+    //TODO: add identifiers to variable names
+    //TODO: make new rewriter passes to make lhs and rhs rank-0
     std::string CodeGenVisitor::visit_reduced_expr(const std::shared_ptr<Expression>& expr, const std::vector<std::shared_ptr<Reduction>>& reductions) {
         if (reductions.empty()) {
             oss << get_indent();
@@ -345,22 +405,63 @@ namespace einsum {
     }
 
     void CodeGenVisitor::visit(std::shared_ptr<Datatype> node) {
-
+        oss << node->dump();
     }
 
     void CodeGenVisitor::visit(std::shared_ptr<TensorType> node) {
-
+        if (node->getOrder() == 0) {
+            node->getElementType()->accept(this);
+            return;
+        }
+        oss << "Tensor<";
+        node->getElementType()->accept(this);
+        oss << ", ";
+        oss << std::to_string(node->getOrder());
+        oss << ">";
     }
 
+    //TODO: make this a helper, not method on visitor. TupleType should not be a node
     void CodeGenVisitor::visit(std::shared_ptr<TupleType> node) {
-
+        oss << "std::tuple<";
+        for (int i=0; i < node->tuple.size(); i++) {
+            if (i > 0) {
+                oss << ", ";
+            }
+            node->tuple[i]->accept(this);
+        }
+        oss << ">";
     }
 
     void CodeGenVisitor::visit(std::shared_ptr<Operator> node) {
 
     }
 
-    void CodeGenVisitor::visit(std::shared_ptr<Allocate> node) {
+    void CodeGenVisitor::visit_tensor_declaration(const std::shared_ptr<TensorVar>& tensor) {
+        auto order = tensor->getOrder();
+        auto dimenions = tensor->getDimensions();
+        tensor->getType()->accept(this);
+        oss << " ";
+        oss << tensor->name;
 
+        if (tensor->getOrder() > 0) {
+            oss << "({";
+            for (int i=0; i < order; i++) {
+                if (i > 0) {
+                    oss << ", ";
+                }
+                dimenions[i]->accept(this);
+            }
+            oss << "})";
+        }
+
+        oss << ";";
+    }
+
+    // TODO: also allocate the memory in here, separately from the Tensor constructor!
+    void CodeGenVisitor::visit(std::shared_ptr<Allocate> node) {
+        for (auto &var: node->tensors) {
+            visit_tensor_declaration(var);
+            oss << "\n";
+        }
     }
 }

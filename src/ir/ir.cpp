@@ -205,7 +205,7 @@ namespace einsum {
 
         std::string outParams;
         for (int i=0; i < outputs.size(); i++) {
-            outParams += (outputs[i]->dump() + " " + outputTypes[i]->dump());
+            outParams += (outputs[i]->dump() + " " + outputs[i]->getType()->dump());
             if (i < outputs.size() - 1) {
                 outParams += ", ";
             }
@@ -224,7 +224,7 @@ namespace einsum {
     }
 
     std::shared_ptr<Type> Call::getType() const {
-        return std::make_shared<TupleType>(this->function->getOutputType());
+        return this->function->getOutputType();
     }
 
     std::string Call::dump_args() const {
@@ -269,12 +269,13 @@ namespace einsum {
         return types;
     }
 
-    std::vector<std::shared_ptr<Type>> FuncDecl::getOutputType() const {
+    //TODO:: make this return vector of types
+    std::shared_ptr<TupleType> FuncDecl::getOutputType() const {
         std::vector<std::shared_ptr<Type>> types;
         for (auto &var : outputs) {
             types.push_back(var->getType());
         }
-        return types;
+        return Type::make<TupleType>(types);
     }
 
     std::string Module::dump() const {

@@ -1,3 +1,5 @@
+Tensor<int, 1> A({N});
+Tensor<int, 1> B({N});
 {
     for(int i=0; i<N; i++) {
         auto init = ([&]{
@@ -8,7 +10,7 @@ auto& [out0, out1] = out;
         }
 return std::tuple<int, int>{out0, out1};
 }());
-        A[i] = std::get<0>(init);
+        A.at({i}) = std::get<0>(init);
     }
 }
 {
@@ -21,6 +23,6 @@ auto& [out0, out1] = out;
         }
 return std::tuple<int, int>{out0, out1};
 }());
-        B[i] = std::get<1>(init);
+        B.at({i}) = std::get<1>(init);
     }
 }
