@@ -28,15 +28,6 @@ public:
     GenTest() : generator(oss, "test") {}
 
     static std::string readFileIntoString(const std::string& path) {
-//        std::ifstream f(path);
-//        std::string str;
-//        if(f) {
-//            std::ostringstream ss;
-//            ss << f.rdbuf();
-//            str = ss.str();
-//            return str;
-//        }
-//        std::abort();
         FILE *fp = fopen(path.c_str(), "r");
         if (fp == nullptr) {
             std::cout << "Failed to open file for reading " << path << std::endl;
@@ -129,7 +120,8 @@ TEST_F(GenTest, Definition4) {
 }
 
 TEST_F(GenTest, DefinitionCall) {
-    assert_generated_defintion("codegen/inputs/call.txt", "codegen/outputs/call.cpp", 1);
+    //assert_generated_defintion("codegen/inputs/call.txt", "codegen/outputs/call.cpp", 1);
+    assert_generated("codegen/inputs/call.txt", "codegen/outputs/call.cpp");
 }
 
 TEST_F(GenTest, DefinitionCallCondition1) {

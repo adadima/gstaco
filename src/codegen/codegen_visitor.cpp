@@ -7,19 +7,23 @@
 #include<iostream>
 #include <string_view>
 #include <fstream>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 namespace einsum {
 
-    static std::string* readFileIntoString(const std::string& path) {
-        std::ifstream f(path);
-        auto str = new std::string();
-        if(f) {
-            std::ostringstream ss;
-            ss << f.rdbuf();
-            *str = ss.str();
-            return str;
+    static std::string readFileIntoString(const std::string& path) {
+        FILE *fp = fopen(path.c_str(), "r");
+        if (fp == nullptr) {
+            std::cout << "Failed to open file for reading " << path << std::endl;
+            std::abort();
         }
-        return nullptr;
+        auto size = fs::file_size(path);
+        std::string contents = std::string(size, 0);
+        fread(contents.data(), 1, size, fp);
+        fclose(fp);
+        return contents;
     }
 
     std::string get_runtime_dir() {
@@ -126,11 +130,19 @@ namespace einsum {
             oss << input->name;
         }
         oss << ") {\n";
+        indent();
         for (auto &stmt: node->body) {
             stmt->accept(this);
             oss << "\n";
         }
-        oss << "}\n";
+        unindent();
+        std::vector<std::string> out_names= {};
+        out_names.reserve(node->outputs.size());
+        for (auto & output : node->outputs) {
+            out_names.push_back(output->name);
+        }
+        print_return(return_type, out_names);
+        oss << "\n}\n";
     }
 
     void CodeGenVisitor::visit(std::shared_ptr<Call> node) {
@@ -146,18 +158,29 @@ namespace einsum {
     }
 
     void CodeGenVisitor::get_lambda_return(const std::shared_ptr<TupleType>& output_type, int num_outputs) {
-        if (num_outputs == 1) {
-            oss << "return out0;";
+        std::vector<std::string> out_names= {};
+        out_names.reserve(num_outputs);
+        for (int i=0; i < num_outputs; i++) {
+            out_names.push_back("out" + std::to_string(i));
+        }
+        print_return(output_type, out_names);
+    }
+
+    void CodeGenVisitor::print_return(const std::shared_ptr<TupleType>& output_type, const std::vector<std::string>& output_names) {
+        if (output_names.size() == 1) {
+            oss << "return ";
+            oss << output_names[0];
+            oss << ";";
             return;
         }
         oss << "return ";
         output_type->accept(this);
         oss << "{";
-        for (int i=0; i < num_outputs; i++) {
+        for (int i=0; i < output_names.size(); i++) {
             if (i > 0) {
                 oss << ", ";
             }
-            oss << "out" + std::to_string(i);
+            oss << output_names[i];
         }
         oss << "};";
     }
@@ -439,6 +462,7 @@ namespace einsum {
     void CodeGenVisitor::visit_tensor_declaration(const std::shared_ptr<TensorVar>& tensor) {
         auto order = tensor->getOrder();
         auto dimenions = tensor->getDimensions();
+        oss << get_indent();
         tensor->getType()->accept(this);
         oss << " ";
         oss << tensor->name;

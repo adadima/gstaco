@@ -12,7 +12,6 @@ namespace einsum {
         std::ostream &oss;
         std::string module_name;
         int indent_;
-        std::vector<std::string> outputs;
 
         CodeGenVisitor(std::ostream &oss, std::string module_name) : oss(oss), module_name(std::move(module_name)),
                                                                      indent_(0) {}
@@ -77,6 +76,8 @@ namespace einsum {
         void generate_while_loop(const std::shared_ptr<Expression>& condition);
 
         void get_lambda_return(const std::shared_ptr<TupleType>& output_type, int num_outputs);
+
+        void print_return(const std::shared_ptr<TupleType>& output_type, const std::vector<std::string>& outputs);
 
         void generate_tensor_template();
 
