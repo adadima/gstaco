@@ -15,6 +15,7 @@ std::tuple<int, float> fib(int A, float B) {
 
 return std::tuple<int, float>{C, D};
 }
+
 std::tuple<int, float> func(int C, float D) {
     int A;
     float B;
@@ -30,3 +31,4 @@ std::tuple<int, float> func(int C, float D) {
 
 return std::tuple<int, float>{A, B};
 }
+

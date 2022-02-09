@@ -104,19 +104,19 @@ public:
 };
 
 TEST_F(GenTest, Definition1) {
-    assert_generated_defintion("codegen/inputs/definition1.txt", "codegen/outputs/definition1.cpp");
+    assert_generated("codegen/inputs/definition1.txt", "codegen/outputs/definition1.cpp");
 }
 
 TEST_F(GenTest, Definition2) {
-    assert_generated_defintion("codegen/inputs/definition2.txt", "codegen/outputs/definition2.cpp");
+    assert_generated("codegen/inputs/definition2.txt", "codegen/outputs/definition2.cpp");
 }
 
 TEST_F(GenTest, Definition3) {
-    assert_generated_defintion("codegen/inputs/definition3.txt", "codegen/outputs/definition3.cpp", 1);
+    assert_generated("codegen/inputs/definition3.txt", "codegen/outputs/definition3.cpp");
 }
 
 TEST_F(GenTest, Definition4) {
-    assert_generated_defintion("codegen/inputs/definition4.txt", "codegen/outputs/definition4.cpp");
+    assert_generated("codegen/inputs/definition4.txt", "codegen/outputs/definition4.cpp");
 }
 
 TEST_F(GenTest, DefinitionCall) {
@@ -125,34 +125,34 @@ TEST_F(GenTest, DefinitionCall) {
 }
 
 TEST_F(GenTest, DefinitionCallCondition1) {
-    assert_generated_defintion("codegen/inputs/call_condition1.txt", "codegen/outputs/call_condition1.cpp", 1);
+    assert_generated("codegen/inputs/call_condition1.txt", "codegen/outputs/call_condition1.cpp");
 }
 
 //TODO: remove lambda, later
 TEST_F(GenTest, DefinitionCallRepeat1) {
-    assert_generated_defintion("codegen/inputs/call_repeat1.txt", "codegen/outputs/call_repeat1.cpp", 1);
+    assert_generated("codegen/inputs/call_repeat1.txt", "codegen/outputs/call_repeat1.cpp");
 }
 
 TEST_F(GenTest, DefinitionCallRepeat2) {
-    assert_generated_defintion("codegen/inputs/call_repeat2.txt", "codegen/outputs/call_repeat2.cpp", 1);
+    assert_generated("codegen/inputs/call_repeat2.txt", "codegen/outputs/call_repeat2.cpp");
 }
 
 TEST_F(GenTest, DefinitionCallRepeat3) {
-    assert_generated_defintion("codegen/inputs/call_repeat3.txt", "codegen/outputs/call_repeat3.cpp", 1);
+    assert_generated("codegen/inputs/call_repeat3.txt", "codegen/outputs/call_repeat3.cpp");
 }
 
 TEST_F(GenTest, DefinitionCallRepeat4) {
-    assert_generated_defintion("codegen/inputs/call_repeat4.txt", "codegen/outputs/call_repeat4.cpp", 1);
+    assert_generated("codegen/inputs/call_repeat4.txt", "codegen/outputs/call_repeat4.cpp");
 }
 
 TEST_F(GenTest, DefinitionCallRepeat5) {
-    assert_generated_defintion("codegen/inputs/call_repeat5.txt", "codegen/outputs/call_repeat5.cpp", 3);
+    assert_generated("codegen/inputs/call_repeat5.txt", "codegen/outputs/call_repeat5.cpp");
 }
 
 TEST_F(GenTest, DefinitionCallCondition2) {
-    assert_generated_defintion("codegen/inputs/call_condition2.txt", "codegen/outputs/call_condition2.cpp", 1);
+    assert_generated("codegen/inputs/call_condition2.txt", "codegen/outputs/call_condition2.cpp");
 }
 
 TEST_F(GenTest, BFS_Step) {
-    assert_generated_defintion("codegen/inputs/bfs_step.txt", "codegen/outputs/bfs_step.cpp");
+    assert_generated("codegen/inputs/bfs_step.txt", "codegen/outputs/bfs_step.cpp");
 }

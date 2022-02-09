@@ -42,7 +42,9 @@ namespace einsum {
         oss << node->dump();
     }
     void CodeGenVisitor::visit(std::shared_ptr<TensorVar> node) {
-        oss << node->dump();
+        node->getType()->accept(this);
+        oss << " ";
+        oss << node->name;
     }
 
     void CodeGenVisitor::visit(std::shared_ptr<IndexVarExpr> node) {
@@ -305,6 +307,10 @@ namespace einsum {
 
         for(auto &comp: node->decls) {
             comp->accept(this);
+            if (comp->is_var()) {
+                oss << ";";
+            }
+            oss << "\n";
         }
     }
 
@@ -445,6 +451,10 @@ namespace einsum {
 
     //TODO: make this a helper, not method on visitor. TupleType should not be a node
     void CodeGenVisitor::visit(std::shared_ptr<TupleType> node) {
+        if (node->tuple.size() == 1) {
+            node->tuple[0]->accept(this);
+            return;
+        }
         oss << "std::tuple<";
         for (int i=0; i < node->tuple.size(); i++) {
             if (i > 0) {
@@ -463,9 +473,7 @@ namespace einsum {
         auto order = tensor->getOrder();
         auto dimenions = tensor->getDimensions();
         oss << get_indent();
-        tensor->getType()->accept(this);
-        oss << " ";
-        oss << tensor->name;
+        tensor->accept(this);
 
         if (tensor->getOrder() > 0) {
             oss << "({";

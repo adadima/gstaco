@@ -1,5 +1,6 @@
 Let fib(A int, B float) -> (C int, D float)
-
+    C = A
+    D = B
 End
 
 Let func(C int, D float) -> (A int, B float)
