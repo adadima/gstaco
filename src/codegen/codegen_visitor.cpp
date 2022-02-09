@@ -187,7 +187,7 @@ namespace einsum {
         oss << "};";
     }
 
-    void CodeGenVisitor::visit(std::shared_ptr<CallStarRepeat> node) {
+    void CodeGenVisitor::visit_call(const std::shared_ptr<Call>& node, std::function<void()> loop_generator) {
         oss << "([&]{\n";
 
         oss << "auto out = ";
@@ -209,8 +209,7 @@ namespace einsum {
             oss << "auto& out0 = out;\n";
         }
 
-        generate_for_loop("iter", IR::make<Literal>(node->numIterations - 1, Datatype::intType()));
-
+        loop_generator();
 
         indent();
         oss << get_indent();
@@ -244,62 +243,16 @@ namespace einsum {
         oss << "\n}())";
     }
 
+    void CodeGenVisitor::visit(std::shared_ptr<CallStarRepeat> node) {
+        visit_call(node, [&]() {
+            generate_for_loop("iter", IR::make<Literal>(node->numIterations - 1, Datatype::intType()));
+        });
+    }
+
     void CodeGenVisitor::visit(std::shared_ptr<CallStarCondition> node) {
-        oss << "([&]{\n";
-
-        oss << "auto out = ";
-        auto call = IR::make<Call>(node->function, node->arguments);
-        call->accept(this);
-        oss << ";\n";
-
-        if (node->arguments.size() > 1) {
-            oss << "auto& [";
-            for(int i=0; i < node->arguments.size(); i++) {
-                if (i > 0) {
-                    oss << ", ";
-                }
-                auto var = "out" + std::to_string(i);
-                oss << var;
-            }
-            oss << "] = out;\n";
-        } else {
-            oss << "auto& out0 = out;\n";
-        }
-
-        generate_while_loop(node->stopCondition);
-
-        indent();
-        oss << get_indent();
-        if (node->arguments.size() == 1) {
-            oss << "out0";
-        } else {
-            oss << "std::tie(";
-            for(int i=0; i < node->arguments.size(); i++) {
-                if (i > 0) {
-                    oss << ", ";
-                }
-                auto var = "out" + std::to_string(i);
-                oss << var;
-            }
-            oss << ")";
-        }
-        oss << " = ";
-        auto args = std::vector<std::shared_ptr<Expression>>();
-        for(int i=0; i < node->arguments.size(); i++) {
-            args.push_back(IR::make<ReadAccess>("out" + std::to_string(i), false));
-        }
-        auto call_ = IR::make<Call>(node->function, args);
-        call_->accept(this);
-        oss << ";\n";
-
-        unindent();
-
-        oss << get_indent();
-        oss << "}\n";
-
-        //TODO: dump() is not good enough for tensor types with complex expressions as dimensions
-        get_lambda_return(node->function->getOutputType(), node->arguments.size());
-        oss << "\n}())";
+        visit_call(node, [&]() {
+            generate_while_loop(node->stopCondition);
+        });
     }
 
     void CodeGenVisitor::visit(std::shared_ptr<Module> node) {

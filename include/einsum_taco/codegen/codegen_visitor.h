@@ -81,6 +81,8 @@ namespace einsum {
 
         void generate_tensor_template();
 
+        void visit_call(const std::shared_ptr<Call>& node, std::function<void()> loop_generator);
+
     private:
 
         std::string visit_reduced_expr(const std::shared_ptr<Expression>& expr, const std::vector<std::shared_ptr<Reduction>> &reductions);
