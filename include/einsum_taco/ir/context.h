@@ -46,7 +46,9 @@ namespace einsum {
         int coordinate_;
 
         static std::shared_ptr<TensorVar> get_param(const std::shared_ptr<TensorVar>& tensor, const std::vector<std::shared_ptr<TensorVar>>& param_list) {
-
+            if (tensor->name.find('#', 0) == 0) {
+                return tensor;
+            }
 
             for (auto &&value : param_list) {
 
@@ -88,6 +90,9 @@ namespace einsum {
         }
 
         bool is_global(const std::shared_ptr<TensorVar>& tensor) {
+            if (tensor->name.find('#', 0) ==0) {
+                return false;
+            }
             if (func_scope() && (get_param(tensor, func_scope()->inputs) || get_param(tensor, func_scope()->outputs))) {
                 return false;
             }

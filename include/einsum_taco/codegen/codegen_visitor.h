@@ -81,7 +81,7 @@ namespace einsum {
 
         void generate_tensor_template();
 
-        void visit_call(const std::shared_ptr<Call>& node, std::function<void()> loop_generator);
+        void visit_call(const std::shared_ptr<Call>& node, const std::function<void()>& loop_generator);
 
     private:
 

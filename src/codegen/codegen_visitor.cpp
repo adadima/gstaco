@@ -30,6 +30,14 @@ namespace einsum {
         return {GSTACO_RUNTIME};
     }
 
+    std::string parse_variable_name(const std::string& var) {
+        if (var.rfind('#', 0) == 0) {
+            auto nth = std::stoi(var.substr(1));
+            return "out" + std::to_string(nth - 1);
+        }
+        return var;
+    }
+
     void CodeGenVisitor::generate_tensor_template() {
         auto tensor_template = readFileIntoString(get_runtime_dir() + "tensor.h");
         oss << tensor_template;
@@ -53,8 +61,8 @@ namespace einsum {
 
     template<typename T>
     void CodeGenVisitor::visit_tensor_access(const std::shared_ptr<T>& access) {
-        oss << access->tensor->name;
-        if (access->tensor->getOrder() == 0) {
+        oss << parse_variable_name(access->tensor->name);
+        if (access->indices.size() == 0) {
             return;
         }
         oss << ".at({";
@@ -187,7 +195,7 @@ namespace einsum {
         oss << "};";
     }
 
-    void CodeGenVisitor::visit_call(const std::shared_ptr<Call>& node, std::function<void()> loop_generator) {
+    void CodeGenVisitor::visit_call(const std::shared_ptr<Call>& node, const std::function<void()>& loop_generator) {
         oss << "([&]{\n";
 
         oss << "auto out = ";

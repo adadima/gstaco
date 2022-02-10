@@ -153,6 +153,14 @@ TEST_F(GenTest, DefinitionCallCondition2) {
     assert_generated("codegen/inputs/call_condition2.txt", "codegen/outputs/call_condition2.cpp");
 }
 
+TEST_F(GenTest, OuterLoopVar1) {
+    assert_generated("codegen/inputs/outer_loop_var1.txt", "codegen/outputs/outer_loop_var1.cpp");
+}
+
+TEST_F(GenTest, OuterLoopVar2) {
+    assert_generated("codegen/inputs/outer_loop_var2.txt", "codegen/outputs/outer_loop_var2.cpp");
+}
+
 TEST_F(GenTest, BFS_Step) {
     assert_generated("codegen/inputs/bfs_step.txt", "codegen/outputs/bfs_step.cpp");
 }
