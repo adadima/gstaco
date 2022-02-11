@@ -49,11 +49,11 @@ namespace einsum {
     void CodeGenVisitor::visit(std::shared_ptr<Literal> node) {
         oss << node->dump();
     }
-    void CodeGenVisitor::visit(std::shared_ptr<TensorVar> node) {
-        node->getType()->accept(this);
-        oss << " ";
-        oss << node->name;
-    }
+//    void CodeGenVisitor::visit(std::shared_ptr<TensorVar> node) {
+//        node->getType()->accept(this);
+//        oss << " ";
+//        oss << node->name;
+//    }
 
     void CodeGenVisitor::visit(std::shared_ptr<IndexVarExpr> node) {
         node->indexVar->accept(this);
@@ -430,11 +430,14 @@ namespace einsum {
 
     }
 
-    void CodeGenVisitor::visit_tensor_declaration(const std::shared_ptr<TensorVar>& tensor) {
+    void CodeGenVisitor::visit(std::shared_ptr<TensorVar> tensor) {
         auto order = tensor->getOrder();
         auto dimenions = tensor->getDimensions();
         oss << get_indent();
-        tensor->accept(this);
+
+        tensor->getType()->accept(this);
+        oss << " ";
+        oss << tensor->name;
 
         if (tensor->getOrder() > 0) {
             oss << "({";
@@ -453,7 +456,7 @@ namespace einsum {
     // TODO: also allocate the memory in here, separately from the Tensor constructor!
     void CodeGenVisitor::visit(std::shared_ptr<Allocate> node) {
         for (auto &var: node->tensors) {
-            visit_tensor_declaration(var);
+            var->accept(this);
             oss << "\n";
         }
     }

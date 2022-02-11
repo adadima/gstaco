@@ -1,3 +1,7 @@
+N int
+
+M int
+
 Let f(A int) -> (C int)
     C = A
 End

@@ -34,8 +34,24 @@ inline einsum::Module parse(std::string_view code) {
 #error "Did not receive test data dir."
 #endif
 
+#ifndef TEST_CXX_COMPILER
+#error "Did not set c++ compiler variable."
+#endif
+
 inline std::string get_test_data_dir() {
     return {EINSUM_TACO_TEST_DATADIR};
+}
+
+inline std::string get_test_dir() {
+    return {EINSUM_TACO_TEST_DIR};
+}
+
+inline std::string get_compiler_path() {
+    return {TEST_CXX_COMPILER};
+}
+
+inline std::string get_clang_path() {
+
 }
 
 static std::string* readFileIntoString(const string& path) {

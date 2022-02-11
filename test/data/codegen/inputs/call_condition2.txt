@@ -2,6 +2,13 @@ Let f(A int) -> (C int)
     C = A
 End
 
+N int
+
+M int
+
+P int
+
+
 Let func(B int[N][M], C float[P]) -> (A int[N])
     A[i] = ((f*(i) | (i < 100)) + B[i][j]) * C[k]| j:(*, 1), k:(+, 0)
 End
