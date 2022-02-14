@@ -455,9 +455,13 @@ namespace einsum {
 
     // TODO: also allocate the memory in here, separately from the Tensor constructor!
     void CodeGenVisitor::visit(std::shared_ptr<Allocate> node) {
-        for (auto &var: node->tensors) {
-            var->accept(this);
-            oss << "\n";
-        }
+        oss << "auto " << node->name << " = new ";
+        node->tensorType->accept(this);
+        oss << "[";
+        oss << "];\n";
+    }
+
+    void CodeGenVisitor::visit(std::shared_ptr<Instantiation> node) {
+
     }
 }

@@ -142,18 +142,18 @@ namespace einsum {
 
     std::shared_ptr<Type> ReadAccess::getType() const {
         std::vector<std::shared_ptr<Expression>> dims;
-        int last = this->tensor->type->getOrder() - this->indices.size();
+        int last = this->tensor->getType()->getOrder() - this->indices.size();
         if (last < 0) {
             last = 0;
         }
         dims.reserve(last);
         for (int i=0; i < last; i++) {
-            dims.push_back(this->tensor->type->getDimension(i));
+            dims.push_back(this->tensor->getType()->getDimension(i));
         }
         if (dims.empty()) {
-            return this->tensor->type->getElementType();
+            return this->tensor->getType()->getElementType();
         }
-        return std::make_shared<TensorType>(this->tensor->type->getElementType(), dims);
+        return std::make_shared<TensorType>(this->tensor->getType()->getElementType(), dims);
     }
 
     std::string Reduction::dump() const {
@@ -264,7 +264,7 @@ namespace einsum {
 
     std::vector<std::shared_ptr<Type>> FuncDecl::getInputType() const {
         std::vector<std::shared_ptr<Type>> types;
-        auto mapper = [](const std::shared_ptr<TensorVar> tvar) { return tvar->type; };
+        auto mapper = [](const std::shared_ptr<TensorVar> tvar) { return tvar->getType(); };
         std::transform(this->inputs.begin(), this->inputs.end(), std::back_inserter(types), mapper);
         return types;
     }
@@ -284,7 +284,7 @@ namespace einsum {
             code += "\n";
             code += d->dump();
             if (d->is_var()) {
-                code += " " + d->as_var()->type->dump();
+                code += " " + d->as_var()->getType()->dump();
             }
             code += "\n";
         }
@@ -373,6 +373,18 @@ namespace einsum {
         }
     }
 
+    bool ModuleComponent::is_inst() const {
+        return dynamic_cast<const Instantiation*>(this) != nullptr;
+    }
+
+    std::shared_ptr<Instantiation> ModuleComponent::as_inst() {
+        try {
+            return std::dynamic_pointer_cast<Instantiation>(this->shared_from_this());
+        } catch (const std::bad_weak_ptr& exp) {
+            std::abort();
+        }
+    }
+
     std::string IndexVar::getName() const {
         return name;
     }
@@ -423,7 +435,7 @@ namespace einsum {
             auto ind = indices[i];
             auto index_var = std::dynamic_pointer_cast<T>(ind);
             if (index_var) {
-                auto dimension = tensor->type->getDimension(i);
+                auto dimension = tensor->getType()->getDimension(i);
                 dims[index_var->getName()].insert(dimension);
             }
         }
@@ -493,6 +505,10 @@ namespace einsum {
     }
 
     std::string Allocate::dump() const {
+        return "";
+    }
+
+    std::string Instantiation::dump() const {
         return "";
     }
 }

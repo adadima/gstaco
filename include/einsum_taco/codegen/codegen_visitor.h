@@ -34,7 +34,7 @@ namespace einsum {
 
         void visit(std::shared_ptr<Definition> node) override;
         void visit(std::shared_ptr<Allocate> node) override;
-
+        void visit(std::shared_ptr<Instantiation> node) override;
         void visit(std::shared_ptr<FuncDecl> node) override;
 
         void visit(std::shared_ptr<Call> node) override;

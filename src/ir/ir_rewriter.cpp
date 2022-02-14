@@ -152,6 +152,10 @@ namespace einsum {
         node_ = node;
     }
 
+    void IRRewriter::visit(std::shared_ptr<Instantiation> node) {
+        node_ = node;
+    }
+
     std::shared_ptr<ModuleComponent> IRRewriter::visit(const std::shared_ptr<ModuleComponent>& node) {
         std::shared_ptr<ModuleComponent> comp;
         if (node->is_decl()) {

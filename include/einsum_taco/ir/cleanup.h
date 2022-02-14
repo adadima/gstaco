@@ -31,10 +31,22 @@ namespace einsum {
     };
 
     struct AllocateInserter : public IRRewriter {
+        int num_allocations_;
+
         explicit AllocateInserter(IRContext* context) : IRRewriter(context) {}
 
         void visit_decl(const std::shared_ptr<FuncDecl>& node) override;
         void visit(std::shared_ptr<Module> node) override;
+
+        int& num_allocations() {
+            return num_allocations_;
+        }
+
+        void add_allocations() {
+            num_allocations() += 1;
+        }
+
+        std::vector<std::shared_ptr<Statement>> alloc_and_inst(const std::shared_ptr<TensorVar>& tensor);
     };
 
     std::shared_ptr<Module> apply_custom_rewriters(std::shared_ptr<Module> mod, const std::vector<IRRewriter*>& rewriters) {

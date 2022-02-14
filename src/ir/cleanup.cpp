@@ -46,12 +46,19 @@ namespace einsum {
         node_ = ivar;
     }
 
-    std::shared_ptr<Allocate> allocations_for_def(const std::shared_ptr<Definition>& def) {
-        auto vars = std::vector<std::shared_ptr<TensorVar>>();
-        for (auto &acc : def->lhs) {
-            vars.push_back(acc->tensor);
-        }
-        return IR::make<Allocate>(vars);
+    std::vector<std::shared_ptr<Statement>> AllocateInserter::alloc_and_inst(const std::shared_ptr<TensorVar>& tensor) {
+        auto stmts = std::vector<std::shared_ptr<Statement>>();
+
+        add_allocations();
+        auto name = "data" + std::to_string(num_allocations());
+
+        auto alloc = IR::make<Allocate>(tensor, name);
+        stmts.push_back(alloc);
+
+        auto inst = IR::make<Instantiation>(alloc, tensor);
+        stmts.push_back(inst);
+
+        return stmts;
     }
 
     void AllocateInserter::visit(std::shared_ptr<Module> node) {
@@ -59,8 +66,16 @@ namespace einsum {
         auto new_comps = std::vector<std::shared_ptr<ModuleComponent>>();
         for(auto &comp: node->decls) {
             if (comp->is_def()) {
-                auto alloc = allocations_for_def(comp->as_def());
-                new_comps.push_back(alloc);
+                auto def = comp->as_def();
+                for (auto& acc: def->lhs) {
+                    auto alloc_inst = alloc_and_inst(acc->tensor);
+                    new_comps.insert(new_comps.end(), alloc_inst.begin(), alloc_inst.end());
+                }
+            }
+            if (comp->is_var()) {
+                auto tensor = comp->as_var();
+                auto alloc_inst = alloc_and_inst(tensor);
+                new_comps.insert(new_comps.end(), alloc_inst.begin(), alloc_inst.end());
             }
             new_comps.push_back(IRRewriter::visit(comp));
         }
@@ -72,7 +87,11 @@ namespace einsum {
         auto new_stmts = std::vector<std::shared_ptr<Statement>>();
         for (auto &stmt: node->body) {
             if (stmt->is_def()) {
-                new_stmts.push_back(allocations_for_def(stmt->as_def()));
+                auto def = stmt->as_def();
+                for (auto& acc: def->lhs) {
+                    auto alloc_inst = alloc_and_inst(acc->tensor);
+                    new_stmts.insert(new_stmts.end(), alloc_inst.begin(), alloc_inst.end());
+                }
             }
             new_stmts.push_back(IRRewriter::visit(stmt));
         }

@@ -25,6 +25,7 @@ namespace einsum {
     struct Expression;
     struct TensorVar;
     struct Allocate;
+    struct Instantiation;
 
     struct ModuleComponent : IR {
         bool is_decl() const;
@@ -41,6 +42,9 @@ namespace einsum {
 
         bool is_allocate() const;
         std::shared_ptr<Allocate> as_allocate();
+
+        bool is_inst() const;
+        std::shared_ptr<Instantiation> as_inst();
     };
 
 
@@ -268,12 +272,28 @@ namespace einsum {
     };
 
     struct Allocate : Acceptor<Allocate, Statement> {
-        std::vector<std::shared_ptr<TensorVar>> tensors;
+        std::shared_ptr<TensorType> tensorType;
+        std::string name;
 
-        explicit Allocate(std::vector<std::shared_ptr<TensorVar>>  tensors) : tensors(std::move(tensors)) {}
+        explicit Allocate(const std::shared_ptr<TensorType>&  tensorType, const std::string& name) :
+            tensorType(tensorType),
+            name(name) {}
+
+        explicit Allocate(const std::shared_ptr<TensorVar>& tensor, const std::string& name) :
+            tensorType(tensor->getType()),
+            name(name) {}
 
         std::string dump() const override;
 
+    };
+
+    struct Instantiation : Acceptor<Instantiation, Statement> {
+        std::shared_ptr<Allocate> allocation;
+        std::shared_ptr<TensorVar> tensor;
+
+        Instantiation(std::shared_ptr<Allocate> allocation, std::shared_ptr<TensorVar> tensor) : allocation(allocation), tensor(tensor) {}
+
+        std::string dump() const override;
     };
 
     struct Definition : Acceptor<Definition, Statement> {
@@ -390,6 +410,7 @@ namespace einsum {
         virtual void visit(std::shared_ptr<UnaryOp> node) = 0;
         virtual void visit(std::shared_ptr<Definition> node) = 0;
         virtual void visit(std::shared_ptr<Allocate> node) = 0;
+        virtual void visit(std::shared_ptr<Instantiation> node) = 0;
         virtual void visit(std::shared_ptr<FuncDecl> node) = 0;
         virtual void visit(std::shared_ptr<Call> node) = 0;
         virtual void visit(std::shared_ptr<CallStarRepeat> node) = 0;

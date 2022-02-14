@@ -7,12 +7,12 @@ struct Tensor {
     int total_size;
     std::array<int, num_dims> dims;
 
-    Tensor(std::array<int, num_dims> dims): dims(dims) {
+    Tensor(std::array<int, num_dims> dims, T* data): dims(dims), data(data) {
         total_size = 1;
         for (auto dim: dims) {
             total_size *= dim;
         }
-        data = new T[total_size];
+        // data = new T[total_size];
     }
 
     ~Tensor() {
@@ -35,5 +35,6 @@ struct Tensor {
 };
 
 // usage:
-//Tensor<int, 3> t({2, 2, 2});
+// data = new T[2 * 2 * 2]
+//Tensor<int, 3> t({2, 2, 2}, data);
 //t.at({1, 0, 1}) = 5;

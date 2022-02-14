@@ -62,7 +62,7 @@ void einsum::DumpAstVisitor::visit(std::shared_ptr<Reduction> node) {
 void einsum::DumpAstVisitor::visit(std::shared_ptr<TensorVar> node) {
     indent();
 
-    node->type->accept(this);
+    node->getType()->accept(this);
     auto type = ast;
 
     ast = get_indent() + "<" + node->class_name() + " " + node->name + "\n";
@@ -128,13 +128,21 @@ void einsum::DumpAstVisitor::visit(std::shared_ptr<Definition> node) {
     unindent();
 }
 
+void einsum::DumpAstVisitor::visit(std::shared_ptr<Instantiation> node) {
+
+}
+
 void einsum::DumpAstVisitor::visit(std::shared_ptr<Allocate> node) {
     indent();
 
-    auto lhs = visit_array(node->tensors);
+    node->tensorType->accept(this);
+    auto type = ast;
 
     ast = get_indent() + "<" + node->class_name() + "\n";
-    array_ast(lhs);
+    indent();
+    ast += get_indent() + node->name + "\n";
+    unindent();
+    ast += type;
     ast += "\n";
     ast += get_indent() + ">";
 
