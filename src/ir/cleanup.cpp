@@ -79,6 +79,7 @@ namespace einsum {
             }
             new_comps.push_back(IRRewriter::visit(comp));
         }
+        node->decls = new_comps;
         node_ = node;
         context->exit_module();
     }

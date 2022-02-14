@@ -95,6 +95,10 @@ public:
         // cleanup
         auto new_module = apply_default_rewriters(mod);
 
+        // print ast for debug
+//        new_module->accept(&printer);
+//        std::cout << printer.ast;
+
         // code generation
         new_module->accept(&generator);
         return oss.str();
@@ -155,7 +159,7 @@ int main() {}
         std::tie(status_code, output) = exec(cmd.c_str());
 
         // remove generated files
-        cleanup(tmp_in, tmp_out);
+        // cleanup(tmp_in, tmp_out);
 
         // check compilation process finished successfully
         EXPECT_EQ(status_code, 0);

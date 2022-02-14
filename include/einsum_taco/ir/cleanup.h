@@ -31,7 +31,7 @@ namespace einsum {
     };
 
     struct AllocateInserter : public IRRewriter {
-        int num_allocations_;
+        int num_allocations_ = 0;
 
         explicit AllocateInserter(IRContext* context) : IRRewriter(context) {}
 

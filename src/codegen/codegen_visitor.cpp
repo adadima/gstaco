@@ -49,11 +49,6 @@ namespace einsum {
     void CodeGenVisitor::visit(std::shared_ptr<Literal> node) {
         oss << node->dump();
     }
-//    void CodeGenVisitor::visit(std::shared_ptr<TensorVar> node) {
-//        node->getType()->accept(this);
-//        oss << " ";
-//        oss << node->name;
-//    }
 
     void CodeGenVisitor::visit(std::shared_ptr<IndexVarExpr> node) {
         node->indexVar->accept(this);
@@ -267,11 +262,10 @@ namespace einsum {
         generate_tensor_template();
 
         for(auto &comp: node->decls) {
-            comp->accept(this);
-            if (comp->is_var()) {
-                oss << ";";
+            if (!comp->is_var()) {
+                comp->accept(this);
+                oss << "\n";
             }
-            oss << "\n";
         }
     }
 
@@ -431,15 +425,44 @@ namespace einsum {
     }
 
     void CodeGenVisitor::visit(std::shared_ptr<TensorVar> tensor) {
-        auto order = tensor->getOrder();
-        auto dimenions = tensor->getDimensions();
+
+    }
+
+    // TODO: also allocate the memory in here, separately from the Tensor constructor!
+    void CodeGenVisitor::visit(std::shared_ptr<Allocate> node) {
+        if (node->tensorType->getOrder() == 0) {
+            return;
+        }
+        oss << get_indent() << "auto " << node->name << " = new ";
+        node->tensorType->getElementType()->accept(this);
+        oss << "[";
+        auto dims = node->tensorType->getDimensions();
+
+        if (dims.size() == 0) {
+            oss << "1";
+        } else {
+            for (int i=0; i < dims.size(); i++) {
+                if (i > 0) {
+                    oss << " * ";
+                }
+                dims[i]->accept(this);
+            }
+        }
+        oss << "];\n";
+    }
+
+    // Something like: Tensor<int, 3> t({2, 2, 2}, data);
+    // where data was previously allocated in an Allocate node
+    void CodeGenVisitor::visit(std::shared_ptr<Instantiation> node) {
+        auto order = node->allocation->tensorType->getOrder();
+        auto dimenions = node->allocation->tensorType->getDimensions();
         oss << get_indent();
 
-        tensor->getType()->accept(this);
+        node->allocation->tensorType->accept(this);
         oss << " ";
-        oss << tensor->name;
+        oss << node->tensor->name;
 
-        if (tensor->getOrder() > 0) {
+        if (order > 0) {
             oss << "({";
             for (int i=0; i < order; i++) {
                 if (i > 0) {
@@ -447,21 +470,11 @@ namespace einsum {
                 }
                 dimenions[i]->accept(this);
             }
-            oss << "})";
+            oss << "}, ";
+            oss << node->allocation->name;
+            oss << ")";
         }
 
         oss << ";";
-    }
-
-    // TODO: also allocate the memory in here, separately from the Tensor constructor!
-    void CodeGenVisitor::visit(std::shared_ptr<Allocate> node) {
-        oss << "auto " << node->name << " = new ";
-        node->tensorType->accept(this);
-        oss << "[";
-        oss << "];\n";
-    }
-
-    void CodeGenVisitor::visit(std::shared_ptr<Instantiation> node) {
-
     }
 }

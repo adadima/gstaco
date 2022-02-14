@@ -129,7 +129,20 @@ void einsum::DumpAstVisitor::visit(std::shared_ptr<Definition> node) {
 }
 
 void einsum::DumpAstVisitor::visit(std::shared_ptr<Instantiation> node) {
+    indent();
 
+    node->allocation->accept(this);
+    auto alloc = ast;
+
+    node->tensor->accept(this);
+    auto t = ast;
+
+    ast = get_indent() + "<" + node->class_name() + "\n";
+    ast += alloc + "\n";
+    ast += t + "\n";
+    ast += get_indent() + ">";
+
+    unindent();
 }
 
 void einsum::DumpAstVisitor::visit(std::shared_ptr<Allocate> node) {

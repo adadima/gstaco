@@ -130,7 +130,6 @@ namespace einsum {
 
         std::string dump() const override;
 
-    private:
         std::vector<std::shared_ptr<einsum::Expression>> dimensions;
         std::shared_ptr<Datatype> type;
     };
