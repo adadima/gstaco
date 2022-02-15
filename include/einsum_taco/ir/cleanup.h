@@ -45,8 +45,6 @@ namespace einsum {
         void add_allocations() {
             num_allocations() += 1;
         }
-
-        std::vector<std::shared_ptr<Statement>> alloc_and_inst(const std::shared_ptr<TensorVar>& tensor);
     };
 
     std::shared_ptr<Module> apply_custom_rewriters(std::shared_ptr<Module> mod, const std::vector<IRRewriter*>& rewriters) {

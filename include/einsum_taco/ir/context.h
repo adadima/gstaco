@@ -184,10 +184,14 @@ namespace einsum {
         }
 
         std::shared_ptr<TensorVar> get_read_tensor(const std::shared_ptr<TensorVar>& tensor) {
-            if (globals_.count(tensor->name)) {
-                return globals_[tensor->name];
+            auto t = get_param(tensor, func_scope()->inputs);
+            if (t != nullptr) {
+                return t;
             }
-            return get_param(tensor, func_scope()->inputs);
+            if (globals_.count(tensor->name) > 0) {
+                    return globals_[tensor->name];
+            }
+            return nullptr;
         }
 
         std::shared_ptr<TensorVar> get_write_tensor(const std::shared_ptr<TensorVar>& tensor) {

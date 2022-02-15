@@ -25,7 +25,8 @@ namespace einsum {
     struct Expression;
     struct TensorVar;
     struct Allocate;
-    struct Instantiation;
+    struct MemAssignment;
+    struct Initialize;
 
     struct ModuleComponent : IR {
         bool is_decl() const;
@@ -43,8 +44,11 @@ namespace einsum {
         bool is_allocate() const;
         std::shared_ptr<Allocate> as_allocate();
 
-        bool is_inst() const;
-        std::shared_ptr<Instantiation> as_inst();
+        bool is_mem_assign() const;
+        std::shared_ptr<MemAssignment> as_mem_assign();
+
+        bool is_init() const;
+        std::shared_ptr<Initialize> as_init();
     };
 
 
@@ -265,33 +269,35 @@ namespace einsum {
         std::string dump() const override;
     };
 
-    struct Allocate;
-
     struct Statement : ModuleComponent {
 
     };
 
     struct Allocate : Acceptor<Allocate, Statement> {
-        std::shared_ptr<TensorType> tensorType;
-        std::string name;
+        std::shared_ptr<TensorVar> tensor;
 
-        explicit Allocate(const std::shared_ptr<TensorType>&  tensorType, const std::string& name) :
-            tensorType(tensorType),
-            name(name) {}
-
-        explicit Allocate(const std::shared_ptr<TensorVar>& tensor, const std::string& name) :
-            tensorType(tensor->getType()),
-            name(name) {}
+        explicit Allocate(const std::shared_ptr<TensorVar>&  tensor) :
+            tensor(tensor){}
 
         std::string dump() const override;
 
     };
 
-    struct Instantiation : Acceptor<Instantiation, Statement> {
-        std::shared_ptr<Allocate> allocation;
+    struct Initialize : Acceptor<Initialize, Statement> {
         std::shared_ptr<TensorVar> tensor;
 
-        Instantiation(std::shared_ptr<Allocate> allocation, std::shared_ptr<TensorVar> tensor) : allocation(allocation), tensor(tensor) {}
+        explicit Initialize(const std::shared_ptr<TensorVar>&  tensor) :
+                tensor(tensor){}
+
+        std::string dump() const override;
+
+    };
+
+    struct MemAssignment : Acceptor<MemAssignment, Statement> {
+        std::shared_ptr<TensorVar> rhs;
+        std::shared_ptr<TensorVar> lhs;
+
+        MemAssignment(std::shared_ptr<TensorVar> rhs, std::shared_ptr<TensorVar> lhs) : rhs(rhs), lhs(lhs) {}
 
         std::string dump() const override;
     };
@@ -410,7 +416,8 @@ namespace einsum {
         virtual void visit(std::shared_ptr<UnaryOp> node) = 0;
         virtual void visit(std::shared_ptr<Definition> node) = 0;
         virtual void visit(std::shared_ptr<Allocate> node) = 0;
-        virtual void visit(std::shared_ptr<Instantiation> node) = 0;
+        virtual void visit(std::shared_ptr<MemAssignment> node) = 0;
+        virtual void visit(std::shared_ptr<Initialize> node) = 0;
         virtual void visit(std::shared_ptr<FuncDecl> node) = 0;
         virtual void visit(std::shared_ptr<Call> node) = 0;
         virtual void visit(std::shared_ptr<CallStarRepeat> node) = 0;

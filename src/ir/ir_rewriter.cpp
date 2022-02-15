@@ -156,13 +156,13 @@ namespace einsum {
     }
 
     void IRRewriter::visit(std::shared_ptr<Allocate> node) {
-        node->tensorType = rewrite(node->tensorType);
+        node->tensor = rewrite(node->tensor);
         node_ = node;
     }
 
-    void IRRewriter::visit(std::shared_ptr<Instantiation> node) {
-        node->allocation = rewrite(node->allocation);
-        node->tensor = rewrite(node->tensor);
+    void IRRewriter::visit(std::shared_ptr<MemAssignment> node) {
+        node->rhs = rewrite(node->rhs);
+        node->lhs = rewrite(node->lhs);
         node_ = node;
     }
 
@@ -183,8 +183,8 @@ namespace einsum {
         if (node->is_allocate()) {
             comp = rewrite(node->as_allocate());
         }
-        if (node->is_inst()) {
-            comp = rewrite(node->as_inst());
+        if (node->is_mem_assign()) {
+            comp = rewrite(node->as_mem_assign());
         }
         return comp;
     }
@@ -197,8 +197,8 @@ namespace einsum {
         if (node->is_def()) {
             stmt = rewrite(node->as_def());
         }
-        if (node->is_inst()) {
-            stmt = rewrite(node->as_inst());
+        if (node->is_mem_assign()) {
+            stmt = rewrite(node->as_mem_assign());
         }
         return stmt;
     }
@@ -214,6 +214,11 @@ namespace einsum {
             einsum_iassert(context->func_scope() != nullptr);
             stmt = rewrite(stmt);
         }
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<Initialize> node) {
+        node->tensor = rewrite(node->tensor);
         node_ = node;
     }
 

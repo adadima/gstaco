@@ -46,56 +46,66 @@ namespace einsum {
         node_ = ivar;
     }
 
-    std::vector<std::shared_ptr<Statement>> AllocateInserter::alloc_and_inst(const std::shared_ptr<TensorVar>& tensor) {
-        auto stmts = std::vector<std::shared_ptr<Statement>>();
-
-        add_allocations();
-        auto name = "data" + std::to_string(num_allocations());
-
-        auto alloc = IR::make<Allocate>(tensor, name);
-        stmts.push_back(alloc);
-
-        auto inst = IR::make<Instantiation>(alloc, tensor);
-        stmts.push_back(inst);
-
-        return stmts;
-    }
 
     void AllocateInserter::visit(std::shared_ptr<Module> node) {
         context->enter_module(node);
+
         auto new_comps = std::vector<std::shared_ptr<ModuleComponent>>();
+
         for(auto &comp: node->decls) {
+            if (comp->is_var()) {
+                auto tensor = comp->as_var();
+
+                auto init = IR::make<Initialize>(tensor);
+                new_comps.push_back(init);
+
+                if (tensor->is_global) {
+                    continue;
+                }
+
+                auto alloc = IR::make<Allocate>(tensor);
+                new_comps.push_back(alloc);
+
+                continue;
+            }
+
             if (comp->is_def()) {
                 auto def = comp->as_def();
                 for (auto& acc: def->lhs) {
-                    auto alloc_inst = alloc_and_inst(acc->tensor);
-                    new_comps.insert(new_comps.end(), alloc_inst.begin(), alloc_inst.end());
+
+                    auto init = IR::make<Initialize>(acc->tensor);
+                    new_comps.push_back(init);
+                    auto alloc = IR::make<Allocate>(acc->tensor);
+                    new_comps.push_back(alloc);
                 }
-            }
-            if (comp->is_var()) {
-                auto tensor = comp->as_var();
-                auto alloc_inst = alloc_and_inst(tensor);
-                new_comps.insert(new_comps.end(), alloc_inst.begin(), alloc_inst.end());
             }
             new_comps.push_back(IRRewriter::visit(comp));
         }
+
         node->decls = new_comps;
         node_ = node;
+
         context->exit_module();
     }
 
     void AllocateInserter::visit_decl(const std::shared_ptr<FuncDecl> &node) {
         auto new_stmts = std::vector<std::shared_ptr<Statement>>();
+
         for (auto &stmt: node->body) {
             if (stmt->is_def()) {
                 auto def = stmt->as_def();
                 for (auto& acc: def->lhs) {
-                    auto alloc_inst = alloc_and_inst(acc->tensor);
-                    new_stmts.insert(new_stmts.end(), alloc_inst.begin(), alloc_inst.end());
+
+                    auto init = IR::make<Initialize>(acc->tensor);
+                    new_stmts.push_back(init);
+                    auto alloc = IR::make<Allocate>(acc->tensor);
+                    new_stmts.push_back(alloc);
+
                 }
             }
             new_stmts.push_back(IRRewriter::visit(stmt));
         }
+
         node->body = new_stmts;
         node_ = node;
     }

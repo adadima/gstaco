@@ -373,13 +373,25 @@ namespace einsum {
         }
     }
 
-    bool ModuleComponent::is_inst() const {
-        return dynamic_cast<const Instantiation*>(this) != nullptr;
+    bool ModuleComponent::is_mem_assign() const {
+        return dynamic_cast<const MemAssignment*>(this) != nullptr;
     }
 
-    std::shared_ptr<Instantiation> ModuleComponent::as_inst() {
+    std::shared_ptr<MemAssignment> ModuleComponent::as_mem_assign() {
         try {
-            return std::dynamic_pointer_cast<Instantiation>(this->shared_from_this());
+            return std::dynamic_pointer_cast<MemAssignment>(this->shared_from_this());
+        } catch (const std::bad_weak_ptr& exp) {
+            std::abort();
+        }
+    }
+
+    bool ModuleComponent::is_init() const {
+        return dynamic_cast<const Initialize*>(this) != nullptr;
+    }
+
+    std::shared_ptr<Initialize> ModuleComponent::as_init() {
+        try {
+            return std::dynamic_pointer_cast<Initialize>(this->shared_from_this());
         } catch (const std::bad_weak_ptr& exp) {
             std::abort();
         }
@@ -508,7 +520,11 @@ namespace einsum {
         return "";
     }
 
-    std::string Instantiation::dump() const {
+    std::string MemAssignment::dump() const {
+        return "";
+    }
+
+    std::string Initialize::dump() const {
         return "";
     }
 }

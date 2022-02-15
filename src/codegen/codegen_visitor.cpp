@@ -262,10 +262,8 @@ namespace einsum {
         generate_tensor_template();
 
         for(auto &comp: node->decls) {
-            if (!comp->is_var()) {
-                comp->accept(this);
-                oss << "\n";
-            }
+            comp->accept(this);
+            oss << "\n";
         }
     }
 
@@ -424,57 +422,37 @@ namespace einsum {
 
     }
 
-    void CodeGenVisitor::visit(std::shared_ptr<TensorVar> tensor) {
-
-    }
+    void CodeGenVisitor::visit(std::shared_ptr<TensorVar> tensor) {}
 
     // TODO: also allocate the memory in here, separately from the Tensor constructor!
     void CodeGenVisitor::visit(std::shared_ptr<Allocate> node) {
-        if (node->tensorType->getOrder() == 0) {
-            return;
+        if (node->tensor->getOrder() > 0) {
+            oss << node->tensor->name << ".allocate();";
         }
-        oss << get_indent() << "auto " << node->name << " = new ";
-        node->tensorType->getElementType()->accept(this);
-        oss << "[";
-        auto dims = node->tensorType->getDimensions();
-
-        if (dims.size() == 0) {
-            oss << "1";
-        } else {
-            for (int i=0; i < dims.size(); i++) {
-                if (i > 0) {
-                    oss << " * ";
-                }
-                dims[i]->accept(this);
-            }
-        }
-        oss << "];\n";
     }
 
-    // Something like: Tensor<int, 3> t({2, 2, 2}, data);
-    // where data was previously allocated in an Allocate node
-    void CodeGenVisitor::visit(std::shared_ptr<Instantiation> node) {
-        auto order = node->allocation->tensorType->getOrder();
-        auto dimenions = node->allocation->tensorType->getDimensions();
-        oss << get_indent();
+    // Something like: t1.data = t2.data
+    void CodeGenVisitor::visit(std::shared_ptr<MemAssignment> node) {
+    }
 
-        node->allocation->tensorType->accept(this);
-        oss << " ";
-        oss << node->tensor->name;
-
-        if (order > 0) {
-            oss << "({";
-            for (int i=0; i < order; i++) {
-                if (i > 0) {
-                    oss << ", ";
-                }
-                dimenions[i]->accept(this);
-            }
-            oss << "}, ";
-            oss << node->allocation->name;
-            oss << ")";
+    //Tensor<int, 3> t({2, 2, 2});
+    void CodeGenVisitor::visit(std::shared_ptr<Initialize> node) {
+        auto tensor = node->tensor;
+        tensor->getType()->accept(this);
+        oss << " " << tensor->name;
+        if (tensor->getOrder() == 0) {
+            oss << " = " << node->tensor->getType()->getElementType()->dumpDefault() << ";";
+            return;
         }
+        oss << "({";
+        auto dims = tensor->getDimensions();
 
-        oss << ";";
+        for (int i=0; i < dims.size(); i++) {
+            if (i > 0) {
+                oss << ", ";
+            }
+            dims[i]->accept(this);
+        }
+        oss << "});\n";
     }
 }

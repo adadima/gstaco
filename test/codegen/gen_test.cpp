@@ -96,8 +96,8 @@ public:
         auto new_module = apply_default_rewriters(mod);
 
         // print ast for debug
-//        new_module->accept(&printer);
-//        std::cout << printer.ast;
+        new_module->accept(&printer);
+        std::cout << printer.ast;
 
         // code generation
         new_module->accept(&generator);

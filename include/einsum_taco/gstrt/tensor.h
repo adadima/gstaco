@@ -7,15 +7,18 @@ struct Tensor {
     int total_size;
     std::array<int, num_dims> dims;
 
-    Tensor(std::array<int, num_dims> dims, T* data): dims(dims), data(data) {
+    explicit Tensor(std::array<int, num_dims> dims): dims(dims) {
         total_size = 1;
         for (auto dim: dims) {
             total_size *= dim;
         }
-        // data = new T[total_size];
     }
 
-    ~Tensor() {
+    void allocate() {
+        data = new T[total_size];
+    }
+
+    void deallocate() {
         delete[] data;
     }
 
@@ -35,6 +38,7 @@ struct Tensor {
 };
 
 // usage:
-// data = new T[2 * 2 * 2]
-//Tensor<int, 3> t({2, 2, 2}, data);
+//Tensor<int, 3> t({2, 2, 2});
+// t.allocate();
 //t.at({1, 0, 1}) = 5;
+// t.deallocate();

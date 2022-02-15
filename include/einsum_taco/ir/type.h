@@ -73,9 +73,17 @@ namespace einsum {
 
         bool isInt() const override;
 
+        static int getIntDefault();
+
         bool isFloat() const override;
 
+        static float getFloatDefault();
+
         bool isBool() const override;
+
+        static bool getBoolDefault();
+
+        std::string dumpDefault() const;
 
         std::string dump() const override;
 
@@ -92,6 +100,8 @@ namespace einsum {
         static std::shared_ptr<Datatype> floatType() {
             return make<Datatype>(Kind::Float);
         }
+
+
 
     private:
         Kind kind;

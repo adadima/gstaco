@@ -102,6 +102,32 @@ namespace einsum {
                 return sizeof(double);
         }
     }
+
+    int Datatype::getIntDefault() {
+        return 0;
+    }
+
+    bool Datatype::getBoolDefault() {
+        return false;
+    }
+
+    float Datatype::getFloatDefault() {
+        return 0;
+    }
+
+    std::string Datatype::dumpDefault() const {
+        if (isBool()) {
+            return std::to_string(getBoolDefault());
+        }
+        if (isInt()) {
+            return std::to_string(getIntDefault());
+        }
+        if (isFloat()) {
+            return std::to_string(getFloatDefault());
+        }
+        return "";
+    }
+
     std::vector<std::shared_ptr<einsum::Expression>> TensorType::getDimensions() const {
         return this->dimensions;
     }

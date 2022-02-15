@@ -128,18 +128,18 @@ void einsum::DumpAstVisitor::visit(std::shared_ptr<Definition> node) {
     unindent();
 }
 
-void einsum::DumpAstVisitor::visit(std::shared_ptr<Instantiation> node) {
+void einsum::DumpAstVisitor::visit(std::shared_ptr<MemAssignment> node) {
     indent();
 
-    node->allocation->accept(this);
-    auto alloc = ast;
+    node->rhs->accept(this);
+    auto rhs = ast;
 
-    node->tensor->accept(this);
-    auto t = ast;
+    node->lhs->accept(this);
+    auto lhs = ast;
 
     ast = get_indent() + "<" + node->class_name() + "\n";
-    ast += alloc + "\n";
-    ast += t + "\n";
+    ast += rhs + "\n";
+    ast += lhs + "\n";
     ast += get_indent() + ">";
 
     unindent();
@@ -148,14 +148,11 @@ void einsum::DumpAstVisitor::visit(std::shared_ptr<Instantiation> node) {
 void einsum::DumpAstVisitor::visit(std::shared_ptr<Allocate> node) {
     indent();
 
-    node->tensorType->accept(this);
-    auto type = ast;
+    node->tensor->accept(this);
+    auto t = ast;
 
     ast = get_indent() + "<" + node->class_name() + "\n";
-    indent();
-    ast += get_indent() + node->name + "\n";
-    unindent();
-    ast += type;
+    ast += t;
     ast += "\n";
     ast += get_indent() + ">";
 
@@ -355,6 +352,15 @@ void einsum::DumpAstVisitor::visit(shared_ptr<Operator> node) {
     indent();
     ast += get_indent() + node->sign + "\n";
     unindent();
+    ast += get_indent() + ">";
+}
+
+void einsum::DumpAstVisitor::visit(shared_ptr<Initialize> node) {
+    node->tensor->accept(this);
+    auto t = ast;
+
+    ast = get_indent() + "<" + node->class_name() + "\n";
+    ast += t + "\n";
     ast += get_indent() + ">";
 }
 
