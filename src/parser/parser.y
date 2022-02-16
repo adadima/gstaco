@@ -193,23 +193,23 @@ def_lhs: IDENTIFIER write_access		{auto acc =  new einsum::Access(
 					$4->insert($4->begin(), std::shared_ptr<einsum::Access>(acc));
 					$$ = $4;}
 
-args:			{$$ = new std::vector<std::shared_ptr<einsum::Expression>>(); }
-| args COM orexp		{$1->push_back(std::shared_ptr<einsum::Expression>($3)); $$ = $1;}
+args: orexp			{auto args = new std::vector<std::shared_ptr<einsum::Expression>>(); args->push_back(std::shared_ptr<einsum::Expression>($1)); $$ = args;}
+| orexp COM args		{auto args = new std::vector<std::shared_ptr<einsum::Expression>>();
+				args->push_back(std::shared_ptr<einsum::Expression>($1));
+				args->insert(args->end(), $3->begin(), $3->end());
+				$$ = args;}
 
-call: IDENTIFIER OPEN_PAREN CLOSED_PAREN	{new einsum::Call(*$1, std::vector<std::shared_ptr<einsum::Expression>>());}
-| IDENTIFIER OPEN_PAREN orexp args CLOSED_PAREN   {$4->insert($4->begin(), std::shared_ptr<einsum::Expression>($3));
-						$$ = new einsum::Call(*$1, *$4);}
+call: IDENTIFIER OPEN_PAREN CLOSED_PAREN	{$$ = new einsum::Call(*$1, std::vector<std::shared_ptr<einsum::Expression>>());}
+| IDENTIFIER OPEN_PAREN args CLOSED_PAREN   {$$ = new einsum::Call(*$1, *$3);}
 
 call_repeat: STAR_CALL OPEN_PAREN CLOSED_PAREN PIPE INTEGER_LITERAL	{$1->pop_back(); new einsum::CallStarRepeat($5, *$1, std::vector<std::shared_ptr<einsum::Expression>>());}
-             | STAR_CALL OPEN_PAREN orexp args CLOSED_PAREN PIPE INTEGER_LITERAL	{ $1->pop_back();
-             							$4->insert($4->begin(), std::shared_ptr<einsum::Expression>($3));
-             							$$ = new einsum::CallStarRepeat($7, *$1, *$4);}
+             | STAR_CALL OPEN_PAREN args CLOSED_PAREN PIPE INTEGER_LITERAL	{ $1->pop_back();
+             							$$ = new einsum::CallStarRepeat($6, *$1, *$3);}
 
 
 call_star: STAR_CALL OPEN_PAREN CLOSED_PAREN PIPE orexp	{$1->pop_back(); new einsum::CallStarCondition(std::shared_ptr<einsum::Expression>($5), *$1, std::vector<std::shared_ptr<einsum::Expression>>());}
-| STAR_CALL OPEN_PAREN orexp args CLOSED_PAREN PIPE orexp	{ $1->pop_back();
-							$4->insert($4->begin(), std::shared_ptr<einsum::Expression>($3));
-							$$ = new einsum::CallStarCondition(std::shared_ptr<einsum::Expression>($7), *$1, *$4);}
+| STAR_CALL OPEN_PAREN args CLOSED_PAREN PIPE orexp	{ $1->pop_back();
+							$$ = new einsum::CallStarCondition(std::shared_ptr<einsum::Expression>($6), *$1, *$3);}
 
 
 exp:		OPEN_PAREN orexp CLOSED_PAREN { $$ = $2;}
@@ -249,8 +249,7 @@ reduction: 	IDENTIFIER COLONS OPEN_PAREN PLUS COM orexp CLOSED_PAREN  {$$ = new 
 reduction_list:	{$$ = new std::vector<std::shared_ptr<einsum::Reduction>>();}
 | reduction_list COM reduction {$1->push_back(std::shared_ptr<einsum::Reduction>($3)); $$ = $1;}
 
-def:		def_lhs ASSIGN orexp	{
-						$$ = new einsum::Definition(
+def:		def_lhs ASSIGN orexp	{	$$ = new einsum::Definition(
 								*$1,
 								std::shared_ptr<einsum::Expression>($3),
 								std::vector<std::shared_ptr<einsum::Reduction>>()

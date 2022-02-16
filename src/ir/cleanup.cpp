@@ -9,6 +9,10 @@
 namespace einsum {
 
     void TensorVarRewriter::visit(std::shared_ptr<TensorVar> node) {
+        if (node->name == "_") {
+            node_ = node;
+            return;
+        }
         std::shared_ptr<TensorVar> tensor;
         if (context->access_scope()) {
             tensor = context->get_write_tensor(node);
@@ -16,6 +20,9 @@ namespace einsum {
             tensor = context->get_read_tensor(node);
         } else {
             tensor = node;
+        }
+        if (tensor == nullptr) {
+            std::cout << "PRoblematic tensor: " << node->name << std::endl;
         }
         tensor->is_global = context->is_global(tensor);
         node_ = tensor;
@@ -46,6 +53,18 @@ namespace einsum {
         node_ = ivar;
     }
 
+    std::vector<std::shared_ptr<Statement>> init_alloc(std::shared_ptr<TensorVar> tensor) {
+        auto stmts = std::vector<std::shared_ptr<Statement>>();
+        if (tensor->name != "_") {
+            auto init = IR::make<Initialize>(tensor);
+            stmts.push_back(init);
+        }
+        if (tensor->name != "_" && tensor->getOrder() > 0) {
+            auto alloc = IR::make<Allocate>(tensor);
+            stmts.push_back(alloc);
+        }
+        return stmts;
+    }
 
     void AllocateInserter::visit(std::shared_ptr<Module> node) {
         context->enter_module(node);
@@ -73,10 +92,8 @@ namespace einsum {
                 auto def = comp->as_def();
                 for (auto& acc: def->lhs) {
 
-                    auto init = IR::make<Initialize>(acc->tensor);
-                    new_comps.push_back(init);
-                    auto alloc = IR::make<Allocate>(acc->tensor);
-                    new_comps.push_back(alloc);
+                    auto ia = init_alloc(acc->tensor);
+                    new_comps.insert(new_comps.end(), ia.begin(), ia.end());
                 }
             }
             new_comps.push_back(IRRewriter::visit(comp));
@@ -96,10 +113,8 @@ namespace einsum {
                 auto def = stmt->as_def();
                 for (auto& acc: def->lhs) {
 
-                    auto init = IR::make<Initialize>(acc->tensor);
-                    new_stmts.push_back(init);
-                    auto alloc = IR::make<Allocate>(acc->tensor);
-                    new_stmts.push_back(alloc);
+                    auto ia = init_alloc(acc->tensor);
+                    new_stmts.insert(new_stmts.end(), ia.begin(), ia.end());
 
                 }
             }

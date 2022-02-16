@@ -82,11 +82,14 @@ namespace einsum {
     // TODO: generate asserts that index var dimensions match
     void CodeGenVisitor::visit(std::shared_ptr<Definition> node) {
         for(int a=0; a < node->lhs.size(); a++) {
+            auto lhs = node->lhs[a];
+            if (lhs->tensor->name == "_") {
+                continue;
+            }
             oss << get_indent();
             oss << "{\n";
             indent();
 
-            auto lhs = node->lhs[a];
             for(auto &&acc : lhs->indices) {
                 generate_for_loop(acc->getName(), acc->dimension);
                 indent();

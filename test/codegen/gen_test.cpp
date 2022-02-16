@@ -96,8 +96,8 @@ public:
         auto new_module = apply_default_rewriters(mod);
 
         // print ast for debug
-        new_module->accept(&printer);
-        std::cout << printer.ast;
+//        new_module->accept(&printer);
+//        std::cout << printer.ast;
 
         // code generation
         new_module->accept(&generator);
@@ -262,4 +262,8 @@ TEST_F(GenTest, OuterLoopVar2) {
 
 TEST_F(GenTest, BFS_Step) {
     assert_compiles("bfs_step", get_compiler_path());
+}
+
+TEST_F(GenTest, PageRank) {
+    assert_compiles("pagerank", get_compiler_path());
 }

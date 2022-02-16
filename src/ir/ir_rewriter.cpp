@@ -72,7 +72,7 @@ namespace einsum {
             red = rewrite(red);
         }
         node_ = node;
-        context->exit_definition();
+        context->exit_definition(node);
     }
 
     void  IRRewriter::visit(std::shared_ptr<FuncDecl> node) {

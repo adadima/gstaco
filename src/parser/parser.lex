@@ -58,7 +58,7 @@ if|then|else {
 
 {ID}"*"         {yylval->id_val = new std::string(yytext); return STAR_CALL; }
 
-_|{ID}        {yylval->id_val = new std::string(yytext); return IDENTIFIER; }
+{ID}        {yylval->id_val = new std::string(yytext); return IDENTIFIER; }
 
 "->"        {yylval->id_val = new std::string(yytext); return RARROW; }
 

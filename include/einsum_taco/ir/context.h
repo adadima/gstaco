@@ -34,6 +34,7 @@ namespace einsum {
         };
 
         std::map<std::string, std::shared_ptr<TensorVar>> globals_;
+        std::map<std::string, std::shared_ptr<TensorVar>> locals_;
         std::map<std::string, std::shared_ptr<FuncDecl>>  functions_;
 
         std::shared_ptr<FuncDecl> func_scope_;
@@ -51,7 +52,6 @@ namespace einsum {
             }
 
             for (auto &&value : param_list) {
-
                 if (value->name == tensor->name) {
                     return value;
                 }
@@ -173,17 +173,24 @@ namespace einsum {
             return nullptr;
         }
 
-        void exit_definition() {
+        void exit_definition(std::shared_ptr<Definition> definition) {
             reduction_dimensions_.clear();
+            for (auto &acc: definition->lhs) {
+                locals_.emplace(acc->tensor->name, acc->tensor);
+            }
             def_scope() = nullptr;
         }
 
         void exit_function(const std::shared_ptr<FuncDecl>& func) {
             functions_.emplace(func->funcName, func);
+            locals_.clear();
             func_scope() = nullptr;
         }
 
         std::shared_ptr<TensorVar> get_read_tensor(const std::shared_ptr<TensorVar>& tensor) {
+            if (locals_.count(tensor->name)) {
+                return locals_[tensor->name];
+            }
             auto t = get_param(tensor, func_scope()->inputs);
             if (t != nullptr) {
                 return t;
@@ -211,11 +218,6 @@ namespace einsum {
 
         void enter_read_access(const std::shared_ptr<ReadAccess>& raccess) {
             tensor_scope().push(raccess->tensor);
-            // TODO:: do this in a separate pass, will have to splitup visitors
-//            for (int i=0; i < raccess->indices.size(); i++) {
-//                auto dim = raccess->tensor->getType()->getDimension(i);
-//                index_var_dimensions_
-//            }
             coordinate() = -1;
 
         }
@@ -227,10 +229,6 @@ namespace einsum {
         void advance_access() {
             coordinate()++;
         }
-
-
-
-
     };
 }
 
