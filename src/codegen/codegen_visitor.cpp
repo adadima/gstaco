@@ -40,14 +40,14 @@ namespace einsum {
 
     void CodeGenVisitor::generate_tensor_template() {
         auto tensor_template = readFileIntoString(get_runtime_dir() + "tensor.h");
-        oss << tensor_template;
+        *oss << tensor_template;
     }
 
     void CodeGenVisitor::visit(std::shared_ptr<IndexVar> node) {
-        oss << node->dump();
+        *oss << node->dump();
     }
     void CodeGenVisitor::visit(std::shared_ptr<Literal> node) {
-        oss << node->dump();
+        *oss << node->dump();
     }
 
     void CodeGenVisitor::visit(std::shared_ptr<IndexVarExpr> node) {
@@ -56,19 +56,19 @@ namespace einsum {
 
     template<typename T>
     void CodeGenVisitor::visit_tensor_access(const std::shared_ptr<T>& access) {
-        oss << parse_variable_name(access->tensor->name);
+        *oss << parse_variable_name(access->tensor->name);
         if (access->indices.size() == 0) {
             return;
         }
-        oss << ".at({";
+        *oss << ".at({";
         auto indices = access->indices;
         for (int i=0; i < indices.size(); i++) {
             if (i > 0) {
-                oss << ", ";
+                *oss << ", ";
             }
             indices[i]->accept(this);
         }
-        oss << "})";
+        *oss << "})";
     }
 
     void CodeGenVisitor::visit(std::shared_ptr<Access> node) {
@@ -86,8 +86,8 @@ namespace einsum {
             if (lhs->tensor->name == "_") {
                 continue;
             }
-            oss << get_indent();
-            oss << "{\n";
+            *oss << get_indent();
+            *oss << "{\n";
             indent();
 
             for(auto &&acc : lhs->indices) {
@@ -97,51 +97,56 @@ namespace einsum {
 
             auto init_var = visit_reduced_expr(node->rhs, node->reduction_list);
 
-            oss << get_indent();
+            *oss << get_indent();
             lhs->accept(this);
-            oss << " = ";
+            *oss << " = ";
             if (node->lhs.size() > 1) {
-                oss << "std::get<";
-                oss << std::to_string(a);
-                oss << ">(";
-                oss << init_var;
-                oss << ")";
+                *oss << "std::get<";
+                *oss << std::to_string(a);
+                *oss << ">(";
+                *oss << init_var;
+                *oss << ")";
             } else {
-                oss << init_var;
+                *oss << init_var;
             }
-            oss << ";\n";
+            *oss << ";\n";
 
             for(auto &&acc: lhs->indices) {
                 unindent();
-                oss << get_indent();
-                oss << "}\n";
+                *oss << get_indent();
+                *oss << "}\n";
             }
             unindent();
-            oss << get_indent();
-            oss << "}\n";
+            *oss << get_indent();
+            *oss << "}\n";
         }
     }
 
-    void CodeGenVisitor::visit(std::shared_ptr<FuncDecl> node) {
+    void CodeGenVisitor::visit_func_signature(std::shared_ptr<FuncDecl> node) {
         auto return_type = node->getOutputType();
         return_type->accept(this);
-        oss << " ";
-        oss << node->funcName;
-        oss << "(";
+        *oss << " ";
+        *oss << node->funcName;
+        *oss << "(";
         for (int i=0; i < node->inputs.size(); i++) {
             if (i > 0) {
-                oss << ", ";
+                *oss << ", ";
             }
             auto input = node->inputs[i];
             input->getType()->accept(this);
-            oss << " ";
-            oss << input->name;
+            *oss << " ";
+            *oss << input->name;
         }
-        oss << ") {\n";
+        *oss << ")";
+    }
+
+    void CodeGenVisitor::visit(std::shared_ptr<FuncDecl> node) {
+        visit_func_signature(node);
+        *oss << " {\n";
         indent();
         for (auto &stmt: node->body) {
             stmt->accept(this);
-            oss << "\n";
+            *oss << "\n";
         }
         unindent();
         std::vector<std::string> out_names= {};
@@ -149,20 +154,20 @@ namespace einsum {
         for (auto & output : node->outputs) {
             out_names.push_back(output->name);
         }
-        print_return(return_type, out_names);
-        oss << "\n}\n";
+        print_return(node->getOutputType(), out_names);
+        *oss << "\n}\n";
     }
 
     void CodeGenVisitor::visit(std::shared_ptr<Call> node) {
-        oss << node->function->funcName;
-        oss << "(";
+        *oss << node->function->funcName;
+        *oss << "(";
         for (int i=0; i < node->arguments.size(); i++) {
             if (i > 0) {
-                oss << ", ";
+                *oss << ", ";
             }
             node->arguments[i]->accept(this);
         }
-        oss << ")";
+        *oss << ")";
     }
 
     void CodeGenVisitor::get_lambda_return(const std::shared_ptr<TupleType>& output_type, int num_outputs) {
@@ -176,77 +181,77 @@ namespace einsum {
 
     void CodeGenVisitor::print_return(const std::shared_ptr<TupleType>& output_type, const std::vector<std::string>& output_names) {
         if (output_names.size() == 1) {
-            oss << "return ";
-            oss << output_names[0];
-            oss << ";";
+            *oss << "return ";
+            *oss << output_names[0];
+            *oss << ";";
             return;
         }
-        oss << "return ";
+        *oss << "return ";
         output_type->accept(this);
-        oss << "{";
+        *oss << "{";
         for (int i=0; i < output_names.size(); i++) {
             if (i > 0) {
-                oss << ", ";
+                *oss << ", ";
             }
-            oss << output_names[i];
+            *oss << output_names[i];
         }
-        oss << "};";
+        *oss << "};";
     }
 
     void CodeGenVisitor::visit_call(const std::shared_ptr<Call>& node, const std::function<void()>& loop_generator) {
-        oss << "([&]{\n";
+        *oss << "([&]{\n";
 
-        oss << "auto out = ";
+        *oss << "auto out = ";
         auto call = IR::make<Call>(node->function, node->arguments);
         call->accept(this);
-        oss << ";\n";
+        *oss << ";\n";
 
         if (node->arguments.size() > 1) {
-            oss << "auto& [";
+            *oss << "auto& [";
             for(int i=0; i < node->arguments.size(); i++) {
                 if (i > 0) {
-                    oss << ", ";
+                    *oss << ", ";
                 }
                 auto var = "out" + std::to_string(i);
-                oss << var;
+                *oss << var;
             }
-            oss << "] = out;\n";
+            *oss << "] = out;\n";
         } else {
-            oss << "auto& out0 = out;\n";
+            *oss << "auto& out0 = out;\n";
         }
 
         loop_generator();
 
         indent();
-        oss << get_indent();
+        *oss << get_indent();
         if (node->arguments.size() == 1) {
-            oss << "out0";
+            *oss << "out0";
         } else {
-            oss << "std::tie(";
+            *oss << "std::tie(";
             for(int i=0; i < node->arguments.size(); i++) {
                 if (i > 0) {
-                    oss << ", ";
+                    *oss << ", ";
                 }
                 auto var = "out" + std::to_string(i);
-                oss << var;
+                *oss << var;
             }
-            oss << ")";
+            *oss << ")";
         }
-        oss << " = ";
+        *oss << " = ";
         auto args = std::vector<std::shared_ptr<Expression>>();
         for(int i=0; i < node->arguments.size(); i++) {
             args.push_back(IR::make<ReadAccess>("out" + std::to_string(i), false));
         }
         auto call_ = IR::make<Call>(node->function, args);
         call_->accept(this);
-        oss << ";\n";
+        *oss << ";\n";
 
         unindent();
 
-        oss << get_indent();
-        oss << "}\n";
+        *oss << get_indent();
+        *oss << "}\n";
         get_lambda_return(node->function->getOutputType(), node->arguments.size());
-        oss << "\n}())";
+        *oss << "\n}())";
     }
 
     void CodeGenVisitor::visit(std::shared_ptr<CallStarRepeat> node) {
@@ -262,11 +267,21 @@ namespace einsum {
     }
 
     void CodeGenVisitor::visit(std::shared_ptr<Module> node) {
+        oss = oss_h;
         generate_tensor_template();
+        oss = oss_cpp;
+
+        *oss << "#include \"" << module_name << ".h\"" << std::endl;
 
         for(auto &comp: node->decls) {
             comp->accept(this);
-            oss << "\n";
+            *oss << "\n";
+            if (comp->is_decl()) {
+                oss = oss_h;
+                visit_func_signature(comp->as_decl());
+                *oss << ";\n";
+                oss = oss_cpp;
+            }
         }
     }
 
@@ -275,12 +290,12 @@ namespace einsum {
 
         std::string init_var = "init_";
         init_var += i;
-        oss << get_indent();
-        oss << "auto ";
-        oss << init_var;
-        oss << " = ";
+        *oss << get_indent();
+        *oss << "auto ";
+        *oss << init_var;
+        *oss << " = ";
         node->reductionInit->accept(this);
-        oss << ";\n";
+        *oss << ";\n";
 
         generate_for_loop(node->reductionVar->getName(), node->reductionVar->dimension);
     }
@@ -289,10 +304,10 @@ namespace einsum {
     //TODO: make new rewriter passes to make lhs and rhs rank-0
     std::string CodeGenVisitor::visit_reduced_expr(const std::shared_ptr<Expression>& expr, const std::vector<std::shared_ptr<Reduction>>& reductions) {
         if (reductions.empty()) {
-            oss << get_indent();
-            oss << "auto init = ";
+            *oss << get_indent();
+            *oss << "auto init = ";
             expr->accept(this);
-            oss << ";\n";
+            *oss << ";\n";
             return "init";
         }
 
@@ -319,15 +334,15 @@ namespace einsum {
                 exp = reduce_expression(init_var, IR::make<ReadAccess>(next_var, false), red->reductionOp);
             }
 
-            oss << get_indent();
-            oss << init_var;
-            oss << " = ";
+            *oss << get_indent();
+            *oss << init_var;
+            *oss << " = ";
             exp->accept(this);
-            oss << ";\n";
+            *oss << ";\n";
 
             unindent();
-            oss << get_indent();
-            oss << "}\n";
+            *oss << get_indent();
+            *oss << "}\n";
 
             if (!r) {
                 var = init_var;
@@ -340,27 +355,27 @@ namespace einsum {
     void CodeGenVisitor::visit(std::shared_ptr<BinaryOp> node) {
 
         if (node->left->precedence > node->precedence) {
-            oss << "(";
+            *oss << "(";
             node->left->accept(this);
-            oss << ")";
+            *oss << ")";
         } else {
             node->left->accept(this);
         }
-        oss << " ";
-        oss << node->op->sign;
-        oss << " ";
+        *oss << " ";
+        *oss << node->op->sign;
+        *oss << " ";
         if ((node->right->precedence > node->precedence) ||  (node->right->precedence == node->precedence && node->isAsymmetric)){
-            oss << "(";
+            *oss << "(";
             node->right->accept(this);
-            oss << ")";
+            *oss << ")";
         } else {
             node->right->accept(this);
         }
     }
 
     void CodeGenVisitor::visit(std::shared_ptr<UnaryOp> node) {
-        oss << node->op->sign;
-        oss << " ";
+        *oss << node->op->sign;
+        *oss << " ";
         node->expr->accept(this);
     }
 
@@ -370,27 +385,27 @@ namespace einsum {
     }
 
     void CodeGenVisitor::generate_for_loop(const std::string& var, const std::shared_ptr<Expression>& dim) {
-        oss << get_indent();
-        oss << "for(int ";
-        oss <<  var;
-        oss << "=0; ";
-        oss <<  var;
-        oss <<  "<";
+        *oss << get_indent();
+        *oss << "for(int ";
+        *oss <<  var;
+        *oss << "=0; ";
+        *oss <<  var;
+        *oss <<  "<";
         dim->accept(this);
-        oss << "; "; oss << var; oss << "++) {\n";
+        *oss << "; "; *oss << var; *oss << "++) {\n";
     };
 
     void CodeGenVisitor::generate_while_loop(const std::shared_ptr<Expression>& condition) {
-        oss << get_indent();
-        oss << "while(!";
-        oss << "(";
+        *oss << get_indent();
+        *oss << "while(!";
+        *oss << "(";
         condition->accept(this);
-        oss << ")";
-        oss <<  ") {\n";
+        *oss << ")";
+        *oss <<  ") {\n";
     }
 
     void CodeGenVisitor::visit(std::shared_ptr<Datatype> node) {
-        oss << node->dump();
+        *oss << node->dump();
     }
 
     void CodeGenVisitor::visit(std::shared_ptr<TensorType> node) {
@@ -398,11 +413,11 @@ namespace einsum {
             node->getElementType()->accept(this);
             return;
         }
-        oss << "Tensor<";
+        *oss << "Tensor<";
         node->getElementType()->accept(this);
-        oss << ", ";
-        oss << std::to_string(node->getOrder());
-        oss << ">";
+        *oss << ", ";
+        *oss << std::to_string(node->getOrder());
+        *oss << ">";
     }
 
     //TODO: make this a helper, not method on visitor. TupleType should not be a node
@@ -411,14 +426,14 @@ namespace einsum {
             node->tuple[0]->accept(this);
             return;
         }
-        oss << "std::tuple<";
+        *oss << "std::tuple<";
         for (int i=0; i < node->tuple.size(); i++) {
             if (i > 0) {
-                oss << ", ";
+                *oss << ", ";
             }
             node->tuple[i]->accept(this);
         }
-        oss << ">";
+        *oss << ">";
     }
 
     void CodeGenVisitor::visit(std::shared_ptr<Operator> node) {
@@ -430,7 +445,7 @@ namespace einsum {
     // TODO: also allocate the memory in here, separately from the Tensor constructor!
     void CodeGenVisitor::visit(std::shared_ptr<Allocate> node) {
         if (node->tensor->getOrder() > 0) {
-            oss << node->tensor->name << ".allocate();";
+            *oss << node->tensor->name << ".allocate();";
         }
     }
 
@@ -442,20 +457,20 @@ namespace einsum {
     void CodeGenVisitor::visit(std::shared_ptr<Initialize> node) {
         auto tensor = node->tensor;
         tensor->getType()->accept(this);
-        oss << " " << tensor->name;
+        *oss << " " << tensor->name;
         if (tensor->getOrder() == 0) {
-            oss << " = " << node->tensor->getType()->getElementType()->dumpDefault() << ";";
+            *oss << " = " << node->tensor->getType()->getElementType()->dumpDefault() << ";";
             return;
         }
-        oss << "({";
+        *oss << "({";
         auto dims = tensor->getDimensions();
 
         for (int i=0; i < dims.size(); i++) {
             if (i > 0) {
-                oss << ", ";
+                *oss << ", ";
             }
             dims[i]->accept(this);
         }
-        oss << "});\n";
+        *oss << "});\n";
     }
 }

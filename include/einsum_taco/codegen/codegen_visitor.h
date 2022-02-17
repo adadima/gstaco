@@ -9,11 +9,13 @@
 namespace einsum {
     struct CodeGenVisitor : IRVisitor {
 
-        std::ostream &oss;
+        std::ostream* oss;
+        std::ostream* oss_cpp;
+        std::ostream* oss_h;
         std::string module_name;
         int indent_;
 
-        CodeGenVisitor(std::ostream &oss, std::string module_name) : oss(oss), module_name(std::move(module_name)),
+        CodeGenVisitor(std::ostream* oss_cpp, std::ostream* oss_h, std::string module_name) : oss(oss_cpp), oss_cpp(oss_cpp), oss_h(oss_h), module_name(std::move(module_name)),
                                                                      indent_(0) {}
 
         void visit(std::shared_ptr<IndexVar> node) override;
@@ -88,6 +90,7 @@ namespace einsum {
 
         void visit_call(const std::shared_ptr<Call>& node, const std::function<void()>& loop_generator);
 
+        void visit_func_signature(std::shared_ptr<FuncDecl> node);
     private:
 
         std::string visit_reduced_expr(const std::shared_ptr<Expression>& expr, const std::vector<std::shared_ptr<Reduction>> &reductions);
