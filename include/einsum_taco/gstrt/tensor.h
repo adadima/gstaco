@@ -1,5 +1,9 @@
 #include <array>
 #include <iostream>
+#include <filesystem>
+#include <string>
+
+namespace fs = std::filesystem;
 
 template<class T, int num_dims>
 struct Tensor {
@@ -42,3 +46,5 @@ struct Tensor {
 // t.allocate();
 //t.at({1, 0, 1}) = 5;
 // t.deallocate();
+
+std::tuple<int, Tensor<int, 2>, Tensor<float, 2>> loadEdgesFromFile(const std::string& filename);

@@ -13,10 +13,11 @@ namespace einsum {
         std::ostream* oss_cpp;
         std::ostream* oss_h;
         std::string module_name;
+        std::ostream* oss_drive;
         int indent_;
 
-        CodeGenVisitor(std::ostream* oss_cpp, std::ostream* oss_h, std::string module_name) : oss(oss_cpp), oss_cpp(oss_cpp), oss_h(oss_h), module_name(std::move(module_name)),
-                                                                     indent_(0) {}
+        CodeGenVisitor(std::ostream* oss_cpp, std::ostream* oss_h, std::ostream* oss_drive, std::string module_name, bool main=true) : oss(oss_cpp), oss_cpp(oss_cpp), oss_h(oss_h), module_name(std::move(module_name)),
+                                                                     indent_(0), oss_drive(oss_drive) {}
 
         void visit(std::shared_ptr<IndexVar> node) override;
 
@@ -86,7 +87,10 @@ namespace einsum {
 
         void print_return(const std::shared_ptr<TupleType>& output_type, const std::vector<std::string>& outputs);
 
-        void generate_tensor_template();
+        void generate_tensor_template() const;
+
+        void generate_driver_code() const;
+
 
         void visit_call(const std::shared_ptr<Call>& node, const std::function<void()>& loop_generator);
 
@@ -97,8 +101,6 @@ namespace einsum {
 
         static std::shared_ptr<Expression> reduce_expression(const std::string &init_var, std::shared_ptr<Expression> expr,
                                                       const std::shared_ptr<Operator> &op);
-
-        void visit_tensor_declaration(const std::shared_ptr<TensorVar>& tensor);
 
         template<typename T>
         void visit_tensor_access(const std::shared_ptr<T>& access);

@@ -5,15 +5,27 @@
 #include <string>
 #include "../../../tmp/codegen/pagerank.h"
 
+int N;
+Tensor<int, 2> edges({});
+Tensor<float, 2> weights({});
+float damp;
+float beta_score;
+
 int main(int argc, char* argv[]) {
-    int N = atoi(argv[1]);
+    std::tuple<int, Tensor<int, 2>, Tensor<float, 2>> tensors = loadEdgesFromFile(argv[1]);
 
-    float damp = atoi(argv[2]); //0.85
+    N = std::get<0>(tensors);
+//    std::cout << "N: " << N << std::endl;
+    edges = std::get<1>(tensors);
+//    std::cout << "Edges: " << std::endl;
+//    for(int i=0; i < edges.total_size; i++) {
+//        std::cout << edges.data[i] << std::endl;
+//    }
+    weights = std::get<2>(tensors);
 
-    float beta_score = (1.0 - damp) / N;
+    damp = atoi(argv[2]); //0.85
 
-    Tensor<int, 2> edges({N, N});
-    edges.allocate();
+    beta_score = (1.0 - damp) / N;
 
     auto result = PageRank();
     auto ranks = std::get<3>(result);

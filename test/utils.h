@@ -49,21 +49,4 @@ inline std::string get_test_dir() {
 inline std::string get_compiler_path() {
     return {TEST_CXX_COMPILER};
 }
-
-inline std::string get_clang_path() {
-
-}
-
-static std::string* readFileIntoString(const string& path) {
-    ifstream f(get_test_data_dir() + path);
-    auto str = new string();
-    if(f) {
-        ostringstream ss;
-        ss << f.rdbuf();
-        *str = ss.str();
-        return str;
-    }
-    return nullptr;
-}
-
 #endif //EINSUM_TACO_UTILS_H

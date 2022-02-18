@@ -8,6 +8,8 @@
 #include <string_view>
 #include <fstream>
 #include <filesystem>
+#include <string>
+#include <sstream>
 
 namespace fs = std::filesystem;
 
@@ -26,8 +28,12 @@ namespace einsum {
         return contents;
     }
 
-    std::string get_runtime_dir() {
-        return {GSTACO_RUNTIME};
+    std::string get_runtime_include_dir() {
+        return {INCLUDE_GSTACO_RUNTIME};
+    }
+
+    std::string get_runtime_src_dir() {
+        return {SRC_GSTACO_RUNTIME};
     }
 
     std::string parse_variable_name(const std::string& var) {
@@ -38,9 +44,14 @@ namespace einsum {
         return var;
     }
 
-    void CodeGenVisitor::generate_tensor_template() {
-        auto tensor_template = readFileIntoString(get_runtime_dir() + "tensor.h");
+    void CodeGenVisitor::generate_tensor_template() const {
+        auto tensor_template = readFileIntoString(get_runtime_include_dir() + "tensor.h");
         *oss << tensor_template;
+    }
+
+    void CodeGenVisitor::generate_driver_code() const {
+        auto driver_code = readFileIntoString(get_runtime_src_dir() + "tensor.txt");
+        *oss << driver_code;
     }
 
     void CodeGenVisitor::visit(std::shared_ptr<IndexVar> node) {
@@ -269,20 +280,45 @@ namespace einsum {
     void CodeGenVisitor::visit(std::shared_ptr<Module> node) {
         oss = oss_h;
         generate_tensor_template();
-        oss = oss_cpp;
 
+        oss = oss_drive;
+        *oss << "#include \"" << module_name << ".h\"" << std::endl;
+
+        oss = oss_cpp;
         *oss << "#include \"" << module_name << ".h\"" << std::endl;
 
         for(auto &comp: node->decls) {
-            comp->accept(this);
-            *oss << "\n";
+
             if (comp->is_decl()) {
+                comp->accept(this);
+                *oss << "\n";
+
                 oss = oss_h;
                 visit_func_signature(comp->as_decl());
                 *oss << ";\n";
                 oss = oss_cpp;
             }
+            if (comp->is_init()) {
+                auto init = comp->as_init();
+                auto tensor = init->tensor;
+
+                oss = oss_h;
+                *oss << "extern ";
+                tensor->getType()->accept(this);
+                *oss << " " << tensor->name << ";\n";
+
+                oss = oss_drive;
+                init->accept(this);
+                *oss << std::endl;
+
+                oss = oss_cpp;
+            }
         }
+
+        generate_driver_code();
+
+        oss = oss_drive;
+        *oss << "int main() {" << std::endl << "\treturn 0;" << std::endl << "}" << std::endl;
     }
 
     void CodeGenVisitor::visit(std::shared_ptr<Reduction> node) {

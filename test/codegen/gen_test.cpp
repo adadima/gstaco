@@ -27,11 +27,12 @@ class GenTest : public testing::TestWithParam<std::tuple<std::string, std::strin
 public:
     std::stringstream oss_cpp;
     std::stringstream oss_h;
+    std::stringstream oss_drive;
     CodeGenVisitor generator;
     DumpAstVisitor printer;
 
 
-    GenTest() : generator(&oss_cpp, &oss_h, std::get<0>(GetParam())) {}
+    GenTest() : generator(&oss_cpp, &oss_h, &oss_drive, std::get<0>(GetParam())) {}
 
     static std::string readFileIntoString(const std::string& path) {
         FILE *fp = fopen(path.c_str(), "r");
@@ -53,7 +54,7 @@ public:
     }
 
     static std::string get_runtime_dir() {
-        return {GSTACO_RUNTIME};
+        return {INCLUDE_GSTACO_RUNTIME};
     }
 
     static std::string readDataIntoString(const std::string& path) {
@@ -94,7 +95,11 @@ public:
         return get_test_data_dir() + "codegen/drivers/driver_" + test_name + ".cpp";
     }
 
-    std::tuple<std::string, std::string> get_generated_code(const std::string& test_name) {
+    static std::string test_name_to_generated_driver(const std::string& test_name) {
+        return get_tmp_dir_name() + "driver_" + test_name + ".cpp";
+    }
+
+    std::tuple<std::string, std::string, std::string> get_generated_code(const std::string& test_name) {
         // read input
         auto input = readDataIntoString(test_name_to_input_file(test_name));
 
@@ -110,7 +115,7 @@ public:
 
         // code generation
         new_module->accept(&generator);
-        return std::tuple{oss_cpp.str(), oss_h.str()};
+        return std::tuple{oss_cpp.str(), oss_h.str(), oss_drive.str()};
     }
 
     // borrowed from https://stackoverflow.com/questions/478898/how-do-i-execute-a-command-and-get-the-output-of-the-command-within-c-using-po
@@ -142,10 +147,13 @@ public:
         bool success = fs::create_directories(dir, ec);
     }
 
-    void cleanup(const std::string& in, const std::string& out, const std::string& header) {
-        fs::remove(in);
-        fs::remove(out);
-        fs::remove(header);
+    void cleanup(const std::string& in, const std::string& out, const std::string& header, const std::string& driver, bool add_main) {
+        if (add_main) {
+            fs::remove(in);
+            fs::remove(out);
+            fs::remove(header);
+            fs::remove(driver);
+        }
     }
 
     void assert_compiles(const std::string& test_name, const std::string& compiler_path, bool add_main = true) {
@@ -154,47 +162,42 @@ public:
         std::string tmp_header = test_name_to_header(test_name);
         std::string tmp_in = test_name_to_tmp_input(test_name);
         std::string tmp_out = test_name_to_tmp_output(test_name);
-        std::string driver = test_name_to_driver(test_name);
+        std::string driver;
+        if (add_main) {
+            driver = test_name_to_generated_driver(test_name);
+        } else {
+            driver = test_name_to_driver(test_name);
+        }
 
         // generate code from input file and add dummy main function
         std::string code;
         std::string header;
-        std::tie(code, header) = get_generated_code(test_name);
-        if (add_main) {
-            code += R"(
-int main() {}
-)";
-        }
+        std::string drv;
+
+        std::tie(code, header, drv) = get_generated_code(test_name);
+
         // write generated code to temporary cpp file
         writeStringToFile(tmp_header, header);
 
         // write generated code to temporary cpp file
         writeStringToFile(tmp_in, code);
 
-        // compile the temporary cpp file with the given compiler
-        std::string cmd = compiler_path + " -o " + tmp_out + " -std=c++17 " + tmp_in;
-        if (!add_main) {
-            cmd += " " + driver;
+        if (add_main) {
+            writeStringToFile(driver, drv);
         }
+
+        // compile the temporary cpp file with the given compiler
+        std::string cmd = compiler_path + " -o " + tmp_out + " -std=c++17 " + tmp_in + " " + driver;
+
         int status_code;
         std::string output;
         std::tie(status_code, output) = exec(cmd.c_str());
 
         // remove generated files
-        cleanup(tmp_in, tmp_out, tmp_header);
+        cleanup(tmp_in, tmp_out, tmp_header, driver, add_main);
 
         // check compilation process finished successfully
         EXPECT_EQ(status_code, 0);
-    }
-
-    void assert_generated(const std::string& test_name) {
-        auto expected_filename = test_name_to_expected_file(test_name);
-
-        auto expected = tensor_template + readDataIntoString(expected_filename);
-        std::string code;
-        std::string header;
-        std::tie(code, header) = get_generated_code(test_name);
-        EXPECT_EQ(code, expected);
     }
 };
 
