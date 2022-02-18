@@ -7,6 +7,7 @@ namespace fs = std::filesystem;
 
 template<class T, int num_dims>
 struct Tensor {
+    static_assert(std::is_trivial_v<T>);
     T* data;
     int total_size;
     std::array<int, num_dims> dims;
@@ -20,6 +21,7 @@ struct Tensor {
 
     void allocate() {
         data = new T[total_size];
+        std::fill(data, data + total_size, T{});
     }
 
     void deallocate() {
@@ -38,6 +40,14 @@ struct Tensor {
     T& at() {
         // assert(total_size == 1);   need to enforce this somehow
         return data[0];
+    }
+
+    friend std::ostream& operator<<(std::ostream &oss, const Tensor<T, num_dims> tensor) {
+        for (int i=0; i < tensor.total_size; i++) {
+            oss << tensor.data[i] << " ";
+        }
+        oss << std::endl;
+        return oss;
     }
 };
 

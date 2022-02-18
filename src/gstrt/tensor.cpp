@@ -37,7 +37,7 @@ std::tuple<int, Tensor<int, 2>, Tensor<float, 2>> loadEdgesFromFile(const std::s
     auto content = readFileIntoString(filename);
 
     auto lines = getLines(content);
-    int size = lines.size();
+    int size = std::atoi(lines[0].c_str());
 
     Tensor<int, 2> edges({size, size});
     edges.allocate();
@@ -45,22 +45,23 @@ std::tuple<int, Tensor<int, 2>, Tensor<float, 2>> loadEdgesFromFile(const std::s
     Tensor<float, 2> weights({size, size});
     weights.allocate();
 
-    for (int i=0; i < size; i++) {
+    for (int i=1; i < lines.size(); i++) {
         auto line = lines[i];
         std::stringstream ss(line);
         std::string num;
 
         std::getline(ss, num, ' ');
         auto dst = std::atoi(num.c_str()) - 1;
+        std::cout << num << std::endl;
 
         std::getline(ss, num, ' ');
         auto src = std::atoi(num.c_str()) - 1;
-
+        std::cout << num << std::endl;
         edges.at({dst, src}) = 1;
 
         std::getline(ss, num, ' ');
         auto w= std::stof(num.c_str());
-
+        std::cout << num << std::endl;
         weights.at({dst, src}) = w;
     }
 
