@@ -327,8 +327,8 @@ namespace einsum {
         std::string init_var = "init_";
         init_var += i;
         *oss << get_indent();
-        *oss << "auto ";
-        *oss << init_var;
+        node->reductionInit->getType()->accept(this);
+        *oss << " " << init_var;
         *oss << " = ";
         node->reductionInit->accept(this);
         *oss << ";\n";
@@ -352,7 +352,6 @@ namespace einsum {
         for(const auto & reduction : reductions) {
             reduction->accept(this);
             indent();
-
         }
 
         for(int r=(reductions.size()-1); r >= 0; r--) {

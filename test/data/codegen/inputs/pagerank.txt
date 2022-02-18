@@ -15,14 +15,14 @@ Let PageRankStep(out_d_in int[N], contrib_in float[N], rank_in float[N], r_in fl
     out_d[j] = edges[i][j] | i:(+, 0)
     contrib[i] = r_in[i] / out_d[i]
 
-    rank[i] = edges[i][j] * contrib[j] | j:(+, 0)
+    rank[i] = edges[i][j] * contrib[j] | j:(+, 0.0)
 
     r_out[i] = beta_score + damp * (rank[i])
 End
 
 Let PageRank() -> (out_d int[N], contrib float[N], rank float[N], r_out float[N])
     out_d[i] = 0
-    contrib[i] = 0
-    rank[i] = 0
+    contrib[i] = 0.0
+    rank[i] = 0.0
     _, _, _, r_out = PageRankStep*(out_d, contrib, rank, InitRank()) | 20
 End
