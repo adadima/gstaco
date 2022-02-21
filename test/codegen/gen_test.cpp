@@ -23,16 +23,19 @@ using namespace std;
 
 namespace fs = std::filesystem;
 
-class GenTest : public testing::TestWithParam<std::tuple<std::string, std::string, bool>> {
+
+template<typename T>
+class BaseGenTest : public testing::TestWithParam<std::tuple<std::string, std::string, bool, T>> {
+    virtual void TestBody() = 0;
 public:
     std::stringstream oss_cpp;
     std::stringstream oss_h;
     std::stringstream oss_drive;
     CodeGenVisitor generator;
     DumpAstVisitor printer;
+    T execution_params;
 
-
-    GenTest() : generator(&oss_cpp, &oss_h, &oss_drive, std::get<0>(GetParam())) {}
+    BaseGenTest() : generator(&oss_cpp, &oss_h, &oss_drive, std::get<0>(this->GetParam())), execution_params(std::get<3>(this->GetParam())) {}
 
     static std::string readFileIntoString(const std::string& path) {
         FILE *fp = fopen(path.c_str(), "r");
@@ -66,6 +69,10 @@ public:
     }
 
     std::string tensor_template = get_tensor_template();
+
+    static std::string graph_file_path(const std::string& graph) {
+        return get_test_data_dir() + "codegen/graphs/" + graph + ".txt";
+    }
 
     static std::string test_name_to_input_file(const std::string& test_name) {
         return get_test_data_dir() + "codegen/inputs/" + test_name + ".txt";
@@ -199,7 +206,47 @@ public:
         // check compilation process finished successfully
         EXPECT_EQ(status_code, 0);
     }
+
+    std::vector<std::string> getLines(const std::string& content) {
+        std::stringstream ss_file(content);
+        std::string line;
+
+        auto lines = std::vector<std::string>();
+
+        while(std::getline(ss_file, line,'\n')){
+            lines.push_back(line);
+        }
+        return lines;
+    }
+
+    void check_page_rank_output(const std::string& output, const std::vector<float>& ranks) {
+        auto lines = getLines(output);
+
+        for (int i=0; i < lines.size(); i++) {
+            auto result = std::stof(lines[i]);
+            auto expected = ranks[i];
+            EXPECT_FLOAT_EQ(result, expected);
+        }
+    }
+
+    void assert_runs(const std::string& test_name, const std::string& graph_name, float damp, const std::vector<float>& ranks) {
+        std::string cmd = test_name_to_tmp_output(test_name) + " " + graph_file_path(graph_name) + " " + std::to_string(damp);
+
+        int status_code;
+        std::string output;
+        std::tie(status_code, output) = exec(cmd.c_str());
+
+        // check run process finished successfully
+        EXPECT_EQ(status_code, 0);
+
+        // check the computed ranks are correct
+        check_page_rank_output(output, ranks);
+    }
 };
+
+struct ExecutionParams {};
+
+class GenTest : public BaseGenTest<ExecutionParams>{};
 
 TEST_P(GenTest, Compilation) {
     auto params = GetParam();
@@ -213,20 +260,52 @@ INSTANTIATE_TEST_CASE_P(
         GenTestSuite,
         GenTest,
         ::testing::Values(
-                make_tuple("definition1", get_compiler_path(), true),
-                make_tuple("definition2", get_compiler_path(), true),
-                make_tuple("definition3", get_compiler_path(), true),
-                make_tuple("definition4", get_compiler_path(), true),
-                make_tuple("call", get_compiler_path(), true),
-                make_tuple("call_condition1", get_compiler_path(), true),
-                make_tuple("call_condition2", get_compiler_path(), true),
-                make_tuple("call_repeat1", get_compiler_path(), true),
-                make_tuple("call_repeat2", get_compiler_path(), true),
-                make_tuple("call_repeat3", get_compiler_path(), true),
-                make_tuple("call_repeat4", get_compiler_path(), true),
-                make_tuple("call_repeat5", get_compiler_path(), true),
-                make_tuple("outer_loop_var1", get_compiler_path(), true),
-                make_tuple("outer_loop_var2", get_compiler_path(), true),
-                make_tuple("bfs_step", get_compiler_path(), true),
-                make_tuple("pagerank", get_compiler_path(), false)
+                make_tuple("definition1", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("definition2", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("definition3", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("definition4", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("call", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("call_condition1", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("call_condition2", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("call_repeat1", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("call_repeat2", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("call_repeat3", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("call_repeat4", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("call_repeat5", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("outer_loop_var1", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("outer_loop_var2", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("bfs_step", get_compiler_path(), true, ExecutionParams())
+        ));
+
+struct PageRankExecutionParams : ExecutionParams {
+    std::string graph_name;
+    std::vector<float> expected_ranks;
+
+    PageRankExecutionParams(std::string  graph_name, std::vector<float>  expected_ranks) :
+        graph_name(std::move(graph_name)), expected_ranks(std::move(expected_ranks)) {}
+};
+
+class PageRankTest : public BaseGenTest<PageRankExecutionParams> {};
+
+TEST_P(PageRankTest, PageRank) {
+    auto test_name = std::get<0>(GetParam());
+    auto compiler = std::get<1>(GetParam());
+    auto add_main = std::get<2>(GetParam());
+    assert_compiles(test_name, compiler, add_main);
+
+    auto graph = std::get<3>(GetParam()).graph_name;
+    auto ranks = std::get<3>(GetParam()).expected_ranks;
+    assert_runs(test_name, graph, 0.85, ranks);
+}
+
+INSTANTIATE_TEST_CASE_P(
+        PageRankTestSuite,
+        PageRankTest,
+        ::testing::Values(
+                make_tuple("pagerank", get_compiler_path(), false, PageRankExecutionParams(
+                        "graph1",
+                        {0.372532, 0.195814, 0.394155, 0.0375})),
+                make_tuple("pagerank", get_compiler_path(), false, PageRankExecutionParams(
+                        "graph2",
+                        {0.432749, 0.233918, 0.333333}))
         ));

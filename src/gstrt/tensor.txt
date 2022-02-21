@@ -46,16 +46,13 @@ std::tuple<int, Tensor<int, 2>, Tensor<float, 2>> loadEdgesFromFile(const std::s
 
         std::getline(ss, num, ' ');
         auto dst = std::atoi(num.c_str()) - 1;
-        std::cout << num << std::endl;
 
         std::getline(ss, num, ' ');
         auto src = std::atoi(num.c_str()) - 1;
-        std::cout << num << std::endl;
         edges.at({dst, src}) = 1;
 
         std::getline(ss, num, ' ');
         auto w= std::stof(num.c_str());
-        std::cout << num << std::endl;
         weights.at({dst, src}) = w;
     }
 
