@@ -201,7 +201,7 @@ public:
         std::tie(status_code, output) = exec(cmd.c_str());
 
         // remove generated files
-        // cleanup(tmp_in, tmp_out, tmp_header, driver, add_main);
+        cleanup(tmp_in, tmp_out, tmp_header, driver, add_main);
 
         // check compilation process finished successfully
         EXPECT_EQ(status_code, 0);
@@ -229,8 +229,17 @@ public:
         }
     }
 
-    void assert_runs(const std::string& test_name, const std::string& graph_name, float damp, const std::vector<float>& ranks) {
-        std::string cmd = test_name_to_tmp_output(test_name) + " " + graph_file_path(graph_name) + " " + std::to_string(damp);
+    using inner_checker=void (*)(std::string);
+
+    template<typename R>
+    using outer_checker=inner_checker (*)(R);
+
+    template<typename callable>
+    void assert_runs(const std::string& test_name, const std::string& graph_name, std::vector<std::string> args, callable checker) {
+        std::string cmd = test_name_to_tmp_output(test_name) + " " + graph_file_path(graph_name);
+        for (auto &arg: args) {
+            cmd += " " + arg;
+        }
 
         int status_code;
         std::string output;
@@ -240,7 +249,7 @@ public:
         EXPECT_EQ(status_code, 0);
 
         // check the computed ranks are correct
-        check_page_rank_output(output, ranks);
+        checker(output);
     }
 };
 
@@ -273,8 +282,7 @@ INSTANTIATE_TEST_CASE_P(
                 make_tuple("call_repeat4", get_compiler_path(), true, ExecutionParams()),
                 make_tuple("call_repeat5", get_compiler_path(), true, ExecutionParams()),
                 make_tuple("outer_loop_var1", get_compiler_path(), true, ExecutionParams()),
-                make_tuple("outer_loop_var2", get_compiler_path(), true, ExecutionParams()),
-                make_tuple("bfs_step", get_compiler_path(), true, ExecutionParams())
+                make_tuple("outer_loop_var2", get_compiler_path(), true, ExecutionParams())
         ));
 
 struct PageRankExecutionParams : ExecutionParams {
@@ -295,7 +303,7 @@ TEST_P(PageRankTest, PageRank) {
 
     auto graph = std::get<3>(GetParam()).graph_name;
     auto ranks = std::get<3>(GetParam()).expected_ranks;
-    assert_runs(test_name, graph, 0.85, ranks);
+    assert_runs(test_name, graph, {"0.85"}, [&](std::string output){ check_page_rank_output(output, ranks);});
 }
 
 INSTANTIATE_TEST_CASE_P(
@@ -308,4 +316,67 @@ INSTANTIATE_TEST_CASE_P(
                 make_tuple("pagerank", get_compiler_path(), false, PageRankExecutionParams(
                         "graph2",
                         {0.432749, 0.233918, 0.333333}))
+        ));
+
+
+struct BFSExecutionParams : ExecutionParams {
+    std::string graph_name;
+    int source;
+    std::vector<int> expected_dist;
+
+    BFSExecutionParams(std::string  graph_name, int source, std::vector<int>  expected_dist) :
+            graph_name(graph_name), source(source), expected_dist(expected_dist) {}
+};
+
+class BFSTest : public BaseGenTest<BFSExecutionParams> {
+public:
+    void check_bfs_output(const std::string& output, const std::vector<int>& distances) {
+        auto lines = getLines(output);
+
+        for (int i=0; i < lines.size(); i++) {
+            std:cerr << lines[i] << std::endl;
+            auto result = std::stoi(lines[i]);
+            auto expected = distances[i];
+            EXPECT_EQ(result, expected);
+        }
+    }
+};
+
+TEST_P(BFSTest, BFS) {
+    auto test_name = std::get<0>(GetParam());
+    auto compiler = std::get<1>(GetParam());
+    auto add_main = std::get<2>(GetParam());
+    assert_compiles(test_name, compiler, add_main);
+
+    auto graph = std::get<3>(GetParam()).graph_name;
+    auto dist = std::get<3>(GetParam()).expected_dist;
+    auto source = std::get<3>(GetParam()).source;
+    assert_runs(test_name, graph, {std::to_string(source)}, [&](std::string output) { check_bfs_output(output, dist);});
+}
+
+INSTANTIATE_TEST_CASE_P(
+        BFSTestSuite,
+        BFSTest,
+        ::testing::Values(
+                make_tuple("bfs", get_compiler_path(), false, BFSExecutionParams(
+                        "graph1", 0,
+                        {-2, 1, 1, -1})),
+                make_tuple("bfs", get_compiler_path(), false, BFSExecutionParams(
+                        "graph2", 0,
+                        {-2, 1, 1})),
+                make_tuple("bfs", get_compiler_path(), false, BFSExecutionParams(
+                        "graph3", 0,
+                        {-2, -1, -1, -1, -1})),
+                make_tuple("bfs", get_compiler_path(), false, BFSExecutionParams(
+                        "graph3", 4,
+                        {5, 3, 4, 5, -2})),
+                make_tuple("bfs", get_compiler_path(), false, BFSExecutionParams(
+                        "graph3", 1,
+                        {2, -2, -1, -1, -1})),
+                make_tuple("bfs", get_compiler_path(), false, BFSExecutionParams(
+                        "graph3", 2,
+                        {2, 3, -2, -1, -1})),
+                make_tuple("bfs", get_compiler_path(), false, BFSExecutionParams(
+                        "graph3", 3,
+                        {2, 3, 4, -2, -1}))
         ));

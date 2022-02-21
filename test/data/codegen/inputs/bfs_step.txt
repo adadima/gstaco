@@ -1,6 +1,0 @@
-N int
-
-Let BFS_Step(G int[N][N], F_in int[N], P_in int[N]) -> (F_out int[N], P_out int[N])
-    F_out[j] = G[j][k] * F_in[k] * (P_in[j] != 0-1) | k: (OR, 0)
-    P_out[j] = G[j][k] * F_in[k] * (P_in[j] != 0-1) * k | k:(CHOOSE, P_in[j])
-End

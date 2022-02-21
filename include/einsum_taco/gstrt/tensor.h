@@ -42,6 +42,27 @@ struct Tensor {
         return data[0];
     }
 
+    friend bool operator==(const Tensor<T, num_dims>& lhs, const T& rhs) {
+        for (int i=0; i < lhs.total_size; i++) {
+            if (lhs.data[i] != rhs) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    friend bool operator!=(const Tensor<T, num_dims>& lhs, const T& rhs) {
+        return !(lhs == rhs);
+    }
+
+    friend bool operator==(const T& lhs, const Tensor<T, num_dims>& rhs) {
+        return rhs == lhs;
+    }
+
+    friend bool operator!=(const T& lhs, const Tensor<T, num_dims>& rhs) {
+        return !(rhs == lhs);
+    }
+
     friend std::ostream& operator<<(std::ostream &oss, const Tensor<T, num_dims> tensor) {
         for (int i=0; i < tensor.total_size; i++) {
             oss << tensor.data[i] << " ";

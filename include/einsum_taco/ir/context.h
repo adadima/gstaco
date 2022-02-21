@@ -188,7 +188,7 @@ namespace einsum {
         }
 
         std::shared_ptr<TensorVar> get_read_tensor(const std::shared_ptr<TensorVar>& tensor) {
-            if (locals_.count(tensor->name)) {
+            if (locals_.count(tensor->name) > 0) {
                 return locals_[tensor->name];
             }
             auto t = get_param(tensor, func_scope()->inputs);

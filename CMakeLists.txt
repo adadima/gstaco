@@ -55,4 +55,5 @@ target_link_libraries(parser_lib PUBLIC einsum_lib)
 
 add_executable(parser_exec "${EINSUM_PARSER_DIR}/main.cc")
 add_executable(page_rank "${EINSUM_TEST_DIR}/tmp/codegen/pagerank.cpp" "${EINSUM_TEST_DIR}/data/codegen/drivers/driver_pagerank.cpp")
+add_executable(bfs "${EINSUM_TEST_DIR}/tmp/codegen/bfs.cpp" "${EINSUM_TEST_DIR}/data/codegen/drivers/driver_bfs.cpp")
 target_link_libraries(parser_exec parser_lib)
