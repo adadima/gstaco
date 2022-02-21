@@ -201,7 +201,7 @@ public:
         std::tie(status_code, output) = exec(cmd.c_str());
 
         // remove generated files
-        cleanup(tmp_in, tmp_out, tmp_header, driver, add_main);
+        // cleanup(tmp_in, tmp_out, tmp_header, driver, add_main);
 
         // check compilation process finished successfully
         EXPECT_EQ(status_code, 0);

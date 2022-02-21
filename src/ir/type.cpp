@@ -149,4 +149,8 @@ namespace einsum {
     bool Operator::isArithmetic() const {
         return std::find(begin(arith_ops), end(arith_ops), sign) != end(arith_ops);
     }
+
+    std::string Operator::get_builtin_name() const {
+        return "gstaco_" + class_name();
+    }
 }

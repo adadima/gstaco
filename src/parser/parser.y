@@ -87,6 +87,10 @@
 %token  NEQ
 %token	AND
 %token	OR
+%token	MIN
+%token	CHOOSE
+%token  OR_RED
+%token  AND_RED
 %token	OPEN_PAREN
 %token	CLOSED_PAREN
 %token	OPEN_BRACKET
@@ -232,19 +236,34 @@ exp:		OPEN_PAREN orexp CLOSED_PAREN { $$ = $2;}
 
 reduction: 	IDENTIFIER COLONS OPEN_PAREN PLUS COM orexp CLOSED_PAREN  {$$ = new einsum::Reduction(
 												std::shared_ptr<einsum::IndexVar>(new einsum::IndexVar(*$1, 0)),
-												einsum::add,
+												einsum::add_red,
 												std::shared_ptr<einsum::Expression>($6)
 											);}
 		| IDENTIFIER COLONS OPEN_PAREN MUL COM orexp CLOSED_PAREN  {$$ = new einsum::Reduction(
                 												std::shared_ptr<einsum::IndexVar>(new einsum::IndexVar(*$1, 0)),
-                												einsum::mul,
+                												einsum::mul_red,
                 												std::shared_ptr<einsum::Expression>($6)
                 											);}
-                | IDENTIFIER COLONS OPEN_PAREN IDENTIFIER COM orexp CLOSED_PAREN  {$$ = new einsum::Reduction(
+                | IDENTIFIER COLONS OPEN_PAREN AND_RED COM orexp CLOSED_PAREN  {$$ = new einsum::Reduction(
+                                												std::shared_ptr<einsum::IndexVar>(new einsum::IndexVar(*$1, 0)),
+                                												einsum::and_red,
+                                												std::shared_ptr<einsum::Expression>($6)
+                                											);}
+                | IDENTIFIER COLONS OPEN_PAREN OR_RED COM orexp CLOSED_PAREN  {$$ = new einsum::Reduction(
+                                												std::shared_ptr<einsum::IndexVar>(new einsum::IndexVar(*$1, 0)),
+                                												einsum::or_red,
+                                												std::shared_ptr<einsum::Expression>($6)
+                                											);}
+                | IDENTIFIER COLONS OPEN_PAREN MIN COM orexp CLOSED_PAREN  {$$ = new einsum::Reduction(
                 												std::shared_ptr<einsum::IndexVar>(new einsum::IndexVar(*$1, 0)),
-                												einsum::or_,
+                												einsum::min_red,
                 												std::shared_ptr<einsum::Expression>($6)
                 											);}
+                | IDENTIFIER COLONS OPEN_PAREN CHOOSE COM orexp CLOSED_PAREN  {$$ = new einsum::Reduction(
+                                												std::shared_ptr<einsum::IndexVar>(new einsum::IndexVar(*$1, 0)),
+                                												einsum::choose_red,
+                                												std::shared_ptr<einsum::Expression>($6)
+                                											);}
 
 reduction_list:	{$$ = new std::vector<std::shared_ptr<einsum::Reduction>>();}
 | reduction_list COM reduction {$1->push_back(std::shared_ptr<einsum::Reduction>($3)); $$ = $1;}

@@ -157,7 +157,7 @@ namespace einsum {
     }
 
     std::string Reduction::dump() const {
-        return this->reductionVar->dump() + ":" + "(" + this->reductionOp->reductionSign + ", " + this->reductionInit->dump() + ")";
+        return this->reductionVar->dump() + ":" + "(" + this->reductionOp->op->reductionSign + ", " + this->reductionInit->dump() + ")";
     }
 
     std::string Definition::dump() const {
@@ -392,6 +392,18 @@ namespace einsum {
     std::shared_ptr<Initialize> ModuleComponent::as_init() {
         try {
             return std::dynamic_pointer_cast<Initialize>(this->shared_from_this());
+        } catch (const std::bad_weak_ptr& exp) {
+            std::abort();
+        }
+    }
+
+    bool ModuleComponent::is_builtin() const {
+        return dynamic_cast<const BuiltinFuncDecl*>(this) != nullptr;
+    }
+
+    std::shared_ptr<BuiltinFuncDecl> ModuleComponent::as_builtin() {
+        try {
+            return std::dynamic_pointer_cast<BuiltinFuncDecl>(this->shared_from_this());
         } catch (const std::bad_weak_ptr& exp) {
             std::abort();
         }

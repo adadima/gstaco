@@ -56,6 +56,12 @@ namespace einsum {
         void visit(std::shared_ptr<BinaryOp> node) override;
         void visit(std::shared_ptr<UnaryOp> node) override;
         void visit(std::shared_ptr<FuncDecl> node) override;
+        void visit(std::shared_ptr<AndOperator> node) override;
+        void visit(std::shared_ptr<OrOperator> node) override;
+        void visit(std::shared_ptr<AddOperator> node) override;
+        void visit(std::shared_ptr<MulOperator> node) override;
+        void visit(std::shared_ptr<MinOperator> node) override;
+        void visit(std::shared_ptr<ChooseOperator> node) override;
         void visit(std::shared_ptr<Call> node) override;
         void visit(std::shared_ptr<CallStarRepeat> node) override;
         void visit(std::shared_ptr<CallStarCondition> node) override;

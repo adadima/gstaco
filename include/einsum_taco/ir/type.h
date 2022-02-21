@@ -184,9 +184,18 @@ namespace einsum {
             return sign;
         }
 
+        std::string get_builtin_name() const;
+
         [[nodiscard]] bool isArithmetic() const;
     };
 
+    struct MinOp : Operator {
+        MinOp() : Operator(0, "MIN", "MIN", nullptr) {};
+    };
+
+    struct ChooseOp : Operator {
+        ChooseOp() : Operator(0, "CHOOSE", "CHOOSE", nullptr) {};
+    };
 
     struct AddOp : Operator {
         AddOp() : Operator(4, "+", "+", nullptr) {}
@@ -243,6 +252,10 @@ namespace einsum {
     struct NeqOp : Operator {
         NeqOp() : Operator(7, "!=", Datatype::boolType()) {}
     };
+
+    inline std::shared_ptr<MinOp> min = std::make_shared<MinOp>();
+
+    inline std::shared_ptr<ChooseOp> choose = std::make_shared<ChooseOp>();
 
     inline std::shared_ptr<AddOp> add = std::make_shared<AddOp>();
     

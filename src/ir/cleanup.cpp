@@ -124,5 +124,22 @@ namespace einsum {
         node->body = new_stmts;
         node_ = node;
     }
+
+    void ReductionOpGenerator::visit(std::shared_ptr<Module> node) {
+        IRRewriter::visit(node);
+        context->enter_module(node);
+        auto new_comps = std::vector<std::shared_ptr<ModuleComponent>>();
+        for (auto &op : reduction_ops) {
+            new_comps.push_back(op);
+        }
+        new_comps.insert(new_comps.end(), node->decls.begin(), node->decls.end());
+        node->decls = new_comps;
+        context->exit_module();
+    }
+
+    void ReductionOpGenerator::visit(std::shared_ptr<Reduction> node) {
+        IRRewriter::visit(node);
+        reduction_ops.insert(node->reductionOp);
+    }
 }
 

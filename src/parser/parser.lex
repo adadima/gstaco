@@ -34,6 +34,10 @@ ID       [a-zA-Z_#][a-zA-Z_#0-9]*
 "!="                { yylval->op_val = new std::string(yytext); return NEQ; }
 "&&"                { yylval->op_val = new std::string(yytext); return AND; }
 "||"		        { yylval->op_val = new std::string(yytext); return OR; }
+"OR"                { yylval->op_val = new std::string(yytext); return OR_RED; }
+"AND"               { yylval->op_val = new std::string(yytext); return AND_RED; }
+"MIN"               { yylval->op_val = new std::string(yytext); return MIN; }
+"CHOOSE"            { yylval->op_val = new std::string(yytext); return CHOOSE; }
 
 "="      { yylval->op_val = new std::string(yytext); return ASSIGN; }
 "("      { yylval->op_val = new std::string(yytext); return OPEN_PAREN; }

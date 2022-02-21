@@ -51,7 +51,7 @@ void einsum::DumpAstVisitor::visit(std::shared_ptr<Reduction> node) {
     ast = get_indent() + "<" + node->class_name() + "\n" +
             red_var + "\n";
     indent();
-    ast += get_indent() + node->reductionOp->reductionSign + "\n";
+    ast += get_indent() + node->reductionOp->op->reductionSign + "\n";
     unindent();
     ast += red_init + "\n";
     ast += get_indent() + ">";
@@ -362,6 +362,30 @@ void einsum::DumpAstVisitor::visit(shared_ptr<Initialize> node) {
     ast = get_indent() + "<" + node->class_name() + "\n";
     ast += t + "\n";
     ast += get_indent() + ">";
+}
+
+void einsum::DumpAstVisitor::visit(shared_ptr<AndOperator> node) {
+
+}
+
+void einsum::DumpAstVisitor::visit(shared_ptr<OrOperator> node) {
+
+}
+
+void einsum::DumpAstVisitor::visit(shared_ptr<AddOperator> node) {
+
+}
+
+void einsum::DumpAstVisitor::visit(shared_ptr<MulOperator> node) {
+
+}
+
+void einsum::DumpAstVisitor::visit(shared_ptr<MinOperator> node) {
+
+}
+
+void einsum::DumpAstVisitor::visit(shared_ptr<ChooseOperator> node) {
+
 }
 
 

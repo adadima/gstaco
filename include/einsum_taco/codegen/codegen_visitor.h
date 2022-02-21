@@ -45,6 +45,18 @@ namespace einsum {
 
         void visit(std::shared_ptr<FuncDecl> node) override;
 
+        void visit(std::shared_ptr<AddOperator> node) override;
+
+        void visit(std::shared_ptr<MulOperator> node) override;
+
+        void visit(std::shared_ptr<AndOperator> node) override;
+
+        void visit(std::shared_ptr<OrOperator> node) override;
+
+        void visit(std::shared_ptr<MinOperator> node) override;
+
+        void visit(std::shared_ptr<ChooseOperator> node) override;
+
         void visit(std::shared_ptr<Call> node) override;
 
         void visit(std::shared_ptr<CallStarRepeat> node) override;
@@ -100,7 +112,7 @@ namespace einsum {
         std::string visit_reduced_expr(const std::shared_ptr<Expression>& expr, const std::vector<std::shared_ptr<Reduction>> &reductions);
 
         static std::shared_ptr<Expression> reduce_expression(const std::string &init_var, std::shared_ptr<Expression> expr,
-                                                      const std::shared_ptr<Operator> &op);
+                                                      const std::shared_ptr<BuiltinFuncDecl> &op);
 
         template<typename T>
         void visit_tensor_access(const std::shared_ptr<T>& access);

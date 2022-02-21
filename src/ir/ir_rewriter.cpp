@@ -222,5 +222,28 @@ namespace einsum {
         node_ = node;
     }
 
+    void IRRewriter::visit(std::shared_ptr<MinOperator> node) {
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<ChooseOperator> node) {
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<AddOperator> node) {
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<MulOperator> node) {
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<AndOperator> node) {
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<OrOperator> node) {
+        node_ = node;
+    }
 
 }

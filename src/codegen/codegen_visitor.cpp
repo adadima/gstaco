@@ -288,8 +288,9 @@ namespace einsum {
         *oss << "#include \"" << module_name << ".h\"" << std::endl;
 
         for(auto &comp: node->decls) {
-
-            if (comp->is_decl()) {
+            if (comp->is_builtin()) {
+                comp->accept(this);
+            } else if (comp->is_decl()) {
                 comp->accept(this);
                 *oss << "\n";
 
@@ -297,8 +298,7 @@ namespace einsum {
                 visit_func_signature(comp->as_decl());
                 *oss << ";\n";
                 oss = oss_cpp;
-            }
-            if (comp->is_init()) {
+            } else if (comp->is_init()) {
                 auto init = comp->as_init();
                 auto tensor = init->tensor;
 
@@ -360,7 +360,6 @@ namespace einsum {
 
             std::string init_var = "init_";
             init_var += i;
-
             std::shared_ptr<Expression> exp;
             if (r == (reductions.size() - 1)) {
                 exp = reduce_expression(init_var, expr, red->reductionOp);
@@ -414,9 +413,10 @@ namespace einsum {
         node->expr->accept(this);
     }
 
-    std::shared_ptr<Expression> CodeGenVisitor::reduce_expression(const std::string& init_var, std::shared_ptr<Expression> expr, const std::shared_ptr<Operator>& op) {
+    std::shared_ptr<Expression> CodeGenVisitor::reduce_expression(const std::string& init_var, std::shared_ptr<Expression> expr, const std::shared_ptr<BuiltinFuncDecl>& op) {
         std::shared_ptr<Expression> left = IR::make<ReadAccess>(init_var, false);
-        return IR::make<BinaryOp>(left, std::move(expr), op, op->type);
+        auto args = std::vector<std::shared_ptr<Expression>>{left, expr};
+        return IR::make<Call>(op, args);
     }
 
     void CodeGenVisitor::generate_for_loop(const std::string& var, const std::shared_ptr<Expression>& dim) {
@@ -507,5 +507,80 @@ namespace einsum {
             dims[i]->accept(this);
         }
         *oss << "});\n";
+    }
+
+
+    void CodeGenVisitor::visit(std::shared_ptr<MinOperator> node) {
+        oss = oss_h;
+        auto signature = R"(template<typename T>
+T )";
+        auto op_func = R"((T left, T right) {
+    if (left > right) {
+        return right;
+    } else {
+        return left;
+    }
+}
+)";
+        *oss << signature << node->funcName << op_func;
+        oss = oss_cpp;
+    }
+
+    void CodeGenVisitor::visit(std::shared_ptr<ChooseOperator> node) {
+        oss = oss_h;
+        auto signature = R"(template<typename T>
+T )";
+        auto op_func = R"((T left, T right) {
+    if (right) {
+        return right;
+    } else {
+        return left;
+    }
+}
+)";
+        *oss << signature << node->funcName << op_func;
+        oss = oss_cpp;
+    }
+
+    void CodeGenVisitor::visit(std::shared_ptr<AddOperator> node) {
+        oss = oss_h;
+        auto signature = R"(template<typename T>
+T )";
+        auto op_func = R"((T left, T right) {
+    return left + right;
+}
+)";
+        *oss << signature << node->funcName << op_func;
+        oss = oss_cpp;
+    }
+
+    void CodeGenVisitor::visit(std::shared_ptr<MulOperator> node) {
+        oss = oss_h;
+        auto signature = R"(template<typename T>
+T )";
+        auto op_func = R"((T left, T right) {
+    return left * right;
+}
+)";
+        *oss << signature << node->funcName << op_func;
+        oss = oss_cpp;
+    }
+
+    void CodeGenVisitor::visit(std::shared_ptr<AndOperator> node) {
+        auto signature = R"(bool )";
+        auto op_func = R"((bool left, bool right) {
+    return left && right;
+}
+)";
+        *oss << signature << node->funcName << op_func;
+    }
+
+    void CodeGenVisitor::visit(std::shared_ptr<OrOperator> node) {
+        auto signature = R"(bool )";
+        auto op_func = R"((bool left, bool right) {
+    return left || right;
+}
+)";
+        *oss << signature << node->funcName << op_func;
     }
 }

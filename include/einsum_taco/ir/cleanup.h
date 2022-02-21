@@ -7,6 +7,7 @@
 
 #include "einsum_taco//ir/ir_rewriter.h"
 #include <stack>
+#include <set>
 
 namespace einsum {
     struct TensorVarRewriter : public IRRewriter {
@@ -47,6 +48,15 @@ namespace einsum {
         }
     };
 
+    struct ReductionOpGenerator : public IRRewriter {
+        std::set<std::shared_ptr<BuiltinFuncDecl>> reduction_ops;
+
+        explicit ReductionOpGenerator(IRContext* context) : IRRewriter(context) {}
+
+        void visit(std::shared_ptr<Reduction> node) override;
+        void visit(std::shared_ptr<Module> node) override;
+    };
+
     std::shared_ptr<Module> apply_custom_rewriters(std::shared_ptr<Module> mod, const std::vector<IRRewriter*>& rewriters) {
         for (auto& rewriter: rewriters) {
             mod->accept(rewriter);
@@ -57,6 +67,7 @@ namespace einsum {
 
     std::shared_ptr<Module> apply_default_rewriters(std::shared_ptr<Module> mod) {
         std::vector<IRRewriter*> rewriters = {
+                new ReductionOpGenerator(new IRContext()),
                 new TensorVarRewriter(new IRContext()),
                 new FuncDeclRewriter(new IRContext()),
                 new IndexDimensionRewriter(new IRContext()),

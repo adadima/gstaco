@@ -12,6 +12,6 @@ End
 
 P int
 
-Let func(B int[N][M], C float[P]) -> (A int[N])
+Let func(B int[N][M], C int[P]) -> (A int[N])
     A[i] = ((f*(i) | 6) + B[i][j]) * C[k]| j:(*, 1), k:(+, 0)
 End

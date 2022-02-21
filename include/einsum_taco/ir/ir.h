@@ -21,6 +21,7 @@
 namespace einsum {
 
     struct FuncDecl;
+    struct BuiltinFuncDecl;
     struct Definition;
     struct Expression;
     struct TensorVar;
@@ -31,6 +32,9 @@ namespace einsum {
     struct ModuleComponent : IR {
         bool is_decl() const;
         std::shared_ptr<FuncDecl> as_decl();
+
+        bool is_builtin() const;
+        std::shared_ptr<BuiltinFuncDecl> as_builtin();
 
         bool is_var() const;
         std::shared_ptr<TensorVar> as_var();
@@ -257,13 +261,15 @@ namespace einsum {
 
     };
 
+    struct BuiltinFuncDecl;
+
     struct Reduction : Acceptor<Reduction> {
         std::shared_ptr<IndexVar> reductionVar;
-        std::shared_ptr<Operator> reductionOp;
+        std::shared_ptr<BuiltinFuncDecl> reductionOp;
         std::shared_ptr<Expression> reductionInit;
 
-        Reduction(std::shared_ptr<IndexVar> reductionVar, std::shared_ptr<Operator> reductionOp, std::shared_ptr<Expression> reductionInit) :
-            reductionVar(std::move(reductionVar)), reductionOp(std::move(reductionOp)), reductionInit(std::move(reductionInit)) {
+        Reduction(std::shared_ptr<IndexVar> reductionVar, std::shared_ptr<BuiltinFuncDecl> reductionOp, std::shared_ptr<Expression> reductionInit) :
+            reductionVar(reductionVar), reductionOp(reductionOp), reductionInit(reductionInit) {
         }
 
         std::string dump() const override;
@@ -308,14 +314,14 @@ namespace einsum {
         std::shared_ptr<Expression> rhs;
 
         Definition(std::shared_ptr<Access> lhs, std::shared_ptr<Expression> rhs) :
-                    Definition({std::move(lhs)}, std::move(rhs), {}) {}
+                    Definition({lhs}, rhs, {}) {}
 
         Definition(const std::vector<std::shared_ptr<Access>>& lhs,
                    const std::shared_ptr<Expression>& rhs,
                    const std::vector<std::shared_ptr<Reduction>>&  reds) :
-                   lhs(std::move(lhs)),
-                   rhs(std::move(rhs)),
-                   reduction_list(std::move(reds)) {}
+                   lhs(lhs),
+                   rhs(rhs),
+                   reduction_list(reds) {}
 
         std::string dump() const override;
 
@@ -340,13 +346,44 @@ namespace einsum {
         std::shared_ptr<TupleType> getOutputType() const;
     };
 
+    struct BuiltinFuncDecl : Acceptor<BuiltinFuncDecl, FuncDecl> {
+        std::shared_ptr<Operator> op;
+
+        BuiltinFuncDecl(std::shared_ptr<Operator> op, std::string funcName, std::vector<std::shared_ptr<TensorVar>> inputs, std::vector<std::shared_ptr<TensorVar>> outputs, std::vector<std::shared_ptr<Statement>> body) :
+            Base(std::move(funcName), inputs, outputs, body), op(op) {}
+    };
+
+    struct AddOperator : Acceptor<AddOperator, BuiltinFuncDecl> {
+        AddOperator() : Base(add, "gstaco_add", {}, {}, {}) {}
+    };
+
+    struct MulOperator : Acceptor<MulOperator, BuiltinFuncDecl> {
+        MulOperator() : Base(mul, "gstaco_mul", {}, {}, {}) {}
+    };
+
+    struct AndOperator : Acceptor<AndOperator, BuiltinFuncDecl> {
+        AndOperator() : Base(and_, "gstaco_and", {}, {}, {}) {}
+    };
+
+    struct OrOperator : Acceptor<OrOperator, BuiltinFuncDecl> {
+        OrOperator() : Base(or_, "gstaco_or", {}, {}, {}) {}
+    };
+
+    struct MinOperator : Acceptor<MinOperator, BuiltinFuncDecl> {
+        MinOperator() : Base(min, "gstaco_min", {}, {}, {}) {}
+    };
+
+    struct ChooseOperator : Acceptor<ChooseOperator, BuiltinFuncDecl>{
+        ChooseOperator() : Base(choose, "gstaco_choose", {}, {}, {}) {}
+    };
+
     struct Call : Acceptor<Call, Expression> {
         Call(std::string function, std::vector<std::shared_ptr<Expression>> arguments) : Base(1) {
-            this->function = IR::make<FuncDecl>(std::move(function), std::vector<std::shared_ptr<TensorVar>>(), std::vector<std::shared_ptr<TensorVar>>(), std::vector<std::shared_ptr<Statement>>()),
+            this->function = IR::make<FuncDecl>(function, std::vector<std::shared_ptr<TensorVar>>(), std::vector<std::shared_ptr<TensorVar>>(), std::vector<std::shared_ptr<Statement>>()),
             this->arguments = std::move(arguments);
         };
 
-        Call(std::shared_ptr<FuncDecl> function, std::vector<std::shared_ptr<Expression>> arguments) : Base(1), function(std::move(function)), arguments(std::move(arguments)) {};
+        Call(std::shared_ptr<FuncDecl> function, std::vector<std::shared_ptr<Expression>> arguments) : Base(1), function(function), arguments(arguments) {};
 
         std::string dump() const override;
 
@@ -364,10 +401,10 @@ namespace einsum {
 
     struct CallStarRepeat : Acceptor<CallStarRepeat, Call> {
         CallStarRepeat(int numIterations, std::string name, std::vector<std::shared_ptr<Expression>> arguments) :
-        Base(std::move(name), std::move(arguments)), numIterations(numIterations) {}
+        Base(name, arguments), numIterations(numIterations) {}
 
         CallStarRepeat(int numIterations, std::shared_ptr<FuncDecl> function, std::vector<std::shared_ptr<Expression>> arguments) :
-            Base(std::move(function), std::move(arguments)), numIterations(numIterations) {}
+            Base(function, arguments), numIterations(numIterations) {}
 
         std::string dump() const override;
 
@@ -379,10 +416,10 @@ namespace einsum {
 
     struct CallStarCondition : Acceptor<CallStarCondition, Call> {
         CallStarCondition(std::shared_ptr<Expression> stopCondition, std::string name, std::vector<std::shared_ptr<Expression>> arguments) :
-                Base(std::move(name), std::move(arguments)), stopCondition(std::move(stopCondition)) {}
+                Base(name, arguments), stopCondition(stopCondition) {}
 
         CallStarCondition(std::shared_ptr<Expression> stopCondition, std::shared_ptr<FuncDecl> function, std::vector<std::shared_ptr<Expression>> arguments) :
-                Base(std::move(function), std::move(arguments)), stopCondition(std::move(stopCondition)) {}
+                Base(function, arguments), stopCondition(stopCondition) {}
 
         std::string dump() const override;
 
@@ -419,6 +456,12 @@ namespace einsum {
         virtual void visit(std::shared_ptr<MemAssignment> node) = 0;
         virtual void visit(std::shared_ptr<Initialize> node) = 0;
         virtual void visit(std::shared_ptr<FuncDecl> node) = 0;
+        virtual void visit(std::shared_ptr<AndOperator> node) = 0;
+        virtual void visit(std::shared_ptr<OrOperator> node) = 0;
+        virtual void visit(std::shared_ptr<AddOperator> node) = 0;
+        virtual void visit(std::shared_ptr<MulOperator> node) = 0;
+        virtual void visit(std::shared_ptr<MinOperator> node) = 0;
+        virtual void visit(std::shared_ptr<ChooseOperator> node) = 0;
         virtual void visit(std::shared_ptr<Call> node) = 0;
         virtual void visit(std::shared_ptr<CallStarRepeat> node) = 0;
         virtual void visit(std::shared_ptr<CallStarCondition> node) = 0;
@@ -439,6 +482,13 @@ namespace einsum {
         }
 
     }
+
+    inline std::shared_ptr<MulOperator> mul_red = std::make_shared<MulOperator>();
+    inline std::shared_ptr<AddOperator> add_red = std::make_shared<AddOperator>();
+    inline std::shared_ptr<AndOperator> and_red = std::make_shared<AndOperator>();
+    inline std::shared_ptr<OrOperator>  or_red  = std::make_shared<OrOperator>();
+    inline std::shared_ptr<MinOperator> min_red = std::make_shared<MinOperator>();
+    inline std::shared_ptr<ChooseOperator> choose_red = std::make_shared<ChooseOperator>();
 }
 
 //TODO: implement a switch case
