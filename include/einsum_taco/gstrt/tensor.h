@@ -32,7 +32,7 @@ struct Tensor {
     T& at(std::array<int, num_dims> idx) {
         int index = idx[0];
         for (int i = 1; i < num_dims; i++) {
-            index = index * dims[i - 1] + idx[i];
+            index = index * dims[i] + idx[i];
         }
         return data[index];
     }

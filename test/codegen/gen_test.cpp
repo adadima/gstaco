@@ -380,3 +380,67 @@ INSTANTIATE_TEST_CASE_P(
                         "graph3", 3,
                         {2, 3, 4, -2, -1}))
         ));
+
+struct SSSPExecutionParams : ExecutionParams {
+    std::string graph_name;
+    int source;
+    int infinity;
+    std::vector<float> expected_dist;
+
+    SSSPExecutionParams(std::string  graph_name, int source, int infinity, std::vector<float>  expected_dist) :
+    graph_name(graph_name), source(source), infinity(infinity), expected_dist(expected_dist) {}
+};
+
+class SSSPTest : public BaseGenTest<SSSPExecutionParams> {
+public:
+    void check_sssp_output(const std::string& output, const std::vector<float>& distances) {
+        auto lines = getLines(output);
+
+        for (int i=0; i < lines.size(); i++) {
+            std:cerr << lines[i] << std::endl;
+            auto result = std::stof(lines[i]);
+            auto expected = distances[i];
+            EXPECT_FLOAT_EQ(result, expected);
+        }
+    }
+};
+
+TEST_P(SSSPTest, SSSP) {
+    auto test_name = std::get<0>(GetParam());
+    auto compiler = std::get<1>(GetParam());
+    auto add_main = std::get<2>(GetParam());
+    assert_compiles(test_name, compiler, add_main);
+
+    auto graph = std::get<3>(GetParam()).graph_name;
+    auto dist = std::get<3>(GetParam()).expected_dist;
+    auto source = std::get<3>(GetParam()).source;
+    auto inf = std::get<3>(GetParam()).infinity;
+    assert_runs(test_name, graph, {std::to_string(source), std::to_string(inf)}, [&](std::string output) { check_sssp_output(output, dist);});
+}
+
+INSTANTIATE_TEST_CASE_P(
+        SSSPTestSuite,
+        SSSPTest,
+        ::testing::Values(
+                make_tuple("sssp", get_compiler_path(), false, SSSPExecutionParams(
+                        "graph4", 0, 1000,
+                        {0, 1.0, 1.7, 1000.0})),
+                make_tuple("sssp", get_compiler_path(), false, SSSPExecutionParams(
+                        "graph5", 0, 1000,
+                        {0, 2.0, 5.0, 1.0})),
+                make_tuple("sssp", get_compiler_path(), false, SSSPExecutionParams(
+                        "graph3", 4, 1000,
+                        {4.0, 3.0, 2.0, 1.0, 0})),
+                make_tuple("sssp", get_compiler_path(), false, SSSPExecutionParams(
+                        "graph2", 0, 1000,
+                        {0, 1.0, 2.0})),
+                make_tuple("sssp", get_compiler_path(), false, SSSPExecutionParams(
+                        "graph2", 1, 1000,
+                        {2.0, 0, 1.0})),
+                make_tuple("sssp", get_compiler_path(), false, SSSPExecutionParams(
+                        "graph2", 2, 1000,
+                        {1.0, 2.0, 0})),
+                make_tuple("sssp", get_compiler_path(), false, SSSPExecutionParams(
+                        "graph1", 0, 1000,
+                        {0, 1.0, 2.0, 1000.0}))
+        ));
