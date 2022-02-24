@@ -4,11 +4,18 @@
 
 #include "../../../tmp/codegen/bfs.h"
 #include <string>
+#include <fstream>
 
 int N;
 int source;
 Tensor<int, 2> edges({});
 Tensor<float, 2> weights({});
+
+static void writeStringToFile(const std::string& filename, const std::string& generated_code) {
+    std::ofstream out(filename);
+    out << generated_code;
+    out.close();
+}
 
 int main(int argc, char* argv[]) {
     std::tuple<int, Tensor<int, 2>, Tensor<float, 2>> tensors = loadEdgesFromFile(argv[1]);
@@ -22,8 +29,10 @@ int main(int argc, char* argv[]) {
 
     auto result = BFS();
     auto parents = std::get<0>(result);
-//    std::cout << edges;
+    std::string output;
     for(int i=0; i < parents.total_size; i++) {
         std::cout << parents.data[i] << std::endl;
+        output += std::to_string(parents.data[i]) + "\n";
     }
+    writeStringToFile(argv[3], output);
 }

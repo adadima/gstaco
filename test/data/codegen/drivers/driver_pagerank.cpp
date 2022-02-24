@@ -4,12 +4,19 @@
 
 #include <string>
 #include "../../../tmp/codegen/pagerank.h"
+#include <fstream>
 
 int N;
 Tensor<int, 2> edges({});
 Tensor<float, 2> weights({});
 float damp;
 float beta_score;
+
+static void writeStringToFile(const std::string& filename, const std::string& generated_code) {
+    std::ofstream out(filename);
+    out << generated_code;
+    out.close();
+}
 
 int main(int argc, char* argv[]) {
     std::tuple<int, Tensor<int, 2>, Tensor<float, 2>> tensors = loadEdgesFromFile(argv[1]);
@@ -26,7 +33,10 @@ int main(int argc, char* argv[]) {
     auto result = PageRank();
     auto ranks = std::get<3>(result);
 
+    std::string output;
     for(int i=0; i < ranks.total_size; i++) {
         std::cout << ranks.data[i] << std::endl;
+        output += std::to_string(ranks.data[i]) + "\n";
     }
+    writeStringToFile(argv[3], output);
 }

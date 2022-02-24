@@ -234,9 +234,6 @@ public:
         std::string output;
         std::tie(status_code, output) = exec(cmd.c_str());
 
-        std::string out_path = get_tmp_dir_name() + "/" + test_name + "_out_" + cmd_args + ".txt";
-        writeStringToFile(out_path, output);
-
         // check run process finished successfully
         EXPECT_EQ(status_code, 0);
 
@@ -245,7 +242,11 @@ public:
     }
 };
 
-struct ExecutionParams {};
+struct ExecutionParams {
+    std::string output_filename;
+
+    explicit ExecutionParams(std::string output_filename="out") : output_filename(get_test_dir() + "tmp/codegen/" + output_filename) {}
+};
 
 class GenTest : public BaseGenTest<ExecutionParams>{};
 
@@ -282,7 +283,7 @@ struct PageRankExecutionParams : ExecutionParams {
     std::vector<float> expected_ranks;
 
     PageRankExecutionParams(std::string  graph_name, std::vector<float>  expected_ranks) :
-        graph_name(std::move(graph_name)), expected_ranks(std::move(expected_ranks)) {}
+            ExecutionParams("PR_" + graph_name + ".txt"), graph_name(std::move(graph_name)), expected_ranks(std::move(expected_ranks)) {}
 };
 
 class PageRankTest : public BaseGenTest<PageRankExecutionParams> {};
@@ -295,7 +296,8 @@ TEST_P(PageRankTest, PageRank) {
 
     auto graph = std::get<3>(GetParam()).graph_name;
     auto ranks = std::get<3>(GetParam()).expected_ranks;
-    assert_runs(test_name, graph, {"0.85"}, [&](std::string output){ check_page_rank_output(output, ranks);});
+    auto out = std::get<3>(GetParam()).output_filename;
+    assert_runs(test_name, graph, {"0.85", out}, [&](std::string output){ check_page_rank_output(output, ranks);});
 }
 
 INSTANTIATE_TEST_CASE_P(
@@ -317,6 +319,7 @@ struct BFSExecutionParams : ExecutionParams {
     std::vector<int> expected_dist;
 
     BFSExecutionParams(std::string  graph_name, int source, std::vector<int>  expected_dist) :
+            ExecutionParams("BFS_" + graph_name + ".txt"),
             graph_name(graph_name), source(source), expected_dist(expected_dist) {}
 };
 
@@ -343,7 +346,8 @@ TEST_P(BFSTest, BFS) {
     auto graph = std::get<3>(GetParam()).graph_name;
     auto dist = std::get<3>(GetParam()).expected_dist;
     auto source = std::get<3>(GetParam()).source;
-    assert_runs(test_name, graph, {std::to_string(source)}, [&](std::string output) { check_bfs_output(output, dist);});
+    auto out = std::get<3>(GetParam()).output_filename;
+    assert_runs(test_name, graph, {std::to_string(source), out}, [&](std::string output) { check_bfs_output(output, dist);});
 }
 
 INSTANTIATE_TEST_CASE_P(
@@ -380,6 +384,7 @@ struct SSSPExecutionParams : ExecutionParams {
     std::vector<float> expected_dist;
 
     SSSPExecutionParams(std::string  graph_name, int source, int infinity, std::vector<float>  expected_dist) :
+            ExecutionParams("SSSP_" + graph_name + ".txt"),
     graph_name(graph_name), source(source), infinity(infinity), expected_dist(expected_dist) {}
 };
 
@@ -407,7 +412,8 @@ TEST_P(SSSPTest, SSSP) {
     auto dist = std::get<3>(GetParam()).expected_dist;
     auto source = std::get<3>(GetParam()).source;
     auto inf = std::get<3>(GetParam()).infinity;
-    assert_runs(test_name, graph, {std::to_string(source), std::to_string(inf)}, [&](std::string output) { check_sssp_output(output, dist);});
+    auto out = std::get<3>(GetParam()).output_filename;
+    assert_runs(test_name, graph, {std::to_string(source), std::to_string(inf), out}, [&](std::string output) { check_sssp_output(output, dist);});
 }
 
 INSTANTIATE_TEST_CASE_P(
@@ -443,6 +449,7 @@ struct BCExecutionParams : ExecutionParams {
     std::vector<float> expected_dist;
 
     BCExecutionParams(std::string  graph_name, int source, std::vector<float>  expected_dist) :
+            ExecutionParams("BC_" + graph_name + ".txt"),
             graph_name(graph_name), source(source), expected_dist(expected_dist) {}
 };
 
@@ -469,7 +476,8 @@ TEST_P(BCTest, BC) {
     auto graph = std::get<3>(GetParam()).graph_name;
     auto dist = std::get<3>(GetParam()).expected_dist;
     auto source = std::get<3>(GetParam()).source;
-    assert_runs(test_name, graph, {std::to_string(source)}, [&](std::string output) { check_bc_output(output, dist);});
+    auto out = std::get<3>(GetParam()).output_filename;
+    assert_runs(test_name, graph, {std::to_string(source), out}, [&](std::string output) { check_bc_output(output, dist);});
 }
 
 INSTANTIATE_TEST_CASE_P(
