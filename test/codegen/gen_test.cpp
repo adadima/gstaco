@@ -237,13 +237,18 @@ public:
     template<typename callable>
     void assert_runs(const std::string& test_name, const std::string& graph_name, std::vector<std::string> args, callable checker) {
         std::string cmd = test_name_to_tmp_output(test_name) + " " + graph_file_path(graph_name);
+        std::string cmd_args;
         for (auto &arg: args) {
-            cmd += " " + arg;
+            cmd_args += " " + arg;
         }
+        cmd += cmd_args;
 
         int status_code;
         std::string output;
         std::tie(status_code, output) = exec(cmd.c_str());
+
+        std::string out_path = get_tmp_dir_name() + "/" + test_name + "_out_" + cmd_args + ".txt";
+        writeStringToFile(out_path, output);
 
         // check run process finished successfully
         EXPECT_EQ(status_code, 0);
@@ -443,4 +448,48 @@ INSTANTIATE_TEST_CASE_P(
                 make_tuple("sssp", get_compiler_path(), false, SSSPExecutionParams(
                         "graph1", 0, 1000,
                         {0, 1.0, 2.0, 1000.0}))
+        ));
+
+struct BCExecutionParams : ExecutionParams {
+    std::string graph_name;
+    int source;
+    std::vector<float> expected_dist;
+
+    BCExecutionParams(std::string  graph_name, int source, std::vector<float>  expected_dist) :
+            graph_name(graph_name), source(source), expected_dist(expected_dist) {}
+};
+
+class BCTest : public BaseGenTest<BCExecutionParams> {
+public:
+    void check_bc_output(const std::string& output, const std::vector<float>& distances) {
+        auto lines = getLines(output);
+
+        for (int i=0; i < lines.size(); i++) {
+            std:cerr << lines[i] << std::endl;
+            auto result = std::stof(lines[i]);
+            auto expected = distances[i];
+            EXPECT_EQ(result, expected);
+        }
+    }
+};
+
+TEST_P(BCTest, BC) {
+    auto test_name = std::get<0>(GetParam());
+    auto compiler = std::get<1>(GetParam());
+    auto add_main = std::get<2>(GetParam());
+    assert_compiles(test_name, compiler, add_main);
+
+    auto graph = std::get<3>(GetParam()).graph_name;
+    auto dist = std::get<3>(GetParam()).expected_dist;
+    auto source = std::get<3>(GetParam()).source;
+    assert_runs(test_name, graph, {std::to_string(source)}, [&](std::string output) { check_bc_output(output, dist);});
+}
+
+INSTANTIATE_TEST_CASE_P(
+        BCTestSuite,
+        BCTest,
+        ::testing::Values(
+                make_tuple("bc", get_compiler_path(), false, BCExecutionParams(
+                        "graph1", 0,
+                        {0, 1.0, 1.7, 1000.0}))
         ));
