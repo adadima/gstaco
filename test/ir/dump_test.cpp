@@ -82,7 +82,7 @@ public:
                                 mul, nullptr),
                         mul, nullptr
                 ),
-                einsum::IR::make_vec<einsum::Reduction>(einsum::IR::make<einsum::Reduction>(k, or_, zero)));
+                einsum::IR::make_vec<einsum::Reduction>(einsum::IR::make<einsum::Reduction>(k, einsum::or_red, zero)));
 
     }
 

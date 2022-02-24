@@ -113,7 +113,7 @@ TEST(ParseTest, CallStarConditionTest) {
 }
 
 TEST(ParseTest, Bcentrality) {
-    auto expected = *readFileIntoString("parser/inputs/bcentrality.txt");
+    auto expected = readFileIntoString(get_test_data_dir() + "parser/inputs/bcentrality.txt");
     auto module = parse(expected);
     EXPECT_EQ(module.dump(), expected);
 }

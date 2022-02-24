@@ -37,19 +37,6 @@ public:
 
     BaseGenTest() : generator(&oss_cpp, &oss_h, &oss_drive, std::get<0>(this->GetParam())), execution_params(std::get<3>(this->GetParam())) {}
 
-    static std::string readFileIntoString(const std::string& path) {
-        FILE *fp = fopen(path.c_str(), "r");
-        if (fp == nullptr) {
-            std::cout << "Failed to open file for reading " << path << std::endl;
-            std::abort();
-        }
-        auto size = fs::file_size(path);
-        std::string contents = std::string(size, 0);
-        fread(contents.data(), 1, size, fp);
-        fclose(fp);
-        return contents;
-    }
-
     static void writeStringToFile(const std::string& filename, const std::string& generated_code) {
         std::ofstream out(filename);
         out << generated_code;

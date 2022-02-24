@@ -7,6 +7,9 @@
 
 #include <string_view>
 #include <fstream>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 inline einsum::Module parse(std::string_view code) {
     char temp_name[17];
@@ -48,5 +51,18 @@ inline std::string get_test_dir() {
 
 inline std::string get_compiler_path() {
     return {TEST_CXX_COMPILER};
+}
+
+static std::string readFileIntoString(const std::string& path) {
+    FILE *fp = fopen(path.c_str(), "r");
+    if (fp == nullptr) {
+        std::cout << "Failed to open file for reading " << path << std::endl;
+        std::abort();
+    }
+    auto size = fs::file_size(path);
+    std::string contents = std::string(size, 0);
+    fread(contents.data(), 1, size, fp);
+    fclose(fp);
+    return contents;
 }
 #endif //EINSUM_TACO_UTILS_H

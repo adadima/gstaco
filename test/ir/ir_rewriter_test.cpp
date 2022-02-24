@@ -24,12 +24,12 @@ public:
 //TODO: write more visitor tests!
 
 TEST_F(Cleanup, IndexVars1) {
-    auto input = *readFileIntoString("rewriter/inputs/index_vars1.txt");
+    auto input = readFileIntoString(get_test_data_dir() + "rewriter/inputs/index_vars1.txt");
     auto mod = std::make_shared<Module>(parse(input));
     auto module = apply_default_rewriters(mod);
     EXPECT_EQ(module->dump(), input);
 
-    auto ast = *readFileIntoString("rewriter/outputs/index_vars1.txt");
+    auto ast = readFileIntoString(get_test_data_dir() + "rewriter/outputs/index_vars1.txt");
     module->accept(printer);
     EXPECT_EQ(printer->ast, ast);
 }
