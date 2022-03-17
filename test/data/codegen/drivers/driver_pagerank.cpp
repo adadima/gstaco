@@ -7,8 +7,8 @@
 #include <fstream>
 
 int N;
-Tensor<int, 2> edges({});
-Tensor<float, 2> weights({});
+Tensor<int, 2> edges({}, mode_sparse);
+Tensor<float, 2> weights({}, mode_sparse);
 float damp;
 float beta_score;
 

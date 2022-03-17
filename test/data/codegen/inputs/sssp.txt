@@ -13,19 +13,16 @@ Let Init(source int) -> (dist float[N], priorityQ int[P][N])
     priorityQ[p][j] = (p == 0 && j == source) + (p == (P - 1) && j != source)
 End
 
-
 Let UpdateEdges(dist float[N], priorityQ int[P][N], priority int) -> (new_dist float[N], new_priorityQ int[P][N], new_priority int)
     new_dist[j] = edges[j][k] * priorityQ[priority][k] * (weights[j][k] + dist[k]) + (edges[j][k] * priorityQ[priority][k] == 0) * P | k:(MIN, dist[j])
     new_priorityQ[j][k] = (dist[k] > new_dist[k]) * (j <= new_dist[k] &&  new_dist[k] < j + 1) + (dist[k] == new_dist[k] && j != priority) * priorityQ[j][k]
 	new_priority = priority
 End
 
-
 Let SSSP_one_priority_lvl(dist float[N], priorityQ int[P][N], priority int) -> (new_dist float[N], new_priorityQ int[P][N], new_priority int)
 	new_dist, new_priorityQ, _ = UpdateEdges*(dist, priorityQ, priority) | (#2[#3] == 0)
     new_priority = priority + 1
 End
-
 
 Let SSSP() -> (new_dist float[N], dist float[N], priorityQ int[P][N])
 	dist, priorityQ = Init(source)

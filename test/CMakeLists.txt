@@ -1,7 +1,7 @@
 enable_testing()
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND}  --output-on-failure)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,undefined")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address,undefined")
 
 
 include(FetchContent)
@@ -32,3 +32,4 @@ add_einsum_test(ir dump_test)
 add_einsum_test(ir ir_rewriter_test)
 add_einsum_test(parser parse_test)
 add_einsum_test(codegen gen_test)
+add_einsum_test(gstrt tensor_test)

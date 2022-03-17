@@ -67,11 +67,10 @@ namespace einsum {
 
     template<typename T>
     void CodeGenVisitor::visit_tensor_access(const std::shared_ptr<T>& access) {
-        *oss << parse_variable_name(access->tensor->name);
         if (access->indices.size() == 0) {
             return;
         }
-        *oss << ".at({";
+        *oss << "{";
         auto indices = access->indices;
         for (int i=0; i < indices.size(); i++) {
             if (i > 0) {
@@ -79,15 +78,28 @@ namespace einsum {
             }
             indices[i]->accept(this);
         }
-        *oss << "})";
+        *oss << "}";
     }
 
     void CodeGenVisitor::visit(std::shared_ptr<Access> node) {
+        *oss << parse_variable_name(node->tensor->name);
+        if (node->indices.size() == 0) {
+            *oss << " = ";
+            return;
+        }
+        *oss << ".set(";
         visit_tensor_access(node);
+        *oss << ", ";
     }
 
     void CodeGenVisitor::visit(std::shared_ptr<ReadAccess> node) {
+        *oss << parse_variable_name(node->tensor->name);
+        if (node->indices.size() == 0) {
+            return;
+        }
+        *oss << ".get(";
         visit_tensor_access(node);
+        *oss << ")";
     }
 
     // TODO: generate asserts that index var dimensions match
@@ -110,7 +122,6 @@ namespace einsum {
 
             *oss << get_indent();
             lhs->accept(this);
-            *oss << " = ";
             if (node->lhs.size() > 1) {
                 *oss << "std::get<";
                 *oss << std::to_string(a);
@@ -120,7 +131,10 @@ namespace einsum {
             } else {
                 *oss << init_var;
             }
-            *oss << ";\n";
+            if (lhs->indices.size() > 0) {
+                *oss << ")";
+            }
+            *oss << ";" << std::endl;
 
             for(auto &&acc: lhs->indices) {
                 unindent();
@@ -506,7 +520,7 @@ namespace einsum {
             }
             dims[i]->accept(this);
         }
-        *oss << "});\n";
+        *oss << "}, mode_dense);\n";
     }
 
 

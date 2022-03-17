@@ -120,7 +120,7 @@ public:
         // start process to run cmd
         FILE* pipe = popen(cmd, "r");
         if (!pipe) {
-            std::cerr << "Couldn't open process." << std::endl;
+            DEBUG_LOG << "Couldn't open process." << std::endl;
             throw std::runtime_error("popen() failed!");
         }
 
@@ -459,7 +459,7 @@ public:
         auto lines = getLines(output);
 
         for (int i=0; i < lines.size(); i++) {
-            std:cerr << lines[i] << std::endl;
+            DEBUG_LOG << lines[i] << std::endl;
             auto result = std::stof(lines[i]);
             auto expected = distances[i];
             EXPECT_EQ(result, expected);
