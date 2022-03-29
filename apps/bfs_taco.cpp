@@ -7,21 +7,11 @@
 
 using namespace taco;
 
-template <typename T>
-bool hasFillValue(const Tensor<T>& lhs, const T& rhs) {
-    for (auto &elem : lhs) {
-        if (elem.second != rhs) {
-            return false;
-        }
-    }
-    return true;
-}
-
 int N = 5;
 auto source = Literal(4);
 //
 Format csr({Dense,Sparse});
-Tensor<int> edges("edges", {N, N}, Format({Dense, Dense}));
+Tensor<int> edges("edges", {N, N}, csr);
 Tensor<int> v("v", {N}, Format({Dense}));
 
 
@@ -53,14 +43,17 @@ Tensor<int> get_V(Tensor<int> P_in) {
     return V_out;
 }
 
-// F_out[j] = edges[j][k] * F_in[k] * V_out[j] | k: (OR, 0)   / k:(CHOOSE, 0)
+// F_out[j] = edges[j][k] * F_in[k] * V_out[j] | k: (OR, 0)   / k:(OR, 0)
 Tensor<int> get_F(Tensor<int> F_in, Tensor<int> V_out) {
     Tensor<int> F_out("F_out", {N}, Format({Dense}), 0);
     std::cout << "F in storage before: " << F_in.getStorage() << std::endl;
     IndexVar i, j;
     auto stmt = forall(i,
                         forall(j,
-                            Assignment(F_out(i), GeneralMul(edges(i, j), F_in(j), V_out(i)), Or())
+                            Assignment(
+                                    F_out(i),
+                                    GeneralMul(edges(i, j), F_in(j), V_out(i)),
+                                    Or())
                        ));
     Kernel k = compile(stmt);
     k(F_out.getStorage(), edges.getStorage(), F_in.getStorage(), V_out.getStorage());
@@ -81,13 +74,16 @@ Tensor<int> get_P(Tensor<int> F_in, Tensor<int> V_out, Tensor<int> P_in) {
                 ),
                 forall(i,
                            forall(j,
-                                  Assignment(P_out(i), GeneralMul(edges(i, j), F_in(j), V_out(i), v(j) + 1), choose())
+                                  Assignment(
+                                          P_out(i),
+                                          GeneralMul(edges(i, j), F_in(j), V_out(i), v(j) + 1),
+                                          make_choose(Float32)())
                                   )
                               )
                 );
     Kernel k = compile(stmt);
-//    std::cout << k << std::endl;
-    k(P_out.getStorage(), P_in.getStorage(), edges.getStorage(), F_in.getStorage(), V_out.getStorage(), v.getStorage());
+    k.assemble(P_out.getStorage(), P_in.getStorage(), edges.getStorage(), F_in.getStorage(), V_out.getStorage(), v.getStorage());
+    k.compute(P_out.getStorage(), P_in.getStorage(), edges.getStorage(), F_in.getStorage(), V_out.getStorage(), v.getStorage());
     P_out.setStorage(P_out.getStorage());
     return P_out;
 }
