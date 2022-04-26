@@ -1,0 +1,34 @@
+N int
+
+edges int[N][N]
+
+Let Init() -> (IDs int[N], update int)
+    IDs[i] = i
+    update = 1
+End
+
+
+Let Forward(old_ids int[N]) -> (new_ids int[N])
+    new_ids[i] = edges[j][i] * old_ids[j] + (1 - edges[j][i]) * old_ids[i] | j : (MIN, old_ids[i])
+End
+
+
+Let Backward(old_ids int[N]) -> (new_ids int[N])
+    new_ids[j] = edges[j][i] * old_ids[i] + (1 - edges[j][i]) * old_ids[j] | j : (MIN, old_ids[j])
+End
+
+
+Let UpdateEdges(old_forward_ids int[N], old_ids int[N], old_update int) -> (forward_ids int[N], new_ids int[N], new_update int)
+    forward_ids = Forward(old_ids)
+    new_ids = Backward(forward_ids)
+
+    new_update = (old_ids[i] != new_ids[i]) | i : (OR, 0)
+End
+
+
+Let CC() -> (ids int[N], update int, dummy int[N], new_ids int[N], new_update int)
+    ids, update = Init()
+    dummy[i] = 0
+
+    _, new_ids, new_update = UpdateEdges*(dummy, ids, update) | (#3 == 0)
+End

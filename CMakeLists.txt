@@ -88,3 +88,7 @@ target_link_libraries(sssp_taco PUBLIC einsum_lib)
 add_executable(bc_taco "${EINSUM_PROJECT_DIR}/apps/bc_taco.cpp")
 set_target_properties(bc_taco PROPERTIES CXX_STANDARD 14)
 target_link_libraries(bc_taco PUBLIC einsum_lib)
+
+add_executable(cc_taco "${EINSUM_PROJECT_DIR}/apps/cc_taco.cpp")
+set_target_properties(cc_taco PROPERTIES CXX_STANDARD 14)
+target_link_libraries(cc_taco PUBLIC einsum_lib)
