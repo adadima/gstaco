@@ -7,11 +7,11 @@
 #include "custom_ops.h"
 #include "taco/index_notation/kernel.h"
 
-int N = 4;
+int N = 5;
 
 int P = 100;
 
-auto source = Literal(3);
+auto source = Literal(4);
 //
 Format csr({Dense,Sparse});
 Tensor<int> edges("edges", {N, N}, csr);
@@ -58,7 +58,7 @@ std::tuple<Tensor<int>, Tensor<int>> Init() {
     dist.evaluate();
     std::cout << dist << std::endl;
 
-    Tensor<int> pQ("priorityQ", {P, N}, Format({Dense, Dense}));
+    Tensor<int> pQ("priorityQ", {P, N}, Format({Dense, Sparse}));
     auto stmt = forall(i,
                        forall(j,
                               Assignment(pQ(i, j), pq_init(i, 0, j, source, P-1))
@@ -108,7 +108,7 @@ TensorStorage New_Dist(TensorStorage dist_s, TensorStorage pQ_s, int priority) {
     Tensor<int> dist("dist", {N}, Format({Dense}));
     dist.setStorage(dist_s);
 
-    Tensor<int> pQ("priorityQ", {P, N}, Format({Dense, Dense}));
+    Tensor<int> pQ("priorityQ", {P, N}, Format({Dense, Sparse}));
     pQ.setStorage(pQ_s);
 
     Tensor<int> new_dist("new_dist", {N}, Format({Dense}));
@@ -188,13 +188,13 @@ TensorStorage New_PQ(TensorStorage dist_s, TensorStorage new_dist_s, TensorStora
     Tensor<int> dist("dist", {N}, Format({Dense}));
     dist.setStorage(dist_s);
 
-    Tensor<int> old_PQ("priorityQ", {P, N}, Format({Dense, Dense}));
+    Tensor<int> old_PQ("priorityQ", {P, N}, Format({Dense, Sparse}));
     old_PQ.setStorage(old_PQ_s);
 
     Tensor<int> new_dist("new_dist", {N}, Format({Dense}));
     new_dist.setStorage(new_dist_s);
 
-    Tensor<int> new_PQ("new_priorityQ", {P, N}, Format({Dense, Dense}));
+    Tensor<int> new_PQ("new_priorityQ", {P, N}, Format({Dense, Sparse}));
 
     IndexVar j, k;
     auto stmt = forall(j,
@@ -220,7 +220,7 @@ std::tuple<TensorStorage, TensorStorage, int> UpdateEdges(TensorStorage dist, Te
 }
 
 bool continue_loop(TensorStorage priorityQ_s, int priority, int target) {
-    Tensor<int> priorityQ("priorityQ", {P, N}, Format({Dense, Dense}));
+    Tensor<int> priorityQ("priorityQ", {P, N}, Format({Dense, Sparse}));
     priorityQ.setStorage(priorityQ_s);
 
     Tensor<int> priorityQ_slice("priorityQ_slice", {N}, Format({Dense}));
@@ -255,7 +255,7 @@ std::tuple<TensorStorage, TensorStorage, int> SSSP_one_priority_lvl(TensorStorag
 
 bool continue_loop2(TensorStorage newpq_s, int new_p) {
     //std::cout << "New PQ: " << newpq_s << std::endl;
-    Tensor<int> priorityQ("priorityQ", {P, N}, Format({Dense, Dense}));
+    Tensor<int> priorityQ("priorityQ", {P, N}, Format({Dense, Sparse}));
     priorityQ.setStorage(newpq_s);
 
     return !hasFillValue(priorityQ, 0) && new_p != P;
@@ -305,35 +305,35 @@ int main(int argc, char* argv[]) {
 //    weights.insert({0, 2}, 1);
 //    weights.pack();
 
-//    edges.insert({0, 1}, 1);
-//    edges.insert({1, 2}, 1);
-//    edges.insert({2, 3}, 1);
-//    edges.insert({3, 4}, 1);
-//    edges.insert({0, 4}, 1);
-//    edges.insert({2, 4}, 1);
-//    edges.insert({1, 4}, 1);
-//    edges.pack();
-//
-//    weights.insert({0, 1}, 1);
-//    weights.insert({1, 2}, 1);
-//    weights.insert({2, 3}, 1);
-//    weights.insert({3, 4}, 1);
-//    weights.insert({0, 4}, 10);
-//    weights.insert({2, 4}, 8);
-//    weights.insert({1, 4}, 6);
-//    weights.pack();
-
-    edges.insert({1, 0}, 1);
-    edges.insert({2, 0}, 1);
-    edges.insert({2, 1}, 1);
+    edges.insert({0, 1}, 1);
+    edges.insert({1, 2}, 1);
     edges.insert({2, 3}, 1);
+    edges.insert({3, 4}, 1);
+    edges.insert({0, 4}, 1);
+    edges.insert({2, 4}, 1);
+    edges.insert({1, 4}, 1);
     edges.pack();
 
-    weights.insert({1, 0}, 1);
-    weights.insert({2, 0}, 3);
-    weights.insert({2, 1}, 1);
-    weights.insert({2, 3}, 5);
+    weights.insert({0, 1}, 1);
+    weights.insert({1, 2}, 1);
+    weights.insert({2, 3}, 1);
+    weights.insert({3, 4}, 1);
+    weights.insert({0, 4}, 10);
+    weights.insert({2, 4}, 8);
+    weights.insert({1, 4}, 6);
     weights.pack();
+
+//    edges.insert({1, 0}, 1);
+//    edges.insert({2, 0}, 1);
+//    edges.insert({2, 1}, 1);
+//    edges.insert({2, 3}, 1);
+//    edges.pack();
+//
+//    weights.insert({1, 0}, 1);
+//    weights.insert({2, 0}, 3);
+//    weights.insert({2, 1}, 1);
+//    weights.insert({2, 3}, 5);
+//    weights.pack();
 
     auto nd = SSSP();
     std::cout << nd << std::endl;
