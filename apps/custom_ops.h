@@ -44,11 +44,7 @@ Func conditional("CondOp", ConditionalOp(), UnionIntersect());
 
 struct CustomMinImpl {
     ir::Expr operator()(const std::vector<ir::Expr> &v) {
-        if (v.size() >= 2) {
-            return ir::Min::make(v[0], v[1]);
-        } else {
-            return v[0];
-        }
+        return ir::Min::make(v[0], v[1]);
     }
 };
 
@@ -131,6 +127,15 @@ struct Choose {
     }
 };
 
+struct CustomCastImpl {
+    Datatype type;
+    CustomCastImpl(Datatype type) : type(type) {}
+
+    ir::Expr operator()(const std::vector<ir::Expr> &v) {
+        return ir::Cast::make(v[0], type);
+    };
+};
+
 Func make_choose(Datatype type) {
     Func choose("Choose", Choose(type), {Annihilator((int)1), Identity(Literal((int)2))});
     return choose;
@@ -139,6 +144,10 @@ Func make_choose(Datatype type) {
 Func GeneralMul("Mul", CustomMulImpl(), IntersectGen(), {Annihilator(std::numeric_limits<double>::infinity()), Identity(Literal((int)0))});
 
 Func AndFloat("And", CustomAndImpl(Float32), {Annihilator((int)0), Identity(Literal((int)1))});
+
+Func AndInt("And", CustomAndImpl(Int64), {Annihilator((int)0), Identity(Literal((int)1))});
+
+Func CastInt("Cast", CustomCastImpl(Int64));
 
 template <typename T>
 bool hasFillValue(const Tensor<T>& lhs, const T& rhs) {
