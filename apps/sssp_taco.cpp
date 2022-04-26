@@ -3,11 +3,9 @@
 //
 
 //TODO: get rid of this ASAP
-#define private public
 #include "taco/tensor.h"
 #include "custom_ops.h"
 #include "taco/index_notation/kernel.h"
-#undef private
 
 int N = 4;
 
