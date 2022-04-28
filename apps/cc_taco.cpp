@@ -115,7 +115,6 @@ struct Custom {
     Custom(Datatype type_) : type_(type_) {}
 
     ir::Expr operator()(const std::vector<ir::Expr> &v) {
-        taco_iassert(v.size() == 8);
         return ir::Neq::make(v[0], v[1]);
     }
 };

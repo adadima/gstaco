@@ -17,7 +17,7 @@ Tensor<int> v("v", {N}, Format({Dense}));
 
 std::tuple<Tensor<int>, Tensor<int>> Init() {
     // F[j] = (j == source)
-    Tensor<int> F("F", {N}, Format({Dense}));
+    Tensor<int> F("F", {N}, Format({Sparse}));
     IndexVar i;
 
     F(i) = eq(v(i), source);
@@ -33,19 +33,34 @@ std::tuple<Tensor<int>, Tensor<int>> Init() {
     return {F, P};
 }
 
+struct EqOp {
+    Datatype type_;
+    EqOp(Datatype type_) : type_(type_) {}
+
+    ir::Expr operator()(const std::vector<ir::Expr> &v) {
+        return ir::Eq::make(v[0], v[1]);
+    }
+};
+
+Func eq_op("eq_op", EqOp(Int64));
+
 //  V_out[j] = P_in[j] == 0 - 1
-Tensor<int> get_V(Tensor<int> P_in) {
+Tensor<int> get_V(Tensor<int>& P_in) {
     IndexVar i;
     Tensor<int> V_out("V_out", {N}, Format({Dense}));
 
-    V_out(i) = eq(P_in(i), 0-1);
-    V_out.evaluate();
+    auto stmt = forall(i,
+                       Assignment(V_out(i), eq_op(P_in(i), 0-1))
+                       );
+    auto k = compile(stmt);
+    k(V_out.getStorage(), P_in.getStorage());
+    V_out.setStorage(V_out.getStorage());
     return V_out;
 }
 
 // F_out[j] = edges[j][k] * F_in[k] * V_out[j] | k: (OR, 0)   / k:(OR, 0)
 Tensor<int> get_F(Tensor<int> F_in, Tensor<int> V_out) {
-    Tensor<int> F_out("F_out", {N}, Format({Dense}), 0);
+    Tensor<int> F_out("F_out", {N}, Format({Sparse}), 0);
     std::cout << "F in storage before: " << F_in.getStorage() << std::endl;
     IndexVar i, j;
     auto stmt = forall(i,
@@ -93,7 +108,7 @@ Tensor<int> get_P(Tensor<int> F_in, Tensor<int> V_out, Tensor<int> P_in) {
 //  F_out[j] = edges[j][k] * F_in[k] * V_out[j] | k: (OR, 0)   / k:(CHOOSE, 0)
 //  P_out[j] = edges[j][k] * F_in[k] * V_out[j] * (k + 1) | k:(CHOOSE, P_in[j])
 //End
-std::tuple<Tensor<int>, Tensor<int>, Tensor<int>> BFS_Step(Tensor<int> F_in, Tensor<int> P_in, Tensor<int> V_in) {
+std::tuple<Tensor<int>, Tensor<int>, Tensor<int>> BFS_Step(Tensor<int> F_in, Tensor<int>& P_in, Tensor<int> V_in) {
 
     auto V_out = get_V(P_in);
     std::cout << V_out << std::endl;
@@ -122,7 +137,7 @@ std::tuple<Tensor<int>, Tensor<int>, Tensor<int>, Tensor<int>> BFS() {
     IndexVar i;
     V(i) = IndexExpr(0);
 
-    Tensor<int> F_in("F_in", {N}, Format({Dense}));
+    Tensor<int> F_in("F_in", {N}, Format({Sparse}));
     F_in.setStorage(F.getStorage());
 
     Tensor<int> P_in("P_in", {N}, Format({Dense}));
@@ -174,7 +189,6 @@ int main(int argc, char* argv[]) {
     edges.insert({0, 4}, 1);
     edges.pack();
 
-    std::cout << "Edges: " << edges << std::endl;
     auto [P, F, _, V] = BFS();
 
     std::cout << "P out: " << P << std::endl;
