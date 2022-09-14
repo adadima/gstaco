@@ -6,6 +6,7 @@
 #include "taco/tensor.h"
 #include "custom_ops.h"
 #include "taco/index_notation/kernel.h"
+#include "utils.h"
 
 int N = 5;
 
@@ -290,6 +291,11 @@ int main(int argc, char* argv[]) {
         vP.insert({a}, a);
     }
     vP.pack();
+    auto filename = "codegen/graphs/graph-dataset-small/roadNet-CA.weighted.mtx";
+    auto tensors = loadEdgesFromFile(filename);
+    N = std::get<0>(tensors);
+    edges = std::get<1>(tensors);
+    weights = std::get<2>(tensors);
 
 //    edges.insert({1, 0}, 1);
 //    edges.insert({2, 0}, 1);
@@ -305,22 +311,22 @@ int main(int argc, char* argv[]) {
 //    weights.insert({0, 2}, 1);
 //    weights.pack();
 
-    edges.insert({0, 1}, 1);
-    edges.insert({1, 2}, 1);
-    edges.insert({2, 3}, 1);
-    edges.insert({3, 4}, 1);
-    edges.insert({0, 4}, 1);
-    edges.insert({2, 4}, 1);
-    edges.insert({1, 4}, 1);
+//    edges.insert({0, 1}, 1);
+//    edges.insert({1, 2}, 1);
+//    edges.insert({2, 3}, 1);
+//    edges.insert({3, 4}, 1);
+//    edges.insert({0, 4}, 1);
+//    edges.insert({2, 4}, 1);
+//    edges.insert({1, 4}, 1);
     edges.pack();
 
-    weights.insert({0, 1}, 1);
-    weights.insert({1, 2}, 1);
-    weights.insert({2, 3}, 1);
-    weights.insert({3, 4}, 1);
-    weights.insert({0, 4}, 10);
-    weights.insert({2, 4}, 8);
-    weights.insert({1, 4}, 6);
+//    weights.insert({0, 1}, 1);
+//    weights.insert({1, 2}, 1);
+//    weights.insert({2, 3}, 1);
+//    weights.insert({3, 4}, 1);
+//    weights.insert({0, 4}, 10);
+//    weights.insert({2, 4}, 8);
+//    weights.insert({1, 4}, 6);
     weights.pack();
 
 //    edges.insert({1, 0}, 1);
