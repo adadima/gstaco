@@ -8,8 +8,8 @@
 
 int N;
 int source;
-Tensor<int, 2> edges({}, mode_sparse);
-Tensor<float, 2> weights({}, mode_sparse);
+Tensor<int, 2> edges({});
+Tensor<float, 2> weights({});
 
 static void writeStringToFile(const std::string& filename, const std::string& generated_code) {
     std::ofstream out(filename);

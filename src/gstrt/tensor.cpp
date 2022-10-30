@@ -7,18 +7,22 @@
 #include <vector>
 #include <string>
 #include <sstream>
+#include <fstream>
+#include <streambuf>
+#include <tuple>
 
 static std::string readFileIntoString(const std::string& path) {
-    FILE *fp = fopen(path.c_str(), "r");
-    if (fp == nullptr) {
+    std::ifstream istrm(path);
+
+    if (!istrm.is_open()) {
         std::cout << "Failed to open file for reading " << path << std::endl;
         std::abort();
     }
-    auto size = fs::file_size(path);
-    std::string contents = std::string(size, 0);
-    fread(contents.data(), 1, size, fp);
-    fclose(fp);
-    return contents;
+
+    std::stringstream buffer;
+    buffer << istrm.rdbuf();
+
+    return buffer.str();
 }
 
 std::vector<std::string> getLines(const std::string& content) {
@@ -39,10 +43,10 @@ std::tuple<int, Tensor<int, 2>, Tensor<float, 2>> loadEdgesFromFile(const std::s
     auto lines = getLines(content);
     int size = std::atoi(lines[0].c_str());
 
-    Tensor<int, 2> edges({size, size}, mode_sparse);
+    Tensor<int, 2> edges({size, size});
     edges.allocate();
 
-    Tensor<float, 2> weights({size, size}, mode_sparse);
+    Tensor<float, 2> weights({size, size});
     weights.allocate();
 
     for (int i=1; i < lines.size(); i++) {
@@ -62,6 +66,6 @@ std::tuple<int, Tensor<int, 2>, Tensor<float, 2>> loadEdgesFromFile(const std::s
         weights.set({dst, src}, w);
     }
 
-    return std::tuple{size, edges, weights};
+    return std::make_tuple(size, edges, weights);
 
 }

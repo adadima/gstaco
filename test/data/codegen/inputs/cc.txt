@@ -14,7 +14,7 @@ End
 
 
 Let Backward(old_ids int[N]) -> (new_ids int[N])
-    new_ids[j] = edges[j][i] * old_ids[i] + (1 - edges[j][i]) * old_ids[j] | j : (MIN, old_ids[j])
+    new_ids[j] = edges[j][i] * old_ids[i] + (1 - edges[j][i]) * old_ids[j] | i : (MIN, old_ids[j])
 End
 
 

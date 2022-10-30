@@ -6,6 +6,8 @@
 #define EINSUM_TACO_CODEGEN_VISITOR_H
 
 #include "einsum_taco/ir/ir.h"
+#include <functional>
+
 namespace einsum {
     struct CodeGenVisitor : IRVisitor {
 

@@ -17,12 +17,9 @@
 #include "einsum_taco/gstrt/tensor.h"
 #include <einsum_taco/parser/heading.h>
 #include "../utils.h"
-#include <filesystem>
+#include <stdio.h>
 
 using namespace std;
-
-namespace fs = std::filesystem;
-
 
 template<typename T>
 class BaseGenTest : public testing::TestWithParam<std::tuple<std::string, std::string, bool, T>> {
@@ -137,16 +134,24 @@ public:
 
     static void create_dir(const std::string& dir) {
         // if directory does not exist, create it
-        std::error_code ec;
-        bool success = fs::create_directories(dir, ec);
+        if (mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
+        {
+            if( errno == EEXIST ) {
+                // alredy exists
+            } else {
+                // something else
+                std::cout << "cannot create directory: " << strerror(errno) << std::endl;
+                throw std::runtime_error( strerror(errno) );
+            }
+        }
     }
 
     void cleanup(const std::string& in, const std::string& out, const std::string& header, const std::string& driver, bool add_main) {
         if (add_main) {
-            fs::remove(in);
-            fs::remove(out);
-            fs::remove(header);
-            fs::remove(driver);
+            remove(in.c_str());
+            remove(out.c_str());
+            remove(header.c_str());
+            remove(driver.c_str());
         }
     }
 
@@ -176,12 +181,17 @@ public:
         // write generated code to temporary cpp file
         writeStringToFile(tmp_in, code);
 
+
         if (add_main) {
             writeStringToFile(driver, drv);
         }
 
         // compile the temporary cpp file with the given compiler
         std::string cmd = compiler_path + " -o " + tmp_out + " -std=c++17 " + tmp_in + " " + driver;
+#if __APPLE__
+        cmd += " -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/";
+#endif
+        GTEST_LOG_(INFO) << cmd << "\n";
 
         int status_code;
         std::string output;
@@ -224,11 +234,11 @@ public:
     template<typename callable>
     void assert_runs(const std::string& test_name, const std::string& graph_name, std::vector<std::string> args, callable checker) {
         std::string cmd = test_name_to_tmp_output(test_name) + " " + graph_file_path(graph_name);
-        std::string cmd_args;
         for (auto &arg: args) {
-            cmd_args += " " + arg;
+            cmd += " " + arg;
         }
-        cmd += cmd_args;
+
+        GTEST_LOG_(INFO) << cmd << "\n";
 
         int status_code;
         std::string output;
@@ -446,16 +456,17 @@ INSTANTIATE_TEST_CASE_P(
 struct BCExecutionParams : ExecutionParams {
     std::string graph_name;
     int source;
-    std::vector<float> expected_dist;
+    std::vector<float> expected;
 
-    BCExecutionParams(std::string  graph_name, int source, std::vector<float>  expected_dist) :
+    BCExecutionParams(const std::string&  graph_name, int source, const std::vector<float>&  expected) :
             ExecutionParams("BC_" + graph_name + ".txt"),
-            graph_name(graph_name), source(source), expected_dist(expected_dist) {}
+            graph_name(graph_name), source(source), expected(expected) {}
 };
 
 class BCTest : public BaseGenTest<BCExecutionParams> {
 public:
     void check_bc_output(const std::string& output, const std::vector<float>& distances) {
+        std::cout << "Output: " << output << "\n";
         auto lines = getLines(output);
 
         for (int i=0; i < lines.size(); i++) {
@@ -474,7 +485,7 @@ TEST_P(BCTest, BC) {
     assert_compiles(test_name, compiler, add_main);
 
     auto graph = std::get<3>(GetParam()).graph_name;
-    auto dist = std::get<3>(GetParam()).expected_dist;
+    auto dist = std::get<3>(GetParam()).expected;
     auto source = std::get<3>(GetParam()).source;
     auto out = std::get<3>(GetParam()).output_filename;
     assert_runs(test_name, graph, {std::to_string(source), out}, [&](std::string output) { check_bc_output(output, dist);});
@@ -484,7 +495,10 @@ INSTANTIATE_TEST_CASE_P(
         BCTestSuite,
         BCTest,
         ::testing::Values(
+//                make_tuple("bc", get_compiler_path(), false, BCExecutionParams(
+//                        "graph1", 0,
+//                        {0, 0, 0, 0})),
                 make_tuple("bc", get_compiler_path(), false, BCExecutionParams(
-                        "graph1", 0,
-                        {0, 1.0, 1.7, 1000.0}))
+                        "graph3", 4,
+                        {0, 0, 1, 2, 0}))
         ));

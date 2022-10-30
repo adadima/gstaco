@@ -23,7 +23,7 @@ endif()
 option(GIT_SUBMODULE "Check submodules during build" ON)
 
 include(FetchContent)
-FetchContent_Declare(taco GIT_REPOSITORY https://github.com/adadima/taco.git)
+FetchContent_Declare(taco GIT_REPOSITORY https://github.com/tensor-compiler/taco.git)
 FetchContent_Populate(taco)
 add_subdirectory(${taco_SOURCE_DIR} ${taco_BINARY_DIR} EXCLUDE_FROM_ALL)
 FetchContent_GetProperties(taco SOURCE_DIR taco_SOURCE_DIR)
@@ -49,7 +49,7 @@ find_package(FLEX REQUIRED)
 
 bison_target(parser "${EINSUM_PARSER_DIR}/parser.y"  "${CMAKE_CURRENT_BINARY_DIR}/main.cc"
         DEFINES_FILE ${CMAKE_CURRENT_BINARY_DIR}/tok.h
-        COMPILE_FLAGS "--yacc --define=api.pure=full --define=api.push-pull=push -v --define=parse.error=detailed"
+        COMPILE_FLAGS "--yacc --define=api.pure=full --define=api.push-pull=push -v --define=parse.error=verbose"
         )
 flex_target(lexer "${EINSUM_PARSER_DIR}/parser.lex" "${CMAKE_CURRENT_BINARY_DIR}/F.cc")
 
@@ -67,28 +67,32 @@ target_link_libraries(parser_lib PUBLIC einsum_lib)
 add_executable(parser_exec "${EINSUM_PARSER_DIR}/main.cc")
 target_link_libraries(parser_exec parser_lib)
 
-add_executable(page_rank "${EINSUM_TEST_DIR}/tmp/codegen/pagerank.cpp" "${EINSUM_TEST_DIR}/data/codegen/drivers/driver_pagerank.cpp")
-add_executable(bfs "${EINSUM_TEST_DIR}/tmp/codegen/bfs.cpp" "${EINSUM_TEST_DIR}/data/codegen/drivers/driver_bfs.cpp")
-add_executable(sssp "${EINSUM_TEST_DIR}/tmp/codegen/sssp.cpp" "${EINSUM_TEST_DIR}/data/codegen/drivers/driver_sssp.cpp")
+#add_executable(page_rank "${EINSUM_TEST_DIR}/tmp/codegen/pagerank.cpp" "${EINSUM_TEST_DIR}/data/codegen/drivers/driver_pagerank.cpp")
+#add_executable(bfs "${EINSUM_TEST_DIR}/tmp/codegen/bfs.cpp" "${EINSUM_TEST_DIR}/data/codegen/drivers/driver_bfs.cpp")
+#add_executable(sssp "${EINSUM_TEST_DIR}/tmp/codegen/sssp.cpp" "${EINSUM_TEST_DIR}/data/codegen/drivers/driver_sssp.cpp")
 add_executable(bc "${EINSUM_TEST_DIR}/tmp/codegen/bc.cpp" "${EINSUM_TEST_DIR}/data/codegen/drivers/driver_bc.cpp")
 
-add_executable(bfs_taco "${EINSUM_PROJECT_DIR}/apps/bfs_taco.cpp")
+add_executable(bfs_taco "${EINSUM_TEST_DIR}/apps/bfs_taco.cpp")
 set_target_properties(bfs_taco PROPERTIES CXX_STANDARD 14)
 target_link_libraries(bfs_taco PUBLIC einsum_lib)
+add_compile_definitions(bfs_taco PUBLIC EINSUM_TACO_TEST_DATADIR="${EINSUM_PROJECT_DIR}/test/data/")
 
-
-add_executable(pr_taco "${EINSUM_PROJECT_DIR}/apps/pr_taco.cpp")
+add_executable(pr_taco "${EINSUM_TEST_DIR}/apps/pr_taco.cpp")
 set_target_properties(pr_taco PROPERTIES CXX_STANDARD 14)
 target_link_libraries(pr_taco PUBLIC einsum_lib)
+add_compile_definitions(pr_taco PUBLIC EINSUM_TACO_TEST_DATADIR="${EINSUM_PROJECT_DIR}/test/data/")
 
-add_executable(sssp_taco "${EINSUM_PROJECT_DIR}/apps/sssp_taco.cpp")
+add_executable(sssp_taco "${EINSUM_TEST_DIR}/apps/sssp_taco.cpp")
 set_target_properties(sssp_taco PROPERTIES CXX_STANDARD 14)
 target_link_libraries(sssp_taco PUBLIC einsum_lib)
+add_compile_definitions(sssp_taco PUBLIC EINSUM_TACO_TEST_DATADIR="${EINSUM_PROJECT_DIR}/test/data/")
 
-add_executable(bc_taco "${EINSUM_PROJECT_DIR}/apps/bc_taco.cpp")
+add_executable(bc_taco "${EINSUM_TEST_DIR}/apps/bc_taco.cpp")
 set_target_properties(bc_taco PROPERTIES CXX_STANDARD 14)
 target_link_libraries(bc_taco PUBLIC einsum_lib)
+add_compile_definitions(bc_taco PUBLIC EINSUM_TACO_TEST_DATADIR="${EINSUM_PROJECT_DIR}/test/data/")
 
-add_executable(cc_taco "${EINSUM_PROJECT_DIR}/apps/cc_taco.cpp")
+add_executable(cc_taco "${EINSUM_TEST_DIR}/apps/cc_taco.cpp")
 set_target_properties(cc_taco PROPERTIES CXX_STANDARD 14)
 target_link_libraries(cc_taco PUBLIC einsum_lib)
+add_compile_definitions(cc_taco PUBLIC EINSUM_TACO_TEST_DATADIR="${EINSUM_PROJECT_DIR}/test/data/")

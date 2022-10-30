@@ -6,26 +6,25 @@
 
 #include<iostream>
 #include <string_view>
-#include <fstream>
-#include <filesystem>
 #include <string>
 #include <sstream>
-
-namespace fs = std::filesystem;
+#include <fstream>
+#include <streambuf>
 
 namespace einsum {
 
     static std::string readFileIntoString(const std::string& path) {
-        FILE *fp = fopen(path.c_str(), "r");
-        if (fp == nullptr) {
+        std::ifstream istrm(path);
+
+        if (!istrm.is_open()) {
             std::cout << "Failed to open file for reading " << path << std::endl;
             std::abort();
         }
-        auto size = fs::file_size(path);
-        std::string contents = std::string(size, 0);
-        fread(contents.data(), 1, size, fp);
-        fclose(fp);
-        return contents;
+
+        std::stringstream buffer;
+        buffer << istrm.rdbuf();
+
+        return buffer.str();
     }
 
     std::string get_runtime_include_dir() {
@@ -97,7 +96,7 @@ namespace einsum {
         if (node->indices.size() == 0) {
             return;
         }
-        *oss << ".get(";
+        *oss << ".at(";
         visit_tensor_access(node);
         *oss << ")";
     }
@@ -212,15 +211,18 @@ namespace einsum {
             return;
         }
         *oss << "return ";
-        output_type->accept(this);
-        *oss << "{";
+        if (output_type->tuple.size() == 1) {
+            output_type->tuple[0]->accept(this);
+            return;
+        }
+        *oss << "std::make_tuple(";
         for (int i=0; i < output_names.size(); i++) {
             if (i > 0) {
                 *oss << ", ";
             }
             *oss << output_names[i];
         }
-        *oss << "};";
+        *oss << ");";
     }
 
     void CodeGenVisitor::visit_call(const std::shared_ptr<Call>& node, const std::function<void()>& loop_generator) {
@@ -520,7 +522,7 @@ namespace einsum {
             }
             dims[i]->accept(this);
         }
-        *oss << "}, mode_dense);\n";
+        *oss << "});\n";
     }
 
 

@@ -8,11 +8,11 @@
 #include "taco/index_notation/kernel.h"
 #include "utils.h"
 
-int N = 5;
+int N = 1971281;
 
-int P = 100;
-
-auto source = Literal(4);
+int P = N;
+auto s = 0;
+auto source = Literal(s);
 //
 Format csr({Dense,Sparse});
 Tensor<int> edges("edges", {N, N}, csr);
@@ -57,20 +57,24 @@ std::tuple<Tensor<int>, Tensor<int>> Init() {
 
     dist(i) = Cast(neq(v(i), source), Float64) * P;
     dist.evaluate();
-    std::cout << dist << std::endl;
 
-    Tensor<int> pQ("priorityQ", {P, N}, Format({Dense, Sparse}));
-    auto stmt = forall(i,
-                       forall(j,
-                              Assignment(pQ(i, j), pq_init(i, 0, j, source, P-1))
-                              ));
+    Tensor<int> pQ("priorityQ", {P, N}, Format({Dense, Sparse}), 0);
+    pQ.insert({0, s}, 1);
+    for (int n=0; n < N; n++) {
+        if (n != s) {
+                    pQ.insert({P-1, n}, 1);
+        }
+    }
+    pQ.pack();
+//    auto stmt = forall(i,
+//                       forall(j,
+//                              Assignment(pQ(i, j), pq_init(vP(i), 0, v(j), source, P-1))
+//                              ));
 //    pQ(i, j) = pq_init(i, 0, j, source, P-1);
 //    pQ.evaluate();
-
-    Kernel k = compile(stmt);
-    k(pQ.getStorage());
-    pQ.setStorage(pQ.getStorage());
-    std::cout << pQ << std::endl;
+//    Kernel k = compile(stmt);
+//    k(pQ.getStorage(), vP.getStorage(), v.getStorage());
+//    pQ.setStorage(pQ.getStorage());
 
     return {dist, pQ};
 }
@@ -144,7 +148,6 @@ TensorStorage New_Dist(TensorStorage dist_s, TensorStorage pQ_s, int priority) {
 //    std::cout << kernel << std::endl;
     kernel.assemble(new_dist.getStorage(), dist.getStorage(),  edges.getStorage(), pQ.getStorage(), weights.getStorage());
     kernel.compute(new_dist.getStorage(), dist.getStorage(),  edges.getStorage(), pQ.getStorage(), weights.getStorage());
-    std::cout << "New dist: " << new_dist.getStorage() << std::endl;
     return new_dist.getStorage();
 }
 
@@ -206,7 +209,6 @@ TensorStorage New_PQ(TensorStorage dist_s, TensorStorage new_dist_s, TensorStora
     );
     auto kernel = compile(stmt);
     kernel(new_PQ.getStorage(), dist.getStorage(), new_dist.getStorage(), vP.getStorage(), old_PQ.getStorage());
-    std::cout << "New pq: " << new_PQ.getStorage() << std::endl;
     return new_PQ.getStorage();
 }
 //Let UpdateEdges(dist float[N], priorityQ int[P][N], priority int) -> (new_dist float[N], new_priorityQ int[P][N], new_priority int)
@@ -272,6 +274,7 @@ TensorStorage SSSP() {
     auto new_priority = 0;
 
     while (continue_loop2(new_priorityQ, new_priority)) {
+        std::cout << "Priority level: " << new_priority << std::endl;
         auto out = SSSP_one_priority_lvl(new_dist, new_priorityQ, new_priority);
         new_dist = std::get<0>(out);
         new_priorityQ = std::get<1>(out);
@@ -291,8 +294,10 @@ int main(int argc, char* argv[]) {
         vP.insert({a}, a);
     }
     vP.pack();
-    auto filename = "codegen/graphs/graph-dataset-small/roadNet-CA.weighted.mtx";
+    auto filename = get_test_dir() + "codegen/graphs/graph-dataset-small/roadNet-CA.weighted.mtx";
     auto tensors = loadEdgesFromFile(filename);
+
+    std::cout << "Loaded edges and weights" << std::endl;
     N = std::get<0>(tensors);
     edges = std::get<1>(tensors);
     weights = std::get<2>(tensors);
