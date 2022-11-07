@@ -489,6 +489,37 @@ namespace einsum {
     inline std::shared_ptr<OrOperator>  or_red  = std::make_shared<OrOperator>();
     inline std::shared_ptr<MinOperator> min_red = std::make_shared<MinOperator>();
     inline std::shared_ptr<ChooseOperator> choose_red = std::make_shared<ChooseOperator>();
+
+    struct DefaultIRVisitor : IRVisitor {
+        void visit(std::shared_ptr<IndexVar> node) override;
+        void visit(std::shared_ptr<Literal> node) override;
+        void visit(std::shared_ptr<TensorVar> node) override;
+        void visit(std::shared_ptr<IndexVarExpr> node) override;
+        void visit(std::shared_ptr<Access> node) override;
+        void visit(std::shared_ptr<ReadAccess> node) override;
+        void visit(std::shared_ptr<BinaryOp> node) override;
+        void visit(std::shared_ptr<UnaryOp> node) override;
+        void visit(std::shared_ptr<Definition> node) override;
+        void visit(std::shared_ptr<Allocate> node) override;
+        void visit(std::shared_ptr<MemAssignment> node) override;
+        void visit(std::shared_ptr<Initialize> node) override;
+        void visit(std::shared_ptr<FuncDecl> node) override;
+        void visit(std::shared_ptr<AndOperator> node) override;
+        void visit(std::shared_ptr<OrOperator> node) override;
+        void visit(std::shared_ptr<AddOperator> node) override;
+        void visit(std::shared_ptr<MulOperator> node) override;
+        void visit(std::shared_ptr<MinOperator> node) override;
+        void visit(std::shared_ptr<ChooseOperator> node) override;
+        void visit(std::shared_ptr<Call> node) override;
+        void visit(std::shared_ptr<CallStarRepeat> node) override;
+        void visit(std::shared_ptr<CallStarCondition> node) override;
+        void visit(std::shared_ptr<Module> node) override;
+        void visit(std::shared_ptr<Reduction> node) override;
+        void visit(std::shared_ptr<Datatype> node) override;
+        void visit(std::shared_ptr<TensorType> node) override;
+        void visit(std::shared_ptr<TupleType> node) override;
+        void visit(std::shared_ptr<Operator> node) override;
+    };
 }
 
 //TODO: implement a switch case

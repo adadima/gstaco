@@ -70,6 +70,18 @@ namespace einsum {
         return left_ + " " + this->op->sign + " " + right_;
     }
 
+//    std::string BinaryOp::fdump() const {
+//        auto left_ = this->left->fdump();
+//        auto right_ = this->right->fdump();
+//        if (this->left->precedence > this->precedence) {
+//            left_ = "(" + left_ + ")";
+//        }
+//        if ((this->right->precedence > this->precedence) ||  (this->right->precedence == this->precedence && this->isAsymmetric)){
+//            right_ = "(" + right_ + ")";
+//        }
+//        return left_ + " " + this->op->sign + " " + right_;
+//    }
+
     std::vector<std::shared_ptr<IndexVar>> BinaryOp::getIndices() {
         std::vector<std::shared_ptr<IndexVar>> lIndices = this->left->getIndices();
         std::vector<std::shared_ptr<IndexVar>> rIndices = this->right->getIndices();
@@ -130,6 +142,21 @@ namespace einsum {
         }
         return acc;
     }
+
+//    std::string ReadAccess::fdump() const {
+//        if (tensor->getType() == 0) {
+//            return "$" + tensor->name;
+//        }
+//        auto acc = this->tensor->name + "[";
+//        for (size_t i=0; i < indices.size(); i++) {
+//            acc += indices[i]->dump();
+//            if (i != indices.size() - 1) {
+//                acc += ",";
+//            }
+//        }
+//        acc += "]";
+//        return acc;
+//    }
 
     std::vector<std::shared_ptr<IndexVar>> ReadAccess::getIndices() {
         std::vector<std::shared_ptr<IndexVar>> indices;
@@ -539,4 +566,33 @@ namespace einsum {
     std::string Initialize::dump() const {
         return "";
     }
+
+    void DefaultIRVisitor::visit(std::shared_ptr<IndexVar> node) { throw std::runtime_error("IMPLEMENT ME!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<Literal> node) { throw std::runtime_error("IMPLEMENT ME!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<TensorVar> node) { throw std::runtime_error("IMPLEMENT ME!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<IndexVarExpr> node) { throw std::runtime_error("IMPLEMENT ME!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<Access> node) { throw std::runtime_error("IMPLEMENT ME!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<ReadAccess> node) { throw std::runtime_error("IMPLEMENT ME!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<BinaryOp> node) { throw std::runtime_error("IMPLEMENT ME!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<UnaryOp> node) { throw std::runtime_error("IMPLEMENT ME!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<Definition> node) { throw std::runtime_error("IMPLEMENT ME!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<Allocate> node) { throw std::runtime_error("IMPLEMENT ME!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<MemAssignment> node) { throw std::runtime_error("IMPLEMENT ME!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<Initialize> node) { throw std::runtime_error("IMPLEMENT ME!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<FuncDecl> node) { throw std::runtime_error("IMPLEMENT ME!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<AndOperator> node) { throw std::runtime_error("IMPLEMENT ME!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<OrOperator> node) { throw std::runtime_error("IMPLEMENT ME!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<AddOperator> node) { throw std::runtime_error("IMPLEMENT ME!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<MulOperator> node) { throw std::runtime_error("IMPLEMENT ME!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<MinOperator> node) { throw std::runtime_error("IMPLEMENT ME!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<ChooseOperator> node) { throw std::runtime_error("IMPLEMENT ME!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<Call> node) { throw std::runtime_error("IMPLEMENT ME!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<CallStarRepeat> node) { throw std::runtime_error("IMPLEMENT ME!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<CallStarCondition> node) { throw std::runtime_error("IMPLEMENT ME!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<Module> node) { throw std::runtime_error("IMPLEMENT ME!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<Reduction> node) { throw std::runtime_error("IMPLEMENT ME!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<Datatype> node) { throw std::runtime_error("IMPLEMENT ME!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<TensorType> node) { throw std::runtime_error("IMPLEMENT ME!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<TupleType> node) { throw std::runtime_error("IMPLEMENT ME!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<Operator> node) { throw std::runtime_error("IMPLEMENT ME!");}
 }

@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.17)
 project(einsum_taco)
+set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_VERBOSE_MAKEFILE OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -12,8 +13,11 @@ set(EINSUM_SRC_DIR     ${EINSUM_PROJECT_DIR}/src)
 set(EINSUM_TEST_DIR    ${EINSUM_PROJECT_DIR}/test)
 set(EINSUM_PARSER_DIR  ${EINSUM_SRC_DIR}/parser)
 set(EINSUM_INCLUDE_DIR ${EINSUM_PROJECT_DIR}/include)
+SET(CMAKE_EXE_LINKER_FLAGS
+        "${CMAKE_EXE_LINKER_FLAGS} -Wl,-rpath /usr/local/Cellar/julia/1.8.2/lib -Wl,-rpath /usr/local/Cellar/julia/1.8.2/lib/julia -Wl,-rpath /Library/Developer/CommandLineTools/usr/lib/clang/13.1.6/lib/darwin -Wl,-rpath /Users/adadima/mit/commit/einsum_taco/cmake-build-debug/test -Wl,-rpath /Users/adadima/mit/commit/einsum_taco/cmake-build-debug -Wl,-rpath /usr/local/opt/curl/lib/ -Wl,-rpath /usr/local/opt/mbedtls@2/lib/ -Wl,-rpath /usr/local/opt/openblas/lib/ -Wl,-rpath /usr/local/opt/gcc/lib/gcc/current/ -Wl,-rpath /usr/local/lib/ -Wl,-rpath /usr/lib/")
+#set(CMAKE_BUILD_RPATH "/usr/local/Cellar/julia/1.8.2/lib/julia${CMAKE_BUILD_RPATH}")
 
-file(GLOB EINSUM_SOURCES ${EINSUM_SRC_DIR}/*/*.cpp)
+file(GLOB EINSUM_SOURCES ${EINSUM_SRC_DIR}/*/*.cpp ${EINSUM_SRC_DIR}/*/*.c)
 if (EINSUM_ASSERTS AND EINSUM_SANITIZERS)
     add_compile_options(-fsanitize=address,undefined)
     add_link_options(-fsanitize=address,undefined)
@@ -23,21 +27,39 @@ endif()
 option(GIT_SUBMODULE "Check submodules during build" ON)
 
 include(FetchContent)
-FetchContent_Declare(taco GIT_REPOSITORY https://github.com/tensor-compiler/taco.git)
-FetchContent_Populate(taco)
-add_subdirectory(${taco_SOURCE_DIR} ${taco_BINARY_DIR} EXCLUDE_FROM_ALL)
-FetchContent_GetProperties(taco SOURCE_DIR taco_SOURCE_DIR)
-set_target_properties(taco taco-test PROPERTIES CXX_STANDARD 14)
 
 if (EINSUM_SHARED_LIBRARY)
     add_library(einsum_lib SHARED ${EINSUM_SOURCES})
 else ()
     add_library(einsum_lib STATIC ${EINSUM_SOURCES})
 endif()
-target_link_libraries(einsum_lib PUBLIC taco)
 add_compile_definitions(einsum_lib PUBLIC INCLUDE_GSTACO_RUNTIME="${EINSUM_INCLUDE_DIR}/einsum_taco/gstrt/")
 add_compile_definitions(einsum_lib PUBLIC SRC_GSTACO_RUNTIME="${EINSUM_SRC_DIR}/gstrt/")
-target_include_directories(einsum_lib PUBLIC ${EINSUM_INCLUDE_DIR} PUBLIC ${taco_SOURCE_DIR}/include)
+
+#FetchContent_Declare(build_finch GIT_REPOSITORY https://github.com/adadima/Finch.jl.git GIT_TAG 73188971d8107dfe0d8da31b20d3c52e0e8a3fb3)
+#FetchContent_Populate(build_finch)
+set(FINCH_DIR           /Users/adadima/mit/commit/Finch.jl/)
+add_custom_target(build_finch
+        COMMAND make
+        WORKING_DIRECTORY ${FINCH_DIR}/embed
+        SOURCES ${FINCH_DIR}/embed/finch.c ${FINCH_DIR}/embed/finch.h
+        )
+add_library(finch STATIC IMPORTED)
+set_target_properties(finch
+        PROPERTIES IMPORTED_LOCATION ${FINCH_DIR}/embed/libfinch.a
+        INTERFACE_INCLUDE_DIRECTORIES ${FINCH_DIR}/embed
+        LINKER_LANGUAGE C
+        )
+add_dependencies(finch build_finch)
+
+target_include_directories(einsum_lib PUBLIC ${EINSUM_INCLUDE_DIR})
+
+add_library(julia SHARED IMPORTED)
+set_target_properties(julia PROPERTIES
+        IMPORTED_LOCATION "/usr/local/Cellar/julia/1.8.2/lib/libjulia.1.8.dylib"
+        INTERFACE_INCLUDE_DIRECTORIES "/usr/local/Cellar/julia/1.8.2/include/julia"
+        )
+target_link_libraries(einsum_lib PUBLIC finch julia)
 install(TARGETS einsum_lib DESTINATION lib)
 
 install(DIRECTORY ${EINSUM_INCLUDE_DIR}/ DESTINATION include)
@@ -67,32 +89,7 @@ target_link_libraries(parser_lib PUBLIC einsum_lib)
 add_executable(parser_exec "${EINSUM_PARSER_DIR}/main.cc")
 target_link_libraries(parser_exec parser_lib)
 
-#add_executable(page_rank "${EINSUM_TEST_DIR}/tmp/codegen/pagerank.cpp" "${EINSUM_TEST_DIR}/data/codegen/drivers/driver_pagerank.cpp")
-#add_executable(bfs "${EINSUM_TEST_DIR}/tmp/codegen/bfs.cpp" "${EINSUM_TEST_DIR}/data/codegen/drivers/driver_bfs.cpp")
-#add_executable(sssp "${EINSUM_TEST_DIR}/tmp/codegen/sssp.cpp" "${EINSUM_TEST_DIR}/data/codegen/drivers/driver_sssp.cpp")
+add_executable(page_rank "${EINSUM_TEST_DIR}/tmp/codegen/pagerank.cpp" "${EINSUM_TEST_DIR}/data/codegen/drivers/driver_pagerank.cpp")
+add_executable(bfs "${EINSUM_TEST_DIR}/tmp/codegen/bfs.cpp" "${EINSUM_TEST_DIR}/data/codegen/drivers/driver_bfs.cpp")
+add_executable(sssp "${EINSUM_TEST_DIR}/tmp/codegen/sssp.cpp" "${EINSUM_TEST_DIR}/data/codegen/drivers/driver_sssp.cpp")
 add_executable(bc "${EINSUM_TEST_DIR}/tmp/codegen/bc.cpp" "${EINSUM_TEST_DIR}/data/codegen/drivers/driver_bc.cpp")
-
-add_executable(bfs_taco "${EINSUM_TEST_DIR}/apps/bfs_taco.cpp")
-set_target_properties(bfs_taco PROPERTIES CXX_STANDARD 14)
-target_link_libraries(bfs_taco PUBLIC einsum_lib)
-add_compile_definitions(bfs_taco PUBLIC EINSUM_TACO_TEST_DATADIR="${EINSUM_PROJECT_DIR}/test/data/")
-
-add_executable(pr_taco "${EINSUM_TEST_DIR}/apps/pr_taco.cpp")
-set_target_properties(pr_taco PROPERTIES CXX_STANDARD 14)
-target_link_libraries(pr_taco PUBLIC einsum_lib)
-add_compile_definitions(pr_taco PUBLIC EINSUM_TACO_TEST_DATADIR="${EINSUM_PROJECT_DIR}/test/data/")
-
-add_executable(sssp_taco "${EINSUM_TEST_DIR}/apps/sssp_taco.cpp")
-set_target_properties(sssp_taco PROPERTIES CXX_STANDARD 14)
-target_link_libraries(sssp_taco PUBLIC einsum_lib)
-add_compile_definitions(sssp_taco PUBLIC EINSUM_TACO_TEST_DATADIR="${EINSUM_PROJECT_DIR}/test/data/")
-
-add_executable(bc_taco "${EINSUM_TEST_DIR}/apps/bc_taco.cpp")
-set_target_properties(bc_taco PROPERTIES CXX_STANDARD 14)
-target_link_libraries(bc_taco PUBLIC einsum_lib)
-add_compile_definitions(bc_taco PUBLIC EINSUM_TACO_TEST_DATADIR="${EINSUM_PROJECT_DIR}/test/data/")
-
-add_executable(cc_taco "${EINSUM_TEST_DIR}/apps/cc_taco.cpp")
-set_target_properties(cc_taco PROPERTIES CXX_STANDARD 14)
-target_link_libraries(cc_taco PUBLIC einsum_lib)
-add_compile_definitions(cc_taco PUBLIC EINSUM_TACO_TEST_DATADIR="${EINSUM_PROJECT_DIR}/test/data/")

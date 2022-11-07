@@ -49,6 +49,17 @@ namespace einsum {
         }
     }
 
+//    std::string Datatype::fdump() const {
+//        switch(this->getKind()) {
+//            case Kind::Bool:
+//                return "Bool";
+//            case Kind::Int:
+//                return "Int64";
+//            case Kind::Float:
+//                return "Float64";
+//        }
+//    }
+
     bool TupleType::isBool() const {
         return false;
     }

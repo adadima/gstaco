@@ -3,3 +3,4 @@ cmake-build-*/
 .DS_Store
 /test/tmp/
 /test/data/codegen/graphs/graph-dataset-small/
+dump_test_*
