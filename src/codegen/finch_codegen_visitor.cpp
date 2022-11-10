@@ -19,8 +19,8 @@
 #include "einsum_taco/codegen/codegen_utils.h"
 
 namespace einsum {
-    FinchCodeGenVisitor::FinchCodeGenVisitor(std::ostream* oss_cpp, std::ostream* oss_h, std::ostream* oss_finch, std::string module_name, bool main) : oss(oss_cpp), oss_cpp(oss_cpp), oss_h(oss_h), module_name(std::move(module_name)),
-            indent_(0), oss_finch(oss_finch) {
+    FinchCodeGenVisitor::FinchCodeGenVisitor(std::ostream* oss_cpp, std::ostream* oss_h, std::ostream* oss_drive, std::string module_name, bool main) : oss(oss_cpp), oss_cpp(oss_cpp), oss_h(oss_h), module_name(std::move(module_name)),
+            indent_(0), oss_drive(oss_drive) {
         finch_compile = new std::stringstream();
         finch_initialize();
         finch_eval("using Pkg;"
@@ -38,24 +38,39 @@ namespace einsum {
     }
 
     void FinchCodeGenVisitor::visit(std::shared_ptr<Module> node) {
+        auto mapper_v = FuncPtr2TensorArgsMapper();
+        node->accept(&mapper_v);
+        def2tensor_args = mapper_v.def2tensor_args;
+        def2func_ptr = mapper_v.def2func_ptr;
+
         oss = oss_h;
         generate_runtime_header();
+        *oss_h << "\n#ifdef __cplusplus\n"
+                  "}\n";
+
+        oss = oss_drive;
+        *oss << "#include \"" << module_name << ".h\"\n";
+
+        for(auto &comp: node->decls) {
+            if (comp->is_init()) {
+                comp->as_init()->tensor->getType()->accept(this);
+                *oss << " " << comp->as_init()->tensor->name << ";\n";
+            }
+        }
+        *oss << "\nint main() {\n";
 
         oss = oss_cpp;
         *oss << "#include \"" << module_name << ".h\"" << std::endl;
         generate_runtime_source();
         *oss << "\n";
 
-        std::cout << "IN CODEGEN\n";
         auto jl_init_v = JlFunctionInitializer(oss);
         jl_init_v.visit(node);
 
-        std::cout << "AFTER JL INIT\n";
         *oss << "void compile() {\n";
-        auto finch_compile_v = FinchCompileVisitor(oss);
+        auto finch_compile_v = FinchCompileVisitor(oss, def2tensor_args);
         finch_compile_v.visit(node);
         *oss << "}\n";
-        std::cout << "AFTER FINCH COMPILE\n";
 
         for(auto &comp: node->decls) {
             if (comp->is_builtin()) {
@@ -77,12 +92,14 @@ namespace einsum {
                 tensor->getType()->accept(this);
                 *oss << " " << tensor->name << ";\n";
 
+                oss = oss_drive;
+                *oss << tensor->name << " = 0;\n";
+
                 oss = oss_cpp;
             }
         }
-        *oss_h << "#ifdef __cplusplus\n"
-                 "}\n"
-                 "#endif\n";
+        *oss_h << "#endif\n";
+        *oss_drive << " return 0; }\n";
     }
 
 
@@ -162,17 +179,17 @@ namespace einsum {
         *oss << code;
     }
 
-    void FinchCodeGenVisitor::visit(std::shared_ptr<IndexVar> node) {
-        *oss << node->dump();
-    }
-
+//    void FinchCodeGenVisitor::visit(std::shared_ptr<IndexVar> node) {
+//        *oss << node->dump();
+//    }
+//
     void FinchCodeGenVisitor::visit(std::shared_ptr<Literal> node) {
         *oss << node->dump();
     }
-
-    void FinchCodeGenVisitor::visit(std::shared_ptr<IndexVarExpr> node) {
-        *oss << node->dump();
-    }
+//
+//    void FinchCodeGenVisitor::visit(std::shared_ptr<IndexVarExpr> node) {
+//        *oss << node->dump();
+//    }
 
 
     void FinchCodeGenVisitor::visit_func_signature(std::shared_ptr<FuncDecl> node) {
@@ -208,94 +225,325 @@ namespace einsum {
             out_names.push_back(output->name);
         }
         print_return(node->getOutputType(), out_names);
-        *oss << "\n}\n";
+        *oss << "}\n";
     }
 
     void FinchCodeGenVisitor::get_lambda_return(const std::shared_ptr<TupleType>& output_type, int num_outputs) {}
 
-    void FinchCodeGenVisitor::print_return(const std::shared_ptr<TupleType>& output_type, const std::vector<std::string>& output_names) {}
+    void FinchCodeGenVisitor::print_return(const std::shared_ptr<TupleType>& output_type, const std::vector<std::string>& output_names) {
+        if (output_names.size() == 1) {
+            *oss << "return ";
+            *oss << output_names[0];
+            *oss << ";\n";
+            return;
+        }
+        *oss << "return std::make_tuple(";
+        for (int i=0; i < output_names.size(); i++) {
+            if (i > 0) {
+                *oss << ", ";
+            }
+            *oss << output_names[i];
+        }
+        *oss << ");\n";
+    }
 
-    void FinchCodeGenVisitor::visit_call(const std::shared_ptr<Call>& node, const std::function<void()>& loop_generator) {}
+//    void FinchCodeGenVisitor::visit(std::shared_ptr<Reduction> node) {}
 
-    void FinchCodeGenVisitor::visit(std::shared_ptr<CallStarRepeat> node) {}
+    void FinchCodeGenVisitor::generate_for_loop(const std::string& var, const std::shared_ptr<Expression>& dim) {
+        *oss << get_indent();
+        *oss << "for(int ";
+        *oss <<  var;
+        *oss << "=0; ";
+        *oss <<  var;
+        *oss <<  "<";
+        dim->accept(this);
+        *oss << "; "; *oss << var; *oss << "++) {\n";
+    };
 
-    void FinchCodeGenVisitor::visit(std::shared_ptr<CallStarCondition> node) {}
+    void FinchCodeGenVisitor::generate_while_loop(const std::shared_ptr<Expression>& condition) {
+        *oss << get_indent();
+        *oss << "while(!";
+        *oss << "(";
+        condition->accept(this);
+        *oss << ")";
+        *oss <<  ") {\n";
+    }
 
-    void FinchCodeGenVisitor::visit(std::shared_ptr<Reduction> node) {}
-
-    void FinchCodeGenVisitor::generate_for_loop(const std::string& var, const std::shared_ptr<Expression>& dim) {};
-
-    void FinchCodeGenVisitor::generate_while_loop(const std::shared_ptr<Expression>& condition) {}
-
-    void FinchCodeGenVisitor::visit(std::shared_ptr<TensorType> node) {}
+    void FinchCodeGenVisitor::visit(std::shared_ptr<TensorType> node) {
+        if (node->getOrder() == 0) {
+            node->getElementType()->accept(this);
+            return;
+        }
+        *oss << "jl_value_t*";
+    }
 
     //TODO: make this a helper, not method on visitor. TupleType should not be a node
-    void FinchCodeGenVisitor::visit(std::shared_ptr<TupleType> node) {}
+    void FinchCodeGenVisitor::visit(std::shared_ptr<TupleType> node) {
+        if (node->tuple.size() == 1) {
+            node->tuple[0]->accept(this);
+            return;
+        }
+        *oss << "std::tuple<";
+        for (int i=0; i < node->tuple.size(); i++) {
+            if (i > 0) {
+                *oss << ", ";
+            }
+            node->tuple[i]->accept(this);
+        }
+        *oss << ">";
+    }
 
-    void FinchCodeGenVisitor::visit(std::shared_ptr<Operator> node) {}
+//    void FinchCodeGenVisitor::visit(std::shared_ptr<Operator> node) {}
 
     // TODO: also allocate the memory in here, separately from the Tensor constructor!
-    void FinchCodeGenVisitor::visit(std::shared_ptr<Allocate> node) {}
+    // EXAMPLE: B = Finch.Fiber(Dense(N, Element{typemax(Int64), Int64}()))
+    void FinchCodeGenVisitor::visit(std::shared_ptr<Allocate> node) {
+        if (node->tensor->getOrder() == 0) {
+            return;  // no need to allocate space for a scalar
+        }
+        *oss << "char code[1000];\n";
+        *oss << "sprintf(code, ";
+
+        std::stringstream ss;
+        for(size_t i=0; i < node->tensor->getDimensions().size(); i++) {
+            ss << "N" << i << " = %d\\n\\\n";
+        }
+        ss << "Finch.Fiber(\\n\\\n";
+        for(size_t i=0; i < node->tensor->getDimensions().size(); i++) {
+            ss << "Dense(N" << i << ",\\n\\\n";
+        }
+        ss << "Element{0,";
+        ss << fdump(node->tensor->type->getElementType());
+        ss << "}()";
+        for(size_t i=0; i < node->tensor->getDimensions().size(); i++) {
+            ss << ")";
+        }
+        auto s = ss.str();
+        *oss << "\"" << s << "\"";
+        for(size_t i=0; i < node->tensor->getDimensions().size(); i++) {
+            *oss << ", ";
+            node->tensor->getDimensions()[i]->accept(this);
+        }
+        *oss << ");\n";
+        *oss << node->tensor->name << " = finch_eval(code);\n";
+    }
 
     // Something like: t1.data = t2.data
-    void FinchCodeGenVisitor::visit(std::shared_ptr<MemAssignment> node) {}
+//    void FinchCodeGenVisitor::visit(std::shared_ptr<MemAssignment> node) {}
 
-    void FinchCodeGenVisitor::visit(std::shared_ptr<Initialize> node) {}
-
-    void FinchCodeGenVisitor::visit(std::shared_ptr<TensorVar> node) {
-
+    void FinchCodeGenVisitor::visit(std::shared_ptr<Initialize> node) {
+        node->tensor->type->accept(this);
+        *oss << " " << node->tensor->name << ";\n";
     }
 
-    void FinchCodeGenVisitor::visit(std::shared_ptr<Access> node) {
+//    void FinchCodeGenVisitor::visit(std::shared_ptr<TensorVar> node) {}
 
-    }
+//    void FinchCodeGenVisitor::visit(std::shared_ptr<Access> node) {}
 
     void FinchCodeGenVisitor::visit(std::shared_ptr<ReadAccess> node) {
-
+        *oss << parse_variable_name(node->tensor->name);
+        if (node->indices.size() == 0) {
+            return;
+        }
+        // TODO: use jl_array_data to get C array and index into it
+        throw std::runtime_error("TODO: use jl_array_data to get C array and index into it");
     }
 
     void FinchCodeGenVisitor::visit(std::shared_ptr<BinaryOp> node) {
-
+        if (node->left->precedence > node->precedence) {
+            *oss << "(";
+            node->left->accept(this);
+            *oss << ")";
+        } else {
+            node->left->accept(this);
+        }
+        *oss << " ";
+        *oss << node->op->sign;
+        *oss << " ";
+        if ((node->right->precedence > node->precedence) ||  (node->right->precedence == node->precedence && node->isAsymmetric)){
+            *oss << "(";
+            node->right->accept(this);
+            *oss << ")";
+        } else {
+            node->right->accept(this);
+        }
     }
-
+//
     void FinchCodeGenVisitor::visit(std::shared_ptr<UnaryOp> node) {
-
+        *oss << node->op->sign;
+        *oss << " ";
+        node->expr->accept(this);
     }
 
     void FinchCodeGenVisitor::visit(std::shared_ptr<Definition> node) {
-
+        for (auto& acc: node->lhs) {
+            std::string func_name = def2func_ptr[def_id];
+            std::vector<std::string> tensor_args = def2tensor_args[def_id];
+            *oss << "finch_call(" << func_name;
+            for(auto& tensor: tensor_args) {
+                *oss << ", " << tensor;
+            }
+            *oss << ");\n";
+            def_id += 1;
+        }
     }
 
     void FinchCodeGenVisitor::visit(std::shared_ptr<AddOperator> node) {
-
+        oss = oss_h;
+        auto signature = R"(template<typename T>
+T )";
+        auto op_func = R"((T left, T right) {
+    return left + right;
+}
+)";
+        *oss << signature << node->funcName << op_func;
+        oss = oss_cpp;
     }
-
+//
     void FinchCodeGenVisitor::visit(std::shared_ptr<MulOperator> node) {
-
+        oss = oss_h;
+        auto signature = R"(template<typename T>
+T )";
+        auto op_func = R"((T left, T right) {
+    return left * right;
+}
+)";
+        *oss << signature << node->funcName << op_func;
+        oss = oss_cpp;
     }
 
     void FinchCodeGenVisitor::visit(std::shared_ptr<AndOperator> node) {
-
+        auto signature = R"(bool )";
+        auto op_func = R"((bool left, bool right) {
+    return left && right;
+}
+)";
+        *oss << signature << node->funcName << op_func;
     }
 
     void FinchCodeGenVisitor::visit(std::shared_ptr<OrOperator> node) {
-
+        auto signature = R"(bool )";
+        auto op_func = R"((bool left, bool right) {
+    return left || right;
+}
+)";
+        *oss << signature << node->funcName << op_func;
     }
 
     void FinchCodeGenVisitor::visit(std::shared_ptr<MinOperator> node) {
-
+        oss = oss_h;
+        auto signature = R"(template<typename T>
+T )";
+        auto op_func = R"((T left, T right) {
+    if (left > right) {
+        return right;
+    } else {
+        return left;
+    }
+}
+)";
+        *oss << signature << node->funcName << op_func;
+        oss = oss_cpp;
     }
 
     void FinchCodeGenVisitor::visit(std::shared_ptr<ChooseOperator> node) {
-
+        oss = oss_h;
+        auto signature = R"(template<typename T>
+T )";
+        auto op_func = R"((T left, T right) {
+    if (right) {
+        return right;
+    } else {
+        return left;
+    }
+}
+)";
+        *oss << signature << node->funcName << op_func;
+        oss = oss_cpp;
+    }
+//
+    void FinchCodeGenVisitor::visit(std::shared_ptr<Call> node) {
+        *oss << node->function->funcName;
+        *oss << "(";
+        for (int i=0; i < node->arguments.size(); i++) {
+            if (i > 0) {
+                *oss << ", ";
+            }
+            node->arguments[i]->accept(this);
+        }
+        *oss << ")";
     }
 
-    void FinchCodeGenVisitor::visit(std::shared_ptr<Call> node) {
+    void FinchCodeGenVisitor::visit_call(const std::shared_ptr<Call>& node, const std::function<void()>& loop_generator) {
+        *oss << "([&]{\n";
 
+        *oss << "auto out = ";
+        auto call = IR::make<Call>(node->function, node->arguments);
+        call->accept(this);
+        *oss << ";\n";
+
+        if (node->arguments.size() > 1) {
+            *oss << "auto& [";
+            for(int i=0; i < node->arguments.size(); i++) {
+                if (i > 0) {
+                    *oss << ", ";
+                }
+                auto var = "out" + std::to_string(i);
+                *oss << var;
+            }
+            *oss << "] = out;\n";
+        } else {
+            *oss << "auto& out0 = out;\n";
+        }
+
+        loop_generator();
+
+        indent();
+        *oss << get_indent();
+        if (node->arguments.size() == 1) {
+            *oss << "out0";
+        } else {
+            *oss << "std::tie(";
+            for(int i=0; i < node->arguments.size(); i++) {
+                if (i > 0) {
+                    *oss << ", ";
+                }
+                auto var = "out" + std::to_string(i);
+                *oss << var;
+            }
+            *oss << ")";
+        }
+        *oss << " = ";
+        auto args = std::vector<std::shared_ptr<Expression>>();
+        for(int i=0; i < node->arguments.size(); i++) {
+            args.push_back(IR::make<ReadAccess>("out" + std::to_string(i), false));
+        }
+        auto call_ = IR::make<Call>(node->function, args);
+        call_->accept(this);
+        *oss << ";\n";
+
+        unindent();
+
+        *oss << get_indent();
+        *oss << "}\n";
+        get_lambda_return(node->function->getOutputType(), node->arguments.size());
+        *oss << "\n}())";
+    }
+
+    void FinchCodeGenVisitor::visit(std::shared_ptr<CallStarRepeat> node) {
+        visit_call(node, [&]() {
+            generate_for_loop("iter", IR::make<Literal>(node->numIterations - 1, Datatype::intType()));
+        });
+    }
+
+    void FinchCodeGenVisitor::visit(std::shared_ptr<CallStarCondition> node) {
+        visit_call(node, [&]() {
+            generate_while_loop(node->stopCondition);
+        });
     }
 
     void FinchCodeGenVisitor::visit(std::shared_ptr<Datatype> node) {
-
+        *oss << node->dump();
     }
 
 
@@ -330,17 +578,6 @@ namespace einsum {
         }
     }
 
-    std::string fdump(std::shared_ptr<Datatype> node) {
-        switch (node->getKind()) {
-            case Datatype::Kind::Bool:
-                return "Bool";
-            case Datatype::Kind::Int:
-                return "Int64";
-            case Datatype::Kind::Float:
-                return "Float64";
-        }
-    }
-
     //  TODO: update to generate any virtual type, not just dense
     void DefinitionVisitor::visit(std::shared_ptr<TensorVar> node) {
         tensors.insert(node->name);
@@ -370,15 +607,16 @@ namespace einsum {
 
     void DefinitionVisitor::visit(std::shared_ptr<CallStarCondition> node) {}
 
+    void DefinitionVisitor::visit(std::shared_ptr<Literal> node) {}
+
     void JlFunctionInitializer::visit(std::shared_ptr<Definition> node) {
         for (auto& acc: node->lhs) {
-            *oss << "jl_function_t* finch_def_code_" << def_id << ";\n";
+            *oss << "jl_function_t* finch_def_code" << def_id << ";\n";
             def_id += 1;
         }
     }
 
     void JlFunctionInitializer::visit(std::shared_ptr<FuncDecl> node) {
-        std::cout << "FUNC\n";
         for(auto& stmt: node->body) {
             if (stmt->is_def()) {
                 stmt->as_def()->accept(this);
@@ -387,7 +625,6 @@ namespace einsum {
     }
 
     void JlFunctionInitializer::visit(std::shared_ptr<Module> node) {
-        std::cout << "MODULE\n";
         for(auto& comp: node->decls) {
             if (comp->is_def()) {
                 comp->as_def()->accept(this);
@@ -449,16 +686,26 @@ namespace einsum {
             // TODO: make sure non-zero init values work
             acc->accept(this);
             *oss << " = ";
-            for (size_t i=0; i < node->reduction_list.size(); i++) {
+            for (size_t i=0; i < node->reduction_list.size() - 1; i++) {
                 auto& red = node->reduction_list[i];
-                ss << "w_" << i << "[] where (@loop " << red->reductionVar->name << " w_" << i << "[] ";
+                ss << "w_" << i << "[] where (w_" << i << "[] ";
                 red->reductionOp->accept(this);
                 *oss << "= ";
             }
 
+            size_t id = node->reduction_list.size() - 1;
+            auto& red = node->reduction_list[id];
+            ss << "w_" << id << "[] where";
+            for (auto& idx: node->getReductionVars()) {
+                ss << " (@loop " << idx;
+            }
+            ss << " w_" << id << "[] ";
+            red->reductionOp->accept(this);
+            *oss << "= ";
+
             node->rhs->accept(this);
 
-            for (size_t i=0; i < node->reduction_list.size(); i++) {
+            for (size_t i=0; i < 2 * node->reduction_list.size() - 1; i++) {
                 ss << ")";
             }
             for (auto& idx: acc->indices) {
@@ -469,9 +716,9 @@ namespace einsum {
             ss << "end\n";
             ss << "return quote\n";
             ss << "     function def_" << def_id << "(";
-            for (auto curr = v.tensors.begin();curr != v.tensors.end();) {
+            for (auto curr = def2args[def_id].begin();curr != def2args[def_id].end();) {
                 ss << (*curr);
-                if (++curr != v.tensors.end()) {
+                if (++curr != def2args[def_id].end()) {
                     ss << ", ";
                 }
             }
@@ -481,12 +728,12 @@ namespace einsum {
             ss << "end\n";
             std::string virtualized =ss.str();
             const char* vc = virtualized.data();
-//            std::cout << vc;
+            std::cout << vc;
             jl_value_t* expr = finch_exec(vc);
             jl_value_t* code = finch_exec("repr(last(%s.args))", expr);
             auto s = jl_string_data(code);
 
-            *old_oss << "finch_def_code_" << def_id << " = finch_eval(\n";
+            *old_oss << "finch_def_code" << def_id << " = finch_eval(\n";
 
             std::stringstream ss_(s);
             std::string line;
@@ -591,4 +838,92 @@ namespace einsum {
         }
     }
 
+    std::string fdump(std::shared_ptr<Datatype> node) {
+        switch (node->getKind()) {
+            case Datatype::Kind::Bool:
+                return "Bool";
+            case Datatype::Kind::Int:
+                return "Int64";
+            case Datatype::Kind::Float:
+                return "Float64";
+        }
+    }
+
+    void TensorCollector::visit(std::shared_ptr<Definition> node) {
+        for (auto& acc: node->lhs) {
+            acc->tensor->accept(this);
+        }
+        node->rhs->accept(this);
+    }
+
+    void TensorCollector::visit(std::shared_ptr<ReadAccess> node) {
+        node->tensor->accept(this);
+    }
+
+    void TensorCollector::visit(std::shared_ptr<BinaryOp> node) {
+        node->right->accept(this);
+        node->left->accept(this);
+    }
+
+    void TensorCollector::visit(std::shared_ptr<UnaryOp> node) {
+        node->expr->accept(this);
+    }
+
+    void TensorCollector::visit_call(std::shared_ptr<Call> node) {
+        for(auto& arg: node->arguments) {
+            arg->accept(this);
+        }
+    }
+
+    void TensorCollector::visit(std::shared_ptr<Call> node) {
+        visit_call(node);
+    }
+
+    void TensorCollector::visit(std::shared_ptr<CallStarRepeat> node) {
+        visit_call(node);
+    }
+
+    void TensorCollector::visit(std::shared_ptr<CallStarCondition> node) {
+        visit_call(node);
+    }
+
+    void TensorCollector::visit(std::shared_ptr<TensorVar> node) {
+        std::string tensor = node->name;
+        if (seen.find(tensor) == seen.end()) {
+            seen.insert(tensor);
+            tensors.push_back(tensor);
+        }
+    }
+
+    void TensorCollector::visit(std::shared_ptr<Literal> node) {}
+
+    void FuncPtr2TensorArgsMapper::visit(std::shared_ptr<Definition> node) {
+        auto v = TensorCollector();
+        node->accept(&v);
+        char func_name[100];
+        sprintf(func_name, "finch_def_code%d", def_id);
+        def2tensor_args.insert({def_id, v.tensors});
+        def2func_ptr.insert({def_id, func_name});
+        def_id += 1;
+    }
+
+    void FuncPtr2TensorArgsMapper::visit(std::shared_ptr<FuncDecl> node) {
+        for(auto& stmt: node->body) {
+            if (stmt->is_def()) {
+                stmt->as_def()->accept(this);
+            }
+        }
+    }
+
+    void FuncPtr2TensorArgsMapper::visit(std::shared_ptr<Module> node) {
+        for(auto& comp: node->decls) {
+            if (comp->is_def()) {
+                comp->as_def()->accept(this);
+            }
+
+            if (comp->is_decl() && !comp->is_builtin()) {
+                comp->as_decl()->accept(this);
+            }
+        }
+    }
 }

@@ -279,8 +279,8 @@ INSTANTIATE_TEST_CASE_P(
         GenTestSuite,
         GenTest,
         ::testing::Values(
-                make_tuple("definition1", get_compiler_path(), true, ExecutionParams())
-//                make_tuple("definition2", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("definition1", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("definition2", get_compiler_path(), true, ExecutionParams())
 //                make_tuple("definition3", get_compiler_path(), true, ExecutionParams()),
 //                make_tuple("definition4", get_compiler_path(), true, ExecutionParams()),
 //                make_tuple("call", get_compiler_path(), true, ExecutionParams()),
