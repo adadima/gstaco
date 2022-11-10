@@ -98,7 +98,6 @@ public:
         // parse
         auto mod = std::make_shared<Module>(parse(input));
 
-        // cleanup
         auto new_module = apply_default_rewriters(mod);
 
         // print ast for debug
@@ -189,11 +188,16 @@ public:
             writeStringToFile(driver, drv);
         }
 
+        std::stringstream cmdss;
         // compile the temporary cpp file with the given compiler
-        std::string cmd = compiler_path + " -o " + tmp_out + " -std=c++17 " + tmp_in + " " + driver;
+        cmdss << compiler_path << " -o " << tmp_out << " -std=c++17 ";
+        GTEST_LOG_(INFO) << get_julia_include_dir() << "\n";
+        cmdss << " -I'" << get_julia_include_dir() << "' -fPIC -I" << get_finch_embed_dir() << "  -L'" << get_julia_lib_dir() << "' -L" << get_finch_embed_dir() << " -Wl,-rpath,'" << get_julia_lib_dir() << "' -ljulia -lfinch";
 #if __APPLE__
-        cmd += " -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/";
+        cmdss << " -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/";
 #endif
+        cmdss << " " << tmp_in << " " << driver;
+        std::string cmd = cmdss.str();
         GTEST_LOG_(INFO) << cmd << "\n";
 
         int status_code;
@@ -201,7 +205,7 @@ public:
         std::tie(status_code, output) = exec(cmd.c_str());
 
         // remove generated files
-        cleanup(tmp_in, tmp_out, tmp_header, driver, add_main);
+//        cleanup(tmp_in, tmp_out, tmp_header, driver, add_main);
 
         // check compilation process finished successfully
         EXPECT_EQ(status_code, 0);

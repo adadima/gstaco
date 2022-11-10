@@ -17,6 +17,7 @@ namespace einsum {
         std::ostream* oss_h;
         std::string module_name;
         std::ostream* oss_finch;
+        std::ostream* finch_compile;
         int indent_;
         int def_id = 0;
 
@@ -107,29 +108,16 @@ namespace einsum {
 
         void generate_runtime_source() const;
 
-        void generate_driver_code() const;
-
-
         void visit_call(const std::shared_ptr<Call>& node, const std::function<void()>& loop_generator);
 
         void visit_func_signature(std::shared_ptr<FuncDecl> node);
-    private:
-
-        std::string visit_reduced_expr(const std::shared_ptr<Expression>& expr, const std::vector<std::shared_ptr<Reduction>> &reductions);
-
-        static std::shared_ptr<Expression> reduce_expression(const std::string &init_var, std::shared_ptr<Expression> expr,
-                                                             const std::shared_ptr<BuiltinFuncDecl> &op);
-
-        template<typename T>
-        void visit_tensor_access(const std::shared_ptr<T>& access);
-
     };
 
     struct DefinitionVisitor : DefaultIRVisitor {
         std::ostream* oss;
         std::unordered_set<std::string> tensors;
 
-        DefinitionVisitor(std::ostream* oss) : oss(oss) {};
+        explicit DefinitionVisitor(std::ostream* oss) : oss(oss) {};
 
         void visit(std::shared_ptr<Definition> node) override;
 
@@ -149,6 +137,58 @@ namespace einsum {
 
         void visit(std::shared_ptr<TensorVar> node) override;
 
+    };
+
+    struct JlFunctionInitializer : DefaultIRVisitor {
+        std::ostream* oss;
+        int def_id = 0;
+
+        explicit JlFunctionInitializer(std::ostream* oss) : oss(oss) {};
+
+        void visit(std::shared_ptr<Definition> node) override;
+
+        void visit(std::shared_ptr<FuncDecl> node) override;
+
+        void visit(std::shared_ptr<Module> node) override;
+    };
+
+    struct FinchCompileVisitor : DefaultIRVisitor {
+        std::ostream* oss;
+        int def_id = 0;
+
+        explicit FinchCompileVisitor(std::ostream* oss) : oss(oss) {};
+
+        void visit(std::shared_ptr<Module> node) override;
+
+        void visit(std::shared_ptr<FuncDecl> node) override;
+
+        void visit(std::shared_ptr<Definition> node) override;
+
+        void visit(std::shared_ptr<Access> node) override;
+
+        void visit(std::shared_ptr<ReadAccess> node) override;
+
+        void visit(std::shared_ptr<MinOperator> node) override;
+
+        void visit(std::shared_ptr<ChooseOperator> node) override;
+
+        void visit(std::shared_ptr<AddOperator> node) override;
+
+        void visit(std::shared_ptr<MulOperator> node) override;
+
+        void visit(std::shared_ptr<AndOperator> node) override;
+
+        void visit(std::shared_ptr<OrOperator> node) override;
+
+        void visit(std::shared_ptr<TensorVar> node) override;
+
+        void visit(std::shared_ptr<Datatype> node) override;
+
+        void visit(std::shared_ptr<BinaryOp> node) override;
+
+        void visit(std::shared_ptr<UnaryOp> node) override;
+
+        void visit(std::shared_ptr<Call> node) override;
     };
 }
 

@@ -51,6 +51,18 @@ inline std::string get_compiler_path() {
     return {TEST_CXX_COMPILER};
 }
 
+inline std::string get_julia_include_dir() {
+    return {JULIA_INCLUDE_DIR};
+}
+
+inline std::string get_julia_lib_dir() {
+    return {JULIA_LIB_DIR};
+}
+
+inline std::string get_finch_embed_dir() {
+    return {FINCH_DIR};
+}
+
 static std::string readFileIntoString(const std::string& path) {
     std::ifstream istrm(path);
 

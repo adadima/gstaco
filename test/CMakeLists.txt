@@ -19,6 +19,9 @@ target_link_libraries(test_interface PUBLIC gtest gtest_main parser_lib einsum_l
 add_compile_definitions(test_interface PUBLIC EINSUM_TACO_TEST_DATADIR="${CMAKE_CURRENT_SOURCE_DIR}/data/")
 add_compile_definitions(test_interface PUBLIC EINSUM_TACO_TEST_DIR="${CMAKE_CURRENT_SOURCE_DIR}/")
 add_compile_definitions(test_interface PUBLIC TEST_CXX_COMPILER="${CMAKE_CXX_COMPILER}")
+add_compile_definitions(test_interface PUBLIC FINCH_DIR="${FINCH_DIR}")
+add_compile_definitions(test_interface PUBLIC JULIA_INCLUDE_DIR="${JULIA_INCLUDE}")
+add_compile_definitions(test_interface PUBLIC JULIA_LIB_DIR="${JULIA_LIB}")
 
 function(add_einsum_test test_dir test_name)
     add_executable(${test_name} ${test_dir}/${test_name}.cpp)

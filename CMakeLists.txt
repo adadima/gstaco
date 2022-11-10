@@ -38,16 +38,17 @@ add_compile_definitions(einsum_lib PUBLIC SRC_GSTACO_RUNTIME="${EINSUM_SRC_DIR}/
 
 #FetchContent_Declare(build_finch GIT_REPOSITORY https://github.com/adadima/Finch.jl.git GIT_TAG 73188971d8107dfe0d8da31b20d3c52e0e8a3fb3)
 #FetchContent_Populate(build_finch)
-set(FINCH_DIR           /Users/adadima/mit/commit/Finch.jl/)
+set(FINCH_DIR           /Users/adadima/mit/commit/Finch.jl/embed)
 add_custom_target(build_finch
+        COMMAND make clean
         COMMAND make
-        WORKING_DIRECTORY ${FINCH_DIR}/embed
-        SOURCES ${FINCH_DIR}/embed/finch.c ${FINCH_DIR}/embed/finch.h
+        WORKING_DIRECTORY ${FINCH_DIR}
+        SOURCES ${FINCH_DIR}/finch.c ${FINCH_DIR}/finch.h
         )
 add_library(finch STATIC IMPORTED)
 set_target_properties(finch
-        PROPERTIES IMPORTED_LOCATION ${FINCH_DIR}/embed/libfinch.a
-        INTERFACE_INCLUDE_DIRECTORIES ${FINCH_DIR}/embed
+        PROPERTIES IMPORTED_LOCATION ${FINCH_DIR}/libfinch.a
+        INTERFACE_INCLUDE_DIRECTORIES ${FINCH_DIR}
         LINKER_LANGUAGE C
         )
 add_dependencies(finch build_finch)
@@ -55,9 +56,11 @@ add_dependencies(finch build_finch)
 target_include_directories(einsum_lib PUBLIC ${EINSUM_INCLUDE_DIR})
 
 add_library(julia SHARED IMPORTED)
+set(JULIA_LIB   "/usr/local/Cellar/julia/1.8.2/lib")
+set(JULIA_INCLUDE "/usr/local/Cellar/julia/1.8.2/include/julia")
 set_target_properties(julia PROPERTIES
-        IMPORTED_LOCATION "/usr/local/Cellar/julia/1.8.2/lib/libjulia.1.8.dylib"
-        INTERFACE_INCLUDE_DIRECTORIES "/usr/local/Cellar/julia/1.8.2/include/julia"
+        IMPORTED_LOCATION ${JULIA_LIB}/libjulia.1.8.dylib
+        INTERFACE_INCLUDE_DIRECTORIES ${JULIA_INCLUDE}
         )
 target_link_libraries(einsum_lib PUBLIC finch julia)
 install(TARGETS einsum_lib DESTINATION lib)
