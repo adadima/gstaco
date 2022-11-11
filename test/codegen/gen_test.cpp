@@ -94,7 +94,6 @@ public:
     std::tuple<std::string, std::string, std::string> get_generated_code(const std::string& test_name) {
         // read input
         auto input = readDataIntoString(test_name_to_input_file(test_name));
-        std::cout << "INPUT: \n" << input << "\n";
         // parse
         auto mod = std::make_shared<Module>(parse(input));
 
@@ -105,9 +104,7 @@ public:
 //        std::cout << printer.ast;
 
         // code generation
-        std::cout << "Before codegen\n";
         new_module->accept(&generator);
-        std::cout << "After codegen\n";
         return std::tuple{oss_cpp.str(), oss_h.str(), oss_drive.str()};
     }
 
@@ -279,11 +276,11 @@ INSTANTIATE_TEST_CASE_P(
         GenTestSuite,
         GenTest,
         ::testing::Values(
+                make_tuple("definition2", get_compiler_path(), true, ExecutionParams()),
                 make_tuple("definition1", get_compiler_path(), true, ExecutionParams()),
-                make_tuple("definition2", get_compiler_path(), true, ExecutionParams())
-//                make_tuple("definition3", get_compiler_path(), true, ExecutionParams()),
-//                make_tuple("definition4", get_compiler_path(), true, ExecutionParams()),
-//                make_tuple("call", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("definition3", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("definition4", get_compiler_path(), true, ExecutionParams())
+//                make_tuple("call", get_compiler_path(), true, ExecutionParams())
 //                make_tuple("call_condition1", get_compiler_path(), true, ExecutionParams()),
 //                make_tuple("call_condition2", get_compiler_path(), true, ExecutionParams()),
 //                make_tuple("call_repeat1", get_compiler_path(), true, ExecutionParams()),

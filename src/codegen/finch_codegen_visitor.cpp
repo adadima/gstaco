@@ -19,22 +19,27 @@
 #include "einsum_taco/codegen/codegen_utils.h"
 
 namespace einsum {
-    FinchCodeGenVisitor::FinchCodeGenVisitor(std::ostream* oss_cpp, std::ostream* oss_h, std::ostream* oss_drive, std::string module_name, bool main) : oss(oss_cpp), oss_cpp(oss_cpp), oss_h(oss_h), module_name(std::move(module_name)),
+    FinchCodeGenVisitor::FinchCodeGenVisitor(std::ostream* oss_cpp, std::ostream* oss_h, std::ostream* oss_drive, std::string module_name, bool main) :  oss(oss_cpp), oss_cpp(oss_cpp), oss_h(oss_h), module_name(std::move(module_name)),
             indent_(0), oss_drive(oss_drive) {
-        finch_compile = new std::stringstream();
-        finch_initialize();
-        finch_eval("using Pkg;"
-                   "using Finch;"
+        if (!is_active_jl_session) {
+            finch_initialize();
+            finch_initialize();
+        }
+        //                   "using Pkg;"
+        //                   "Pkg.add(\"MatrixMarket\");"
+        //                   "using MatrixMarket;");
+        finch_eval("using Finch;"
                    "using RewriteTools;"
                    "using Finch.IndexNotation: or_, choose;"
                    "using SparseArrays;"
-                   "Pkg.add(\"MatrixMarket\");"
-                   "using MatrixMarket;");
+        );
     }
 
     FinchCodeGenVisitor::~FinchCodeGenVisitor() {
-        delete finch_compile;
-        finch_finalize();
+//        if (is_active_jl_session) {
+//            std::cout << "FINALIZE\n";
+//            finch_finalize();
+//        }
     }
 
     void FinchCodeGenVisitor::visit(std::shared_ptr<Module> node) {
@@ -68,7 +73,7 @@ namespace einsum {
         jl_init_v.visit(node);
 
         *oss << "void compile() {\n";
-        auto finch_compile_v = FinchCompileVisitor(oss, def2tensor_args);
+        auto finch_compile_v = FinchCompileVisitor(module_name, oss, def2tensor_args);
         finch_compile_v.visit(node);
         *oss << "}\n";
 
@@ -378,10 +383,15 @@ namespace einsum {
     void FinchCodeGenVisitor::visit(std::shared_ptr<Definition> node) {
         for (auto& acc: node->lhs) {
             std::string func_name = def2func_ptr[def_id];
-            std::vector<std::string> tensor_args = def2tensor_args[def_id];
+            std::vector<std::shared_ptr<TensorVar>> tensor_args = def2tensor_args[def_id];
             *oss << "finch_call(" << func_name;
             for(auto& tensor: tensor_args) {
-                *oss << ", " << tensor;
+                *oss << ", ";
+                if (tensor->getOrder() == 0) {
+                    *oss << "finch_" << fdump(tensor->getType()->getElementType()) << "(" << tensor->name << ")";
+                } else {
+                    *oss << tensor->name;
+                }
             }
             *oss << ");\n";
             def_id += 1;
@@ -561,7 +571,13 @@ T )";
 
     void DefinitionVisitor::visit(std::shared_ptr<ReadAccess> node) {
         node->tensor->accept(this);
+
+        for(auto& idx: node->indices) {
+            idx->accept(this);
+        }
     }
+
+    void DefinitionVisitor::visit(std::shared_ptr<IndexVarExpr> node) {}
 
     void DefinitionVisitor::visit(std::shared_ptr<BinaryOp> node) {
         node->left->accept(this);
@@ -654,12 +670,20 @@ T )";
         }
         *oss << node->tensor->name << "[";
         for (size_t i=0; i < node->indices.size(); i++) {
-            *oss << node->indices[i]->dump();
+            node->indices[i]->accept(this);
             if (i != node->indices.size() - 1) {
                 *oss << ",";
             }
         }
         *oss << "]";
+    }
+
+    void FinchCompileVisitor::visit(std::shared_ptr<IndexVarExpr> node) {
+        *oss << node->dump();
+    }
+
+    void FinchCompileVisitor::visit(std::shared_ptr<Literal> node) {
+        *oss << node->dump();
     }
 
     void FinchCompileVisitor::visit(std::shared_ptr<Definition> node) {
@@ -715,9 +739,9 @@ T )";
             ss << "kernel_code = Finch.execute_code_virtualized(kernel, ctx_2)\n";
             ss << "end\n";
             ss << "return quote\n";
-            ss << "     function def_" << def_id << "(";
+            ss << "     function def_" << def_id << "_" << module << "(";
             for (auto curr = def2args[def_id].begin();curr != def2args[def_id].end();) {
-                ss << (*curr);
+                ss << (*curr)->name;
                 if (++curr != def2args[def_id].end()) {
                     ss << ", ";
                 }
@@ -738,7 +762,7 @@ T )";
             std::stringstream ss_(s);
             std::string line;
             while(std::getline(ss_, line, '\n')){
-                *old_oss << "\"" << line << "\"\n";
+                *old_oss << "\"" << line << "\\n\"\n";
             }
             *old_oss << ");\n";
             def_id += 1;
@@ -768,7 +792,7 @@ T )";
     }
 
     void FinchCompileVisitor::visit(std::shared_ptr<OrOperator> node) {
-        *oss << "<<or>>";
+        *oss << "<<or_>>";
     }
 
     void FinchCompileVisitor::visit(std::shared_ptr<TensorVar> tensor) {
@@ -858,7 +882,14 @@ T )";
 
     void TensorCollector::visit(std::shared_ptr<ReadAccess> node) {
         node->tensor->accept(this);
+        for (auto& idx: node->indices) {
+            idx->accept(this);
+        }
     }
+
+    void TensorCollector::visit(std::shared_ptr<IndexVarExpr> node) {}
+
+
 
     void TensorCollector::visit(std::shared_ptr<BinaryOp> node) {
         node->right->accept(this);
@@ -891,11 +922,13 @@ T )";
         std::string tensor = node->name;
         if (seen.find(tensor) == seen.end()) {
             seen.insert(tensor);
-            tensors.push_back(tensor);
+            tensors.push_back(node);
         }
     }
 
-    void TensorCollector::visit(std::shared_ptr<Literal> node) {}
+    void TensorCollector::visit(std::shared_ptr<Literal> node) {
+//        std::cout << "LITERAL: " << node->dump() << "\n";
+    }
 
     void FuncPtr2TensorArgsMapper::visit(std::shared_ptr<Definition> node) {
         auto v = TensorCollector();

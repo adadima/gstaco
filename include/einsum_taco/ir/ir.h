@@ -519,6 +519,8 @@ namespace einsum {
         void visit(std::shared_ptr<TensorType> node) override;
         void visit(std::shared_ptr<TupleType> node) override;
         void visit(std::shared_ptr<Operator> node) override;
+
+        virtual std::string name();
     };
 }
 

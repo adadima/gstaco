@@ -12,21 +12,22 @@
 
 namespace einsum {
     struct FinchCodeGenVisitor : DefaultIRVisitor {
-
         std::ostream* oss;
         std::ostream* oss_cpp;
         std::ostream* oss_h;
         std::string module_name;
         std::ostream* oss_drive;
-        std::ostream* finch_compile;
         int indent_;
         int def_id = 0;
-        std::unordered_map<int, std::vector<std::string>> def2tensor_args;
+        std::unordered_map<int, std::vector<std::shared_ptr<TensorVar>>> def2tensor_args;
         std::unordered_map<int, std::string> def2func_ptr;
 
         FinchCodeGenVisitor(std::ostream* oss_cpp, std::ostream* oss_h, std::ostream* oss_drive, std::string module_name, bool main=true);
         ~FinchCodeGenVisitor();
 
+        std::string name() override {
+            return "FinchCodeGenVisitor";
+        }
 //        void visit(std::shared_ptr<IndexVar> node) override;
 //
         void visit(std::shared_ptr<Literal> node) override;
@@ -122,9 +123,15 @@ namespace einsum {
 
         explicit DefinitionVisitor(std::ostream* oss) : oss(oss) {};
 
+        std::string name() override {
+            return "DefinitionVisitor";
+        }
+
         void visit(std::shared_ptr<Definition> node) override;
 
         void visit(std::shared_ptr<Literal> node) override;
+
+        void visit(std::shared_ptr<IndexVarExpr> node) override;
 
         void visit(std::shared_ptr<Access> node) override;
 
@@ -146,13 +153,19 @@ namespace einsum {
 
     struct TensorCollector : DefaultIRVisitor {
         std::unordered_set<std::string> seen;
-        std::vector<std::string> tensors;
+        std::vector<std::shared_ptr<TensorVar>> tensors;
 
         explicit TensorCollector() {};
+
+        std::string name() override {
+            return "TensorCollector";
+        }
 
         void visit(std::shared_ptr<Definition> node) override;
 
         void visit(std::shared_ptr<Literal> node) override;
+
+        void visit(std::shared_ptr<IndexVarExpr> node) override;
 
         void visit(std::shared_ptr<ReadAccess> node) override;
 
@@ -172,11 +185,15 @@ namespace einsum {
     };
 
     struct FuncPtr2TensorArgsMapper : DefaultIRVisitor {
-        std::unordered_map<int, std::vector<std::string>> def2tensor_args;
+        std::unordered_map<int, std::vector<std::shared_ptr<TensorVar>>> def2tensor_args;
         std::unordered_map<int, std::string> def2func_ptr;
         int def_id = 0;
 
         explicit FuncPtr2TensorArgsMapper() {};
+
+        std::string name() override {
+            return "FuncPtr2TensorArgsMapper";
+        }
 
         void visit(std::shared_ptr<Definition> node) override;
 
@@ -191,6 +208,10 @@ namespace einsum {
 
         explicit JlFunctionInitializer(std::ostream* oss) : oss(oss) {};
 
+        std::string name() override {
+            return "JlFunctionInitializer";
+        }
+
         void visit(std::shared_ptr<Definition> node) override;
 
         void visit(std::shared_ptr<FuncDecl> node) override;
@@ -200,16 +221,25 @@ namespace einsum {
 
     struct FinchCompileVisitor : DefaultIRVisitor {
         std::ostream* oss;
-        std::unordered_map<int, std::vector<std::string>> def2args;
+        std::unordered_map<int, std::vector<std::shared_ptr<TensorVar>>> def2args;
         int def_id = 0;
+        std::string module;
 
-        FinchCompileVisitor(std::ostream* oss, std::unordered_map<int, std::vector<std::string>>& def2args) : oss(oss), def2args(def2args) {};
+        FinchCompileVisitor(std::string module, std::ostream* oss, std::unordered_map<int, std::vector<std::shared_ptr<TensorVar>>>& def2args) : oss(oss), def2args(def2args), module(module) {};
+
+        std::string name() override {
+            return "FinchCompileVisitor";
+        }
 
         void visit(std::shared_ptr<Module> node) override;
 
         void visit(std::shared_ptr<FuncDecl> node) override;
 
         void visit(std::shared_ptr<Definition> node) override;
+
+        void visit(std::shared_ptr<Literal> node) override;
+
+        void visit(std::shared_ptr<IndexVarExpr> node) override;
 
         void visit(std::shared_ptr<Access> node) override;
 
