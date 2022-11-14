@@ -94,14 +94,14 @@ public:
     std::tuple<std::string, std::string, std::string> get_generated_code(const std::string& test_name) {
         // read input
         auto input = readDataIntoString(test_name_to_input_file(test_name));
+        std::cout << "INPUT:\n" << input << "\n";
         // parse
         auto mod = std::make_shared<Module>(parse(input));
-
         auto new_module = apply_default_rewriters(mod);
-
-        // print ast for debug
-//        new_module->accept(&printer);
-//        std::cout << printer.ast;
+        std::cout << "PRINT AST\n";
+//         print ast for debug
+        new_module->accept(&printer);
+        std::cout << printer.ast;
 
         // code generation
         new_module->accept(&generator);
@@ -279,15 +279,15 @@ INSTANTIATE_TEST_CASE_P(
                 make_tuple("definition2", get_compiler_path(), true, ExecutionParams()),
                 make_tuple("definition1", get_compiler_path(), true, ExecutionParams()),
                 make_tuple("definition3", get_compiler_path(), true, ExecutionParams()),
-                make_tuple("definition4", get_compiler_path(), true, ExecutionParams())
-//                make_tuple("call", get_compiler_path(), true, ExecutionParams())
-//                make_tuple("call_condition1", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("definition4", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("call", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("call_condition1", get_compiler_path(), true, ExecutionParams()),
 //                make_tuple("call_condition2", get_compiler_path(), true, ExecutionParams()),
-//                make_tuple("call_repeat1", get_compiler_path(), true, ExecutionParams()),
-//                make_tuple("call_repeat2", get_compiler_path(), true, ExecutionParams()),
-//                make_tuple("call_repeat3", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("call_repeat1", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("call_repeat2", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("call_repeat3", get_compiler_path(), true, ExecutionParams())
 //                make_tuple("call_repeat4", get_compiler_path(), true, ExecutionParams()),
-//                make_tuple("call_repeat5", get_compiler_path(), true, ExecutionParams()),
+//                make_tuple("call_repeat5", get_compiler_path(), true, ExecutionParams())
 //                make_tuple("outer_loop_var1", get_compiler_path(), true, ExecutionParams()),
 //                make_tuple("outer_loop_var2", get_compiler_path(), true, ExecutionParams())
         ));

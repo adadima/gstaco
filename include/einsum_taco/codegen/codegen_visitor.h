@@ -9,7 +9,7 @@
 #include <functional>
 
 namespace einsum {
-    struct CodeGenVisitor : IRVisitor {
+    struct CodeGenVisitor : DefaultIRVisitor {
 
         std::ostream* oss;
         std::ostream* oss_cpp;

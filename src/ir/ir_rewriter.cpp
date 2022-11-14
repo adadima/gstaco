@@ -86,8 +86,7 @@ namespace einsum {
         }
     }
 
-    template<typename T>
-    void IRRewriter::visit_call(T& node) {
+    void IRRewriter::visit_call(std::shared_ptr<Call> node) {
         node->function = rewrite(node->function);
         for(auto& arg: node->arguments) {
             arg = rewrite(arg);
@@ -111,7 +110,10 @@ namespace einsum {
     void  IRRewriter::visit(std::shared_ptr<Module> node) {
         context->enter_module(node);
         for(auto &comp: node->decls) {
-            comp = visit(comp);
+            if (comp == nullptr) {
+                continue;
+            }
+            comp = rewrite(comp);
         }
         node_ = node;
         context->exit_module();
@@ -190,17 +192,17 @@ namespace einsum {
     }
 
     std::shared_ptr<Statement> IRRewriter::visit(const std::shared_ptr<Statement> &node) {
-        std::shared_ptr<Statement> stmt;
+
         if (node->is_allocate()) {
-            stmt = rewrite(node->as_allocate());
+            return rewrite(node->as_allocate());
         }
         if (node->is_def()) {
-            stmt = rewrite(node->as_def());
+            return rewrite(node->as_def());
         }
         if (node->is_mem_assign()) {
-            stmt = rewrite(node->as_mem_assign());
+            return rewrite(node->as_mem_assign());
         }
-        return stmt;
+        return node;
     }
 
     void IRRewriter::visit_decl(const std::shared_ptr<FuncDecl>& node) {
@@ -243,6 +245,21 @@ namespace einsum {
     }
 
     void IRRewriter::visit(std::shared_ptr<OrOperator> node) {
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<TupleVar> node) {
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<TupleVarReadAccess> node) {
+        node->var = rewrite(node->var);
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<MultipleOutputDefinition> node) {
+        node->lhs = rewrite(node->lhs);
+        node->rhs = rewrite(node->rhs);
         node_ = node;
     }
 

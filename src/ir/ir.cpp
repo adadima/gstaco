@@ -169,13 +169,13 @@ namespace einsum {
 
     std::shared_ptr<Type> ReadAccess::getType() const {
         std::vector<std::shared_ptr<Expression>> dims;
-        int last = this->tensor->getType()->getOrder() - this->indices.size();
+        int last = this->tensor->getOrder() - this->indices.size();
         if (last < 0) {
             last = 0;
         }
         dims.reserve(last);
         for (int i=0; i < last; i++) {
-            dims.push_back(this->tensor->getType()->getDimension(i));
+            dims.push_back(this->tensor->getDimensions()[i]);
         }
         if (dims.empty()) {
             return this->tensor->getType()->getElementType();
@@ -328,6 +328,9 @@ namespace einsum {
             if (comp->is_var()) {
                 globals.push_back(comp->as_var());
             }
+            if (comp->is_init()) {
+                globals.push_back(comp->as_init()->tensor);
+            }
             if (comp->is_def()) {
                 auto def = comp->as_def();
                 auto lhs = std::vector<std::shared_ptr<TensorVar>>();
@@ -416,6 +419,10 @@ namespace einsum {
         return dynamic_cast<const Initialize*>(this) != nullptr;
     }
 
+    bool ModuleComponent::is_tuple_var() const {
+        return dynamic_cast<const TupleVar*>(this) != nullptr;
+    }
+
     std::shared_ptr<Initialize> ModuleComponent::as_init() {
         try {
             return std::dynamic_pointer_cast<Initialize>(this->shared_from_this());
@@ -431,6 +438,14 @@ namespace einsum {
     std::shared_ptr<BuiltinFuncDecl> ModuleComponent::as_builtin() {
         try {
             return std::dynamic_pointer_cast<BuiltinFuncDecl>(this->shared_from_this());
+        } catch (const std::bad_weak_ptr& exp) {
+            std::abort();
+        }
+    }
+
+    std::shared_ptr<TupleVar> ModuleComponent::as_tuple_var() {
+        try {
+            return std::dynamic_pointer_cast<TupleVar>(this->shared_from_this());
         } catch (const std::bad_weak_ptr& exp) {
             std::abort();
         }
@@ -486,7 +501,7 @@ namespace einsum {
             auto ind = indices[i];
             auto index_var = std::dynamic_pointer_cast<T>(ind);
             if (index_var) {
-                auto dimension = tensor->getType()->getDimension(i);
+                auto dimension = tensor->getDimensions()[i];
                 dims[index_var->getName()].insert(dimension);
             }
         }
@@ -570,12 +585,15 @@ namespace einsum {
     void DefaultIRVisitor::visit(std::shared_ptr<IndexVar> node) { throw std::runtime_error(name() + " IMPLEMENT ME: IndexVar!");}
     void DefaultIRVisitor::visit(std::shared_ptr<Literal> node) { throw std::runtime_error(name() + " IMPLEMENT ME: Literal!");}
     void DefaultIRVisitor::visit(std::shared_ptr<TensorVar> node) { throw std::runtime_error(name() + " IMPLEMENT ME: TensorVar!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<TupleVar> node) { throw std::runtime_error(name() + " IMPLEMENT ME: TupleVar!");}
     void DefaultIRVisitor::visit(std::shared_ptr<IndexVarExpr> node) { throw std::runtime_error(name() + " IMPLEMENT ME: IndexVarExpr!");}
     void DefaultIRVisitor::visit(std::shared_ptr<Access> node) { throw std::runtime_error(name() + " IMPLEMENT ME: Access!");}
     void DefaultIRVisitor::visit(std::shared_ptr<ReadAccess> node) { throw std::runtime_error(name() + " IMPLEMENT ME: ReadAccess!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<TupleVarReadAccess> node) { throw std::runtime_error(name() + " IMPLEMENT ME: TupleVarReadAccess!");}
     void DefaultIRVisitor::visit(std::shared_ptr<BinaryOp> node) { throw std::runtime_error(name() + " IMPLEMENT ME: BinaryOp!");}
     void DefaultIRVisitor::visit(std::shared_ptr<UnaryOp> node) { throw std::runtime_error(name() + " IMPLEMENT ME: UnaryOp!");}
     void DefaultIRVisitor::visit(std::shared_ptr<Definition> node) { throw std::runtime_error(name() + " IMPLEMENT ME: Definition!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<MultipleOutputDefinition> node) { throw std::runtime_error(name() + " IMPLEMENT ME: MultipleOutputDefinition!");}
     void DefaultIRVisitor::visit(std::shared_ptr<Allocate> node) { throw std::runtime_error(name() + " IMPLEMENT ME: Allocate!");}
     void DefaultIRVisitor::visit(std::shared_ptr<MemAssignment> node) { throw std::runtime_error(name() + " IMPLEMENT ME: MemAssignment!");}
     void DefaultIRVisitor::visit(std::shared_ptr<Initialize> node) { throw std::runtime_error(name() + " IMPLEMENT ME: Initialize!");}
@@ -595,4 +613,32 @@ namespace einsum {
     void DefaultIRVisitor::visit(std::shared_ptr<TensorType> node) { throw std::runtime_error(name() + " IMPLEMENT ME: TensorType!");}
     void DefaultIRVisitor::visit(std::shared_ptr<TupleType> node) { throw std::runtime_error(name() + " IMPLEMENT ME: TupleType!");}
     void DefaultIRVisitor::visit(std::shared_ptr<Operator> node) { throw std::runtime_error(name() + " IMPLEMENT ME: Operator!");}
+
+    std::string TupleVarReadAccess::dump() const {
+        return "<" + std::to_string(idx) + ">" + var->dump();
+    }
+
+    std::shared_ptr<Type> TupleVarReadAccess::getType() const {
+        return var->type;
+    }
+
+    std::vector<std::shared_ptr<IndexVar>> TupleVarReadAccess::getIndices() {
+        return {};
+    }
+
+    std::map<std::string, std::set<std::shared_ptr<Expression>>> TupleVarReadAccess::getIndexVarDims(IRContext* context) const {
+        return {};
+    }
+
+    std::string TupleVar::dump() const {
+        return name;
+    }
+
+    std::shared_ptr<Type> TupleVar::getType() const {
+        return type;
+    }
+
+    std::string MultipleOutputDefinition::dump() const {
+        return lhs->dump() + " = " + rhs->dump();
+    }
 }

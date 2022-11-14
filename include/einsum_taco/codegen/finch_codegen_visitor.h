@@ -32,19 +32,23 @@ namespace einsum {
 //
         void visit(std::shared_ptr<Literal> node) override;
 //
-//        void visit(std::shared_ptr<TensorVar> node) override;
+        void visit(std::shared_ptr<TensorVar> node) override;
 //
 //        void visit(std::shared_ptr<IndexVarExpr> node) override;
 //
-//        void visit(std::shared_ptr<Access> node) override;
+        void visit(std::shared_ptr<Access> node) override;
 //
         void visit(std::shared_ptr<ReadAccess> node) override;
+
+        void visit(std::shared_ptr<TupleVarReadAccess> node) override;
 //
         void visit(std::shared_ptr<BinaryOp> node) override;
 //
         void visit(std::shared_ptr<UnaryOp> node) override;
 //
         void visit(std::shared_ptr<Definition> node) override;
+
+        void visit(std::shared_ptr<MultipleOutputDefinition> node) override;
 //
         void visit(std::shared_ptr<Allocate> node) override;
 //
@@ -137,6 +141,8 @@ namespace einsum {
 
         void visit(std::shared_ptr<ReadAccess> node) override;
 
+        void visit(std::shared_ptr<TupleVarReadAccess> node) override;
+
         void visit(std::shared_ptr<BinaryOp> node) override;
 
         void visit(std::shared_ptr<UnaryOp> node) override;
@@ -168,6 +174,8 @@ namespace einsum {
         void visit(std::shared_ptr<IndexVarExpr> node) override;
 
         void visit(std::shared_ptr<ReadAccess> node) override;
+
+        void visit(std::shared_ptr<TupleVarReadAccess> node) override;
 
         void visit(std::shared_ptr<BinaryOp> node) override;
 

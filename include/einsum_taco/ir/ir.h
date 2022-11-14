@@ -25,6 +25,7 @@ namespace einsum {
     struct Definition;
     struct Expression;
     struct TensorVar;
+    struct TupleVar;
     struct Allocate;
     struct MemAssignment;
     struct Initialize;
@@ -38,6 +39,9 @@ namespace einsum {
 
         bool is_var() const;
         std::shared_ptr<TensorVar> as_var();
+
+        bool is_tuple_var() const;
+        std::shared_ptr<TupleVar> as_tuple_var();
 
         bool is_def() const;
         std::shared_ptr<Definition> as_def();
@@ -179,6 +183,17 @@ namespace einsum {
         std::shared_ptr<Type> getType() const override;
     };
 
+    struct TupleVar : Acceptor<TupleVar, ModuleComponent> {
+        std::string name;
+        std::shared_ptr<TupleType> type;
+
+        TupleVar(std::string name, std::shared_ptr<TupleType> type) : name(name), type(type) {}
+
+        std::string dump() const override;
+
+        std::shared_ptr<Type> getType() const;
+    };
+
     struct TensorVar : Acceptor<TensorVar, ModuleComponent> {
         std::string name;
         std::shared_ptr<TensorType>  type;
@@ -207,7 +222,7 @@ namespace einsum {
             return getType()->getOrder();
         }
 
-        std::vector<std::shared_ptr<Expression>> getDimensions() {
+        std::vector<std::shared_ptr<Expression>> getDimensions() const {
             return getType()->getDimensions();
         }
     };
@@ -330,6 +345,29 @@ namespace einsum {
         std::set<std::string> getReductionVars() const;
     };
 
+    struct TupleVarReadAccess : Acceptor<TupleVarReadAccess, Expression> {
+        std::shared_ptr<TupleVar> var;
+        int idx;
+
+        TupleVarReadAccess(std::shared_ptr<TupleVar> var, int idx) : var(var), idx(idx) {}
+
+        std::shared_ptr<Type> getType() const override;
+        std::string dump() const override;
+        std::vector<std::shared_ptr<IndexVar>> getIndices() override;
+        std::map<std::string, std::set<std::shared_ptr<Expression>>> getIndexVarDims(IRContext* context) const override;
+    };
+
+    struct Call;
+
+    struct MultipleOutputDefinition : Acceptor<MultipleOutputDefinition, Statement> {
+        std::shared_ptr<TupleVar> lhs;
+        std::shared_ptr<Call> rhs;
+
+        MultipleOutputDefinition(std::shared_ptr<TupleVar> lhs, std::shared_ptr<Call> rhs) : lhs(lhs), rhs(rhs) {}
+
+        std::string dump() const override;
+    };
+
     struct FuncDecl : Acceptor<FuncDecl, ModuleComponent> {
         std::string funcName;
         std::vector<std::shared_ptr<TensorVar>> inputs;
@@ -446,12 +484,15 @@ namespace einsum {
         virtual void visit(std::shared_ptr<IndexVar> node) = 0;
         virtual void visit(std::shared_ptr<Literal> node) = 0;
         virtual void visit(std::shared_ptr<TensorVar> node) = 0;
+        virtual void visit(std::shared_ptr<TupleVar> node) = 0;
         virtual void visit(std::shared_ptr<IndexVarExpr> node) = 0;
         virtual void visit(std::shared_ptr<Access> node) = 0;
         virtual void visit(std::shared_ptr<ReadAccess> node) = 0;
+        virtual void visit(std::shared_ptr<TupleVarReadAccess> node) = 0;
         virtual void visit(std::shared_ptr<BinaryOp> node) = 0;
         virtual void visit(std::shared_ptr<UnaryOp> node) = 0;
         virtual void visit(std::shared_ptr<Definition> node) = 0;
+        virtual void visit(std::shared_ptr<MultipleOutputDefinition> node) = 0;
         virtual void visit(std::shared_ptr<Allocate> node) = 0;
         virtual void visit(std::shared_ptr<MemAssignment> node) = 0;
         virtual void visit(std::shared_ptr<Initialize> node) = 0;
@@ -494,12 +535,15 @@ namespace einsum {
         void visit(std::shared_ptr<IndexVar> node) override;
         void visit(std::shared_ptr<Literal> node) override;
         void visit(std::shared_ptr<TensorVar> node) override;
+        void visit(std::shared_ptr<TupleVar> node) override;
         void visit(std::shared_ptr<IndexVarExpr> node) override;
         void visit(std::shared_ptr<Access> node) override;
+        void visit(std::shared_ptr<TupleVarReadAccess> node) override;
         void visit(std::shared_ptr<ReadAccess> node) override;
         void visit(std::shared_ptr<BinaryOp> node) override;
         void visit(std::shared_ptr<UnaryOp> node) override;
         void visit(std::shared_ptr<Definition> node) override;
+        void visit(std::shared_ptr<MultipleOutputDefinition> node) override;
         void visit(std::shared_ptr<Allocate> node) override;
         void visit(std::shared_ptr<MemAssignment> node) override;
         void visit(std::shared_ptr<Initialize> node) override;

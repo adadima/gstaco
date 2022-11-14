@@ -22,15 +22,14 @@ namespace einsum {
         std::shared_ptr<Statement> visit(const std::shared_ptr<Statement>& node);
         virtual void visit_decl(const std::shared_ptr<FuncDecl>& node);
 
-        template<typename T>
-        void visit_call(T& node);
+        virtual void visit_call(std::shared_ptr<Call> node);
 
     public:
           std::shared_ptr<IR> node_;
 
         explicit IRRewriter(IRContext* context) : context(context) {}
 
-        template <typename T = IR>
+        template <typename T>
         std::shared_ptr<T> rewrite(const std::shared_ptr<T>& node) {
             if (!node) {
                 return node;
@@ -46,10 +45,13 @@ namespace einsum {
         void visit(std::shared_ptr<IndexVar> node) override;
         void visit(std::shared_ptr<Literal> node) override;
         void visit(std::shared_ptr<TensorVar> node) override;
+        void visit(std::shared_ptr<TupleVar> node) override;
         void visit(std::shared_ptr<IndexVarExpr> node) override;
         void visit(std::shared_ptr<Access> node) override;
         void visit(std::shared_ptr<ReadAccess> node) override;
+        void visit(std::shared_ptr<TupleVarReadAccess> node) override;
         void visit(std::shared_ptr<Definition> node) override;
+        void visit(std::shared_ptr<MultipleOutputDefinition> node) override;
         void visit(std::shared_ptr<Allocate> node) override;
         void visit(std::shared_ptr<MemAssignment> node) override;
         void visit(std::shared_ptr<Initialize> node) override;

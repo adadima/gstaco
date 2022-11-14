@@ -57,6 +57,16 @@ namespace einsum {
         void visit(std::shared_ptr<Module> node) override;
     };
 
+    struct CallRewriter : public IRRewriter {
+        std::map<std::shared_ptr<ModuleComponent>,std::shared_ptr<Call>> inner_calls;
+        int call_id = 0;
+        int call_output_idx = 0;
+        explicit CallRewriter(IRContext* context) : IRRewriter(context) {}
+
+        void visit_decl(const std::shared_ptr<FuncDecl>& node) override;
+        void visit_call(std::shared_ptr<Call> node) override;
+    };
+
     std::shared_ptr<Module> apply_custom_rewriters(std::shared_ptr<Module> mod, const std::vector<IRRewriter*>& rewriters) {
         for (auto& rewriter: rewriters) {
             mod->accept(rewriter);
@@ -71,7 +81,8 @@ namespace einsum {
                 new TensorVarRewriter(new IRContext()),
                 new FuncDeclRewriter(new IRContext()),
                 new IndexDimensionRewriter(new IRContext()),
-                new AllocateInserter(new IRContext())
+                new AllocateInserter(new IRContext()),
+                new CallRewriter(new IRContext()),
         };
         return apply_custom_rewriters(mod, rewriters);
     }

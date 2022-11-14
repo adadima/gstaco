@@ -141,5 +141,107 @@ namespace einsum {
         IRRewriter::visit(node);
         reduction_ops.insert(node->reductionOp);
     }
+
+    void CallRewriter::visit_decl(const std::shared_ptr<FuncDecl> &node) {
+        auto new_stmts = std::vector<std::shared_ptr<Statement>>();
+
+        for (auto &stmt: node->body) {
+            if (stmt->is_def()) {
+                std::cout << "OLD: " << stmt->dump() << "\n";
+                inner_calls.clear();
+                stmt = rewrite(stmt);
+
+                if(inner_calls.empty()) {
+                    new_stmts.push_back(stmt);
+                    continue;
+                }
+
+                std::shared_ptr<Statement> new_stmt;
+                for(auto&[tensor,call]: inner_calls) {
+                    // A,B,C = func(...)  =>
+                    // temp = func(...);
+                    //
+                    // temp_0 = get<0>(temp);
+                    // A = temp_0;
+                    //
+                    // temp_1 = get<1>(temp);
+                    // B = temp_1;
+                    //....
+                    if (tensor->is_tuple_var()) {
+                        auto t = tensor->as_tuple_var();
+                        new_stmt = IR::make<MultipleOutputDefinition>(t, call);
+                        new_stmts.push_back(new_stmt);
+                        std::cout << "REPLACE: " << new_stmt->dump() << "\n";
+                        auto def = stmt->as_def();
+                        for(size_t i=0; i < def->lhs.size(); i++) {
+                            std::shared_ptr<TensorType> indexed_tensor_type;
+                            if (auto t_ = std::dynamic_pointer_cast<Datatype>(t->type->tuple[0])) {
+                                indexed_tensor_type = IR::make<TensorType>(t_, std::vector<std::shared_ptr<Expression>>());
+                            } else {
+                                indexed_tensor_type = std::dynamic_pointer_cast<TensorType>(t->type->tuple[0]);
+                            }
+//
+                            auto indexed_tensor = IR::make<TensorVar>(t->name + "_" + std::to_string(i), indexed_tensor_type, false);
+                            auto init = IR::make<Initialize>(indexed_tensor);
+                            new_stmts.push_back(init);
+                            auto index_assign = IR::make<Definition>(IR::make<Access>(indexed_tensor, std::vector<std::shared_ptr<IndexVar>>()), IR::make<TupleVarReadAccess>(t, i));
+                            std::cout << "ADDITIONAL: " << index_assign->dump() << "\n";
+                            new_stmts.push_back(index_assign);
+
+                            auto assign = IR::make<Definition>(def->lhs[i], IR::make<ReadAccess>(indexed_tensor, std::vector<std::shared_ptr<Expression>>()));
+                            std::cout << "ADDITIONAL: " << assign->dump() << "\n";
+                            new_stmts.push_back(assign);
+                        }
+                    } else {
+                        auto t = tensor->as_var();
+                        auto init = IR::make<Initialize>(t);
+                        auto alloc = IR::make<Allocate>(t);
+                        auto acc = IR::make<Access>(t, std::vector<std::shared_ptr<IndexVar>>());
+                        new_stmt = IR::make<Definition>(acc, call);
+                        new_stmts.push_back(init);
+                        new_stmts.push_back(alloc);
+                        std::cout << "ADDITIONAL: " << init->dump() << "\n";
+                        std::cout << "ADDITIONAL: " << alloc->dump() << "\n";
+                        std::cout << "ADDITIONAL: " << new_stmt->dump() << "\n";
+                        new_stmts.push_back(new_stmt);
+                        std::cout << "NEW: " << stmt->dump() << "\n";
+                        new_stmts.push_back(stmt);
+                    }
+                }
+            } else {
+                new_stmts.push_back(IRRewriter::visit(stmt));
+            }
+        }
+
+        node->body = new_stmts;
+        node_ = node;
+    }
+
+    void CallRewriter::visit_call(std::shared_ptr<Call> node) {
+        std::cout << "VISIT CALL\n";
+        auto out_type = std::dynamic_pointer_cast<TupleType>(node->getType());
+        std::string name = "_temp_" + std::to_string(call_id);
+        if (out_type->tuple.size() == 1) {
+            std::shared_ptr<TensorType> type;
+            if (auto t = std::dynamic_pointer_cast<Datatype>(out_type->tuple[0])) {
+                type = IR::make<TensorType>(t, std::vector<std::shared_ptr<Expression>>());
+            } else {
+                type = std::dynamic_pointer_cast<TensorType>(out_type->tuple[0]);
+            }
+            auto tensor = IR::make<TensorVar>(name, type, false);
+            inner_calls.insert({tensor, node});
+            node_ = IR::make<ReadAccess>(tensor, std::vector<std::shared_ptr<Expression>>());
+            std::cout << "Replacing call node: " << node->dump() << "\n";
+            std::cout << "with: " << node_->dump() << "\n";
+        } else {
+//            IRRewriter::visit_call(node);
+            auto output = IR::make<TupleVar>(name, out_type);
+            inner_calls.insert({output, node});
+            node_ = node;
+//            node_ = IR::make<TupleVarReadAccess>(output, call_output_idx);
+        }
+        call_id += 1;
+
+    }
 }
 

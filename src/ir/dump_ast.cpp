@@ -110,7 +110,25 @@ void einsum::DumpAstVisitor::visit(std::shared_ptr<ReadAccess> node) {
     visit_access(node);
 }
 
+void einsum::DumpAstVisitor::visit(std::shared_ptr<TupleVar> node) {
+    ast += node->name;
+}
+
+void einsum::DumpAstVisitor::visit(std::shared_ptr<TupleVarReadAccess> node) {
+    ast += "<" + std::to_string(node->idx) + ">(";
+    node->var->accept(this);
+    ast += ")";
+}
+
+void einsum::DumpAstVisitor::visit(std::shared_ptr<MultipleOutputDefinition> node) {
+    node->lhs->accept(this);
+    ast += " = ";
+    node->rhs->accept(this);
+    ast += "\n";
+}
+
 void einsum::DumpAstVisitor::visit(std::shared_ptr<Definition> node) {
+    std::cout << node->dump() << "\n";
     indent();
 
     auto lhs = visit_array(node->lhs);

@@ -8,7 +8,7 @@
 #include<einsum_taco/ir/ir.h>
 
 namespace einsum{
-    class DumpAstVisitor : public IRVisitor {
+    class DumpAstVisitor : public DefaultIRVisitor {
     public:
         std::string ast;
         int indent_ = 0;
@@ -16,13 +16,16 @@ namespace einsum{
         void visit(std::shared_ptr<IndexVar> node) override;
 
         void visit(std::shared_ptr<Literal> node) override;
+        void visit(std::shared_ptr<TupleVar> node) override;
         void visit(std::shared_ptr<TensorVar> node) override;
         void visit(std::shared_ptr<IndexVarExpr> node) override;
         void visit(std::shared_ptr<Access> node) override;
         void visit(std::shared_ptr<ReadAccess> node) override;
+        void visit(std::shared_ptr<TupleVarReadAccess> node) override;
         void visit(std::shared_ptr<BinaryOp> node) override;
         void visit(std::shared_ptr<UnaryOp> node) override;
         void visit(std::shared_ptr<Definition> node) override;
+        void visit(std::shared_ptr<MultipleOutputDefinition> node) override;
         void visit(std::shared_ptr<Allocate> node) override;
         void visit(std::shared_ptr<MemAssignment> node) override;
         void visit(std::shared_ptr<Initialize> node) override;
