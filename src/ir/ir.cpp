@@ -242,9 +242,7 @@ namespace einsum {
 
         std::string body;
         for (const auto &i : this->body) {
-            if (i->is_def()) {
-                body += "    " + i->dump();
-            }
+            body += "    " + i->dump();
             body += "\n";
         }
         return def + body + "End";
@@ -362,6 +360,18 @@ namespace einsum {
     std::shared_ptr<Definition> ModuleComponent::as_def() {
         try {
             return std::dynamic_pointer_cast<Definition>(this->shared_from_this());
+        } catch (const std::bad_weak_ptr& exp) {
+            std::abort();
+        }
+    }
+
+    bool ModuleComponent::is_multi_def() const {
+        return dynamic_cast<const MultipleOutputDefinition*>(this) != nullptr;
+    }
+
+    std::shared_ptr<MultipleOutputDefinition> ModuleComponent::as_multi_def() {
+        try {
+            return std::dynamic_pointer_cast<MultipleOutputDefinition>(this->shared_from_this());
         } catch (const std::bad_weak_ptr& exp) {
             std::abort();
         }
@@ -496,7 +506,8 @@ namespace einsum {
     template<class T, class E>
     std::map<std::string, std::set<std::shared_ptr<Expression>>>  getDimsFromAccess(const std::shared_ptr<const TensorVar>& tensor, const std::vector<std::shared_ptr<E>>& indices) {
         auto dims = std::map<std::string, std::set<std::shared_ptr<Expression>>> ();
-
+        std::cout << "Tensor: " << tensor->name << ", " << tensor->type->dump() << "\n";
+        std::cout << "Tensor indices: " << indices.size() << "\n";
         for (int i=0; i < indices.size(); i++) {
             auto ind = indices[i];
             auto index_var = std::dynamic_pointer_cast<T>(ind);
@@ -571,17 +582,17 @@ namespace einsum {
     }
 
     std::string Allocate::dump() const {
-        return "";
+        return "malloc " + tensor->name + "\n";
     }
 
     std::string MemAssignment::dump() const {
-        return "";
+        return lhs->dump() + " = " + rhs->dump() + "\n";
     }
 
     std::string Initialize::dump() const {
-        return "";
+        return tensor->type->dump() + " " + tensor->name;
     }
-    std::string DefaultIRVisitor::name() {return "DefaultIRVisitor";}
+
     void DefaultIRVisitor::visit(std::shared_ptr<IndexVar> node) { throw std::runtime_error(name() + " IMPLEMENT ME: IndexVar!");}
     void DefaultIRVisitor::visit(std::shared_ptr<Literal> node) { throw std::runtime_error(name() + " IMPLEMENT ME: Literal!");}
     void DefaultIRVisitor::visit(std::shared_ptr<TensorVar> node) { throw std::runtime_error(name() + " IMPLEMENT ME: TensorVar!");}
@@ -641,4 +652,195 @@ namespace einsum {
     std::string MultipleOutputDefinition::dump() const {
         return lhs->dump() + " = " + rhs->dump();
     }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<TensorVar> node) {
+        node->type->accept(this);
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<TupleVar> node) {
+        node->type->accept(this);
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<Access> node) {
+        node->tensor->accept(this);
+        for(auto& idx: node->indices) {
+            idx->accept(this);
+        }
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<ReadAccess> node) {
+        node->tensor->accept(this);
+        for (auto& idx: node->indices) {
+            idx->accept(this);
+        }
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<BinaryOp> node) {
+        node->left->accept(this);
+        node->right->accept(this);
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<UnaryOp> node) {
+        node->expr->accept(this);
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<Definition> node) {
+        for(auto& acc: node->lhs) {
+            acc->accept(this);
+        }
+        node->rhs->accept(this);
+        for(auto& red: node->reduction_list) {
+            red->accept(this);
+        }
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<MultipleOutputDefinition> node) {
+        node->lhs->accept(this);
+        node->rhs->accept(this);
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<Allocate> node) {
+        node->tensor->accept(this);
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<MemAssignment> node) {
+        node->lhs->accept(this);
+        node->rhs->accept(this);
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<Initialize> node) {
+        node->tensor->accept(this);
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<FuncDecl> node) {
+        for(auto& in: node->inputs) {
+            in->accept(this);
+        }
+        for(auto& out: node->outputs) {
+            out->accept(this);
+        }
+        for(auto& stmt: node->body) {
+            stmt->accept(this);
+        }
+    }
+
+    void DefaultIRVisitorUnsafe::visit_call(std::shared_ptr<Call> node) {
+        for(auto& arg: node->arguments) {
+            arg->accept(this);
+        }
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<Call> node) {
+        visit_call(node);
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<CallStarRepeat> node) {
+        visit_call(node);
+    }
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<CallStarCondition> node) {
+        visit_call(node);
+        node->condition_def->accept(this);
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<Module> node) {
+        for(auto& comp: node->decls) {
+            if (comp->is_builtin()) {
+                continue;
+            }
+            if (comp->is_tuple_var()) {
+                comp->as_tuple_var()->accept(this);
+            }
+            if (comp->is_init()) {
+                comp->as_init()->accept(this);
+            }
+            if (comp->is_decl()) {
+                comp->as_decl()->accept(this);
+            }
+            if (comp->is_var()) {
+                comp->as_var()->accept(this);
+            }
+            if (comp->is_def()) {
+                comp->as_def()->accept(this);
+            }
+            if (comp->is_multi_def()) {
+                comp->as_multi_def()->accept(this);
+            }
+            if (comp->is_expr()) {
+                comp->as_expr()->accept(this);
+            }
+            if (comp->is_allocate()) {
+                comp->as_allocate()->accept(this);
+            }
+            if (comp->is_mem_assign()) {
+                comp->as_mem_assign()->accept(this);
+            }
+        }
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<Reduction> node) {
+        node->reductionVar->accept(this);
+        node->reductionInit->accept(this);
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<TensorType> node) {
+        node->type->accept(this);
+        for(auto& dim: node->dimensions) {
+            dim->accept(this);
+        }
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<TupleType> node) {
+        for(auto& t: node->tuple) {
+            t->accept(this);
+        }
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<IndexVar> node) {
+         // std::cout << name() << ": UNIMPLEMENTED IndexVar\n";
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<Literal> node) {
+         // std::cout << name() << ": UNIMPLEMENTED Literal\n";
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<IndexVarExpr> node) {
+         // std::cout << name() << ": UNIMPLEMENTED IndexVarExpr\n";
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<TupleVarReadAccess> node) {
+         // std::cout << name() << ": UNIMPLEMENTED TupleVarReadAccess\n";
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<Operator> node) {
+         // std::cout << name() << ": UNIMPLEMENTED Operator\n";
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<AndOperator> node) {
+         // std::cout << name() << ": UNIMPLEMENTED AndOperator\n";
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<OrOperator> node) {
+         // std::cout << name() << ": UNIMPLEMENTED OrOperator\n";
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<AddOperator> node) {
+         // std::cout << name() << ": UNIMPLEMENTED AddOperator\n";
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<MulOperator> node) {
+         // std::cout << name() << ": UNIMPLEMENTED MulOperator\n";
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<MinOperator> node) {
+         // std::cout << name() << ": UNIMPLEMENTED MinOperator\n";
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<ChooseOperator> node) {
+         // std::cout << name() << ": UNIMPLEMENTED ChooseOperator";
+    }
+
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<Datatype> node) {
+         //  // std::cout << name() << ": UNIMPLEMENTED Datatype\n";
+    }
+
 }

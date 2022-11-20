@@ -102,6 +102,7 @@ public:
 //         print ast for debug
         new_module->accept(&printer);
         std::cout << printer.ast;
+        std::cout << new_module->dump();
 
         // code generation
         new_module->accept(&generator);
@@ -285,11 +286,11 @@ INSTANTIATE_TEST_CASE_P(
 //                make_tuple("call_condition2", get_compiler_path(), true, ExecutionParams()),
                 make_tuple("call_repeat1", get_compiler_path(), true, ExecutionParams()),
                 make_tuple("call_repeat2", get_compiler_path(), true, ExecutionParams()),
-                make_tuple("call_repeat3", get_compiler_path(), true, ExecutionParams())
+                make_tuple("call_repeat3", get_compiler_path(), true, ExecutionParams()),
 //                make_tuple("call_repeat4", get_compiler_path(), true, ExecutionParams()),
 //                make_tuple("call_repeat5", get_compiler_path(), true, ExecutionParams())
-//                make_tuple("outer_loop_var1", get_compiler_path(), true, ExecutionParams()),
-//                make_tuple("outer_loop_var2", get_compiler_path(), true, ExecutionParams())
+                make_tuple("outer_loop_var1", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("outer_loop_var2", get_compiler_path(), true, ExecutionParams())
         ));
 
 struct PageRankExecutionParams : ExecutionParams {

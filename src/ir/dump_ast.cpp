@@ -406,4 +406,8 @@ void einsum::DumpAstVisitor::visit(shared_ptr<ChooseOperator> node) {
 
 }
 
+std::string einsum::DumpAstVisitor::name() {
+    return "DumpAstVisitor";
+}
+
 

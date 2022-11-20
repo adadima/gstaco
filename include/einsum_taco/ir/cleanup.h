@@ -17,12 +17,6 @@ namespace einsum {
         void visit(std::shared_ptr<ReadAccess> node) override;
     };
 
-    struct FuncDeclRewriter : public IRRewriter {
-        explicit FuncDeclRewriter(IRContext* context) : IRRewriter(context) {}
-
-        void visit(std::shared_ptr<FuncDecl> node) override;
-    };
-
     struct IndexDimensionRewriter : public IRRewriter {
 
         explicit IndexDimensionRewriter(IRContext* context) : IRRewriter(context) {}
@@ -67,6 +61,27 @@ namespace einsum {
         void visit_call(std::shared_ptr<Call> node) override;
     };
 
+    struct CallStarConditionProcessor : public IRRewriter {
+        std::set<std::shared_ptr<TensorVar>> condition_tensors;
+        int call_id = 0;
+
+        explicit CallStarConditionProcessor(IRContext* context) : IRRewriter(context) {}
+
+        void visit_decl(const std::shared_ptr<FuncDecl>& node);
+        void visit(std::shared_ptr<CallStarCondition> node) override;
+        void visit_call(std::shared_ptr<Call> node) override;
+    };
+
+    struct DefinitionSplitter : public IRRewriter {
+        std::set<std::shared_ptr<Definition>> new_defs;
+        int def_id = 0;
+
+        explicit DefinitionSplitter(IRContext* context) : IRRewriter(context) {}
+
+        void visit(std::shared_ptr<Definition> node) override;
+        void visit(std::shared_ptr<MultipleOutputDefinition> node) override;
+    };
+
     std::shared_ptr<Module> apply_custom_rewriters(std::shared_ptr<Module> mod, const std::vector<IRRewriter*>& rewriters) {
         for (auto& rewriter: rewriters) {
             mod->accept(rewriter);
@@ -79,10 +94,12 @@ namespace einsum {
         std::vector<IRRewriter*> rewriters = {
                 new ReductionOpGenerator(new IRContext()),
                 new TensorVarRewriter(new IRContext()),
-                new FuncDeclRewriter(new IRContext()),
+//                new FuncDeclRewriter(new IRContext()),
                 new IndexDimensionRewriter(new IRContext()),
                 new AllocateInserter(new IRContext()),
                 new CallRewriter(new IRContext()),
+                new CallStarConditionProcessor(new IRContext()),
+                new DefinitionSplitter(new IRContext())
         };
         return apply_custom_rewriters(mod, rewriters);
     }

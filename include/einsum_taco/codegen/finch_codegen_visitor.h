@@ -21,6 +21,7 @@ namespace einsum {
         int def_id = 0;
         std::unordered_map<int, std::vector<std::shared_ptr<TensorVar>>> def2tensor_args;
         std::unordered_map<int, std::string> def2func_ptr;
+        std::unordered_map<int, bool> def2needs_finch;
 
         FinchCodeGenVisitor(std::ostream* oss_cpp, std::ostream* oss_h, std::ostream* oss_drive, std::string module_name, bool main=true);
         ~FinchCodeGenVisitor();
@@ -106,7 +107,7 @@ namespace einsum {
 
         void generate_for_loop(const std::string& var, const std::shared_ptr<Expression>& dim);
 
-        void generate_while_loop(const std::shared_ptr<Expression>& condition);
+        void generate_while_loop(const std::shared_ptr<CallStarCondition>& node);
 
         void get_lambda_return(const std::shared_ptr<TupleType>& output_type, int num_outputs);
 
@@ -124,14 +125,17 @@ namespace einsum {
     struct DefinitionVisitor : DefaultIRVisitor {
         std::ostream* oss;
         std::unordered_set<std::string> tensors;
+        std::unordered_map<int, bool> def2needs_finch;
 
-        explicit DefinitionVisitor(std::ostream* oss) : oss(oss) {};
+        explicit DefinitionVisitor(std::ostream* oss, std::unordered_map<int, bool>& def2needs_finch) : oss(oss), def2needs_finch(def2needs_finch) {};
 
         std::string name() override {
             return "DefinitionVisitor";
         }
 
         void visit(std::shared_ptr<Definition> node) override;
+
+        void visit(std::shared_ptr<MultipleOutputDefinition> node) override;
 
         void visit(std::shared_ptr<Literal> node) override;
 
@@ -157,6 +161,57 @@ namespace einsum {
 
     };
 
+    struct FinchDefinitionChecker : DefaultIRVisitor {
+        bool needs_finch = false;
+
+        FinchDefinitionChecker() = default;
+
+        std::string name() override {
+            return "FinchDefinitionChecker";
+        }
+
+        void visit(std::shared_ptr<Definition> node) override;
+
+        void visit(std::shared_ptr<MultipleOutputDefinition> node) override;
+
+        void visit(std::shared_ptr<Literal> node) override;
+
+        void visit(std::shared_ptr<IndexVarExpr> node) override;
+
+        void visit(std::shared_ptr<Access> node) override;
+
+        void visit(std::shared_ptr<ReadAccess> node) override;
+
+        void visit(std::shared_ptr<TupleVarReadAccess> node) override;
+
+        void visit(std::shared_ptr<CallStarCondition> node) override;
+
+        void visit(std::shared_ptr<Call> node) override;
+
+        void visit(std::shared_ptr<CallStarRepeat> node) override;
+
+        void visit_call(std::shared_ptr<Call> node);
+
+        void visit(std::shared_ptr<TensorVar> node) override;
+
+        void visit(std::shared_ptr<BinaryOp> node) override;
+
+        void visit(std::shared_ptr<UnaryOp> node) override;
+    };
+
+    struct NeedsFinchVisitor : DefaultIRVisitorUnsafe {
+        std::unordered_map<int, bool> def2needs_finch;
+        int def_id = 0;
+
+        NeedsFinchVisitor() = default;
+
+        std::string name() override {
+            return "NeedsFinchVisitor";
+        }
+
+        void visit(std::shared_ptr<Definition> node) override;
+    };
+
     struct TensorCollector : DefaultIRVisitor {
         std::unordered_set<std::string> seen;
         std::vector<std::shared_ptr<TensorVar>> tensors;
@@ -168,6 +223,8 @@ namespace einsum {
         }
 
         void visit(std::shared_ptr<Definition> node) override;
+
+        void visit(std::shared_ptr<MultipleOutputDefinition> node) override;
 
         void visit(std::shared_ptr<Literal> node) override;
 
@@ -192,7 +249,7 @@ namespace einsum {
         void visit(std::shared_ptr<TensorVar> node) override;
     };
 
-    struct FuncPtr2TensorArgsMapper : DefaultIRVisitor {
+    struct FuncPtr2TensorArgsMapper : DefaultIRVisitorUnsafe {
         std::unordered_map<int, std::vector<std::shared_ptr<TensorVar>>> def2tensor_args;
         std::unordered_map<int, std::string> def2func_ptr;
         int def_id = 0;
@@ -205,12 +262,16 @@ namespace einsum {
 
         void visit(std::shared_ptr<Definition> node) override;
 
+        void visit(std::shared_ptr<MultipleOutputDefinition> node) override;
+
         void visit(std::shared_ptr<FuncDecl> node) override;
 
         void visit(std::shared_ptr<Module> node) override;
+
+        void visit(std::shared_ptr<CallStarCondition> node) override;
     };
 
-    struct JlFunctionInitializer : DefaultIRVisitor {
+    struct JlFunctionInitializer : DefaultIRVisitorUnsafe {
         std::ostream* oss;
         int def_id = 0;
 
@@ -222,18 +283,24 @@ namespace einsum {
 
         void visit(std::shared_ptr<Definition> node) override;
 
+        void visit(std::shared_ptr<MultipleOutputDefinition> node) override;
+
         void visit(std::shared_ptr<FuncDecl> node) override;
 
         void visit(std::shared_ptr<Module> node) override;
     };
 
-    struct FinchCompileVisitor : DefaultIRVisitor {
+    struct FinchCompileVisitor : DefaultIRVisitorUnsafe {
         std::ostream* oss;
+        std::ostream* junk;
+        std::ostream* finch;
         std::unordered_map<int, std::vector<std::shared_ptr<TensorVar>>> def2args;
         int def_id = 0;
         std::string module;
+        std::unordered_map<int, bool> def2needs_finch;
+        bool explore_mode = false;
 
-        FinchCompileVisitor(std::string module, std::ostream* oss, std::unordered_map<int, std::vector<std::shared_ptr<TensorVar>>>& def2args) : oss(oss), def2args(def2args), module(module) {};
+        FinchCompileVisitor(std::string& module, std::ostream* finch_oss, std::ostream* junk_oss, std::unordered_map<int, std::vector<std::shared_ptr<TensorVar>>>& def2args, std::unordered_map<int, bool>& def2needs_finch) : oss(finch_oss), finch(finch_oss), junk(junk_oss), def2args(def2args), module(module), def2needs_finch(def2needs_finch) {};
 
         std::string name() override {
             return "FinchCompileVisitor";
@@ -244,6 +311,8 @@ namespace einsum {
         void visit(std::shared_ptr<FuncDecl> node) override;
 
         void visit(std::shared_ptr<Definition> node) override;
+
+        void visit(std::shared_ptr<MultipleOutputDefinition> node) override;
 
         void visit(std::shared_ptr<Literal> node) override;
 
@@ -274,6 +343,8 @@ namespace einsum {
         void visit(std::shared_ptr<UnaryOp> node) override;
 
         void visit(std::shared_ptr<Call> node) override;
+
+        void visit(std::shared_ptr<CallStarCondition> node) override;
     };
 
     std::string fdump(std::shared_ptr<Datatype> node);

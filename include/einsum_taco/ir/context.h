@@ -39,6 +39,7 @@ namespace einsum {
 
         std::shared_ptr<FuncDecl> func_scope_;
         DefinitionScope* def_scope_;
+        std::shared_ptr<Call> call_scope_;
         std::shared_ptr<Access> access_scope_;
         std::shared_ptr<ReadAccess> read_access_scope_;
         std::stack<std::shared_ptr<TensorVar>> tensor_scope_;
@@ -67,6 +68,10 @@ namespace einsum {
 
         DefinitionScope*& def_scope() {
             return def_scope_;
+        }
+
+        std::shared_ptr<Call>& call_scope() {
+            return call_scope_;
         }
 
         std::shared_ptr<Access>& access_scope() {
@@ -129,6 +134,10 @@ namespace einsum {
             def_scope() = scope;
         }
 
+        void enter_call(const std::shared_ptr<Call>& call) {
+            call_scope() = call;
+        }
+
         std::shared_ptr<IndexVar> get_index_var(std::string name) {
             if (tensor_scope().empty()) {
                 auto dim = def_scope()->getDimension(name);
@@ -181,6 +190,10 @@ namespace einsum {
             def_scope() = nullptr;
         }
 
+        void exit_call(std::shared_ptr<Call> call) {
+            call_scope() = nullptr;
+        }
+
         void exit_function(const std::shared_ptr<FuncDecl>& func) {
             functions_.emplace(func->funcName, func);
             locals_.clear();
@@ -196,13 +209,17 @@ namespace einsum {
                 return t;
             }
             if (globals_.count(tensor->name) > 0) {
-                    return globals_[tensor->name];
+                return globals_[tensor->name];
             }
-            return nullptr;
+            return tensor;
         }
 
         std::shared_ptr<TensorVar> get_write_tensor(const std::shared_ptr<TensorVar>& tensor) {
-            return get_param(tensor, func_scope()->outputs);
+            auto t = get_param(tensor, func_scope()->outputs);
+            if (t == nullptr) {
+                return tensor;
+            }
+            return t;
         }
 
         void enter_access(const std::shared_ptr<Access>& access) {

@@ -46,6 +46,8 @@ namespace einsum{
         void visit(std::shared_ptr<TupleType> node) override;
         void visit(std::shared_ptr<Operator> node) override;
 
+        std::string name() override;
+
         std::string get_indent() const;
 
         void indent();

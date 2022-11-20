@@ -8,6 +8,15 @@
 
 namespace einsum {
 
+    int parse_index(const std::string& var) {
+        auto nth = std::stoi(var.substr(1));
+        return nth - 1;
+    }
+
+    std::string parse_variable_name(int nth) {
+        return "out" + std::to_string(nth);
+    }
+
     void TensorVarRewriter::visit(std::shared_ptr<TensorVar> node) {
         if (node->name == "_") {
             node_ = node;
@@ -25,6 +34,13 @@ namespace einsum {
             std::cout << "PRoblematic tensor: " << node->name << std::endl;
         }
         tensor->is_global = context->is_global(tensor);
+        if (tensor->name.rfind('#', 0) == 0) {
+            std::cout << "TUPLE TYPE: " << context->call_scope()->function->getOutputType()->dump() << "\n";
+            int idx = parse_index(tensor->name);
+            tensor->name = parse_variable_name(idx);
+            tensor->type = context->call_scope()->function->inputs[idx]->type;
+            std::cout << "Element " << idx << " of tuple type: " << tensor->type->dump() << "\n";
+        }
         node_ = tensor;
     }
 
@@ -34,10 +50,6 @@ namespace einsum {
             node_ = IR::make<IndexVarExpr>(ivar);
             return;
         }
-        IRRewriter::visit(node);
-    }
-
-    void FuncDeclRewriter::visit(std::shared_ptr<FuncDecl> node) {
         IRRewriter::visit(node);
     }
 
@@ -147,7 +159,6 @@ namespace einsum {
 
         for (auto &stmt: node->body) {
             if (stmt->is_def()) {
-                std::cout << "OLD: " << stmt->dump() << "\n";
                 inner_calls.clear();
                 stmt = rewrite(stmt);
 
@@ -175,10 +186,10 @@ namespace einsum {
                         auto def = stmt->as_def();
                         for(size_t i=0; i < def->lhs.size(); i++) {
                             std::shared_ptr<TensorType> indexed_tensor_type;
-                            if (auto t_ = std::dynamic_pointer_cast<Datatype>(t->type->tuple[0])) {
+                            if (auto t_ = std::dynamic_pointer_cast<Datatype>(t->type->tuple[i])) {
                                 indexed_tensor_type = IR::make<TensorType>(t_, std::vector<std::shared_ptr<Expression>>());
                             } else {
-                                indexed_tensor_type = std::dynamic_pointer_cast<TensorType>(t->type->tuple[0]);
+                                indexed_tensor_type = std::dynamic_pointer_cast<TensorType>(t->type->tuple[i]);
                             }
 //
                             auto indexed_tensor = IR::make<TensorVar>(t->name + "_" + std::to_string(i), indexed_tensor_type, false);
@@ -234,14 +245,62 @@ namespace einsum {
             std::cout << "Replacing call node: " << node->dump() << "\n";
             std::cout << "with: " << node_->dump() << "\n";
         } else {
-//            IRRewriter::visit_call(node);
             auto output = IR::make<TupleVar>(name, out_type);
             inner_calls.insert({output, node});
             node_ = node;
-//            node_ = IR::make<TupleVarReadAccess>(output, call_output_idx);
         }
         call_id += 1;
 
+    }
+
+    void CallStarConditionProcessor::visit(std::shared_ptr<CallStarCondition> node) {
+        std::string name = "call_condition_" + std::to_string(call_id);
+        auto one = IR::make<Literal>(1, IR::make<Datatype>(Datatype::Kind::Int));
+        auto type = IR::make<TensorType>(IR::make<Datatype>(Datatype::Kind::Bool), std::vector<std::shared_ptr<einsum::Expression>>({one}));
+        auto tensor = IR::make<TensorVar>(name, type, false);
+        auto idx = IR::make<IndexVar>("i", one);
+        auto acc = IR::make<Access>(tensor, std::vector<std::shared_ptr<IndexVar>>({idx}));
+        node->condition_def = IR::make<Definition>(acc, node->stopCondition);
+        node_ = node;
+        condition_tensors.insert(tensor);
+        IRRewriter::visit(node);
+    }
+
+    void CallStarConditionProcessor::visit_call(std::shared_ptr<Call> node) {
+        for(auto& arg: node->arguments) {
+            arg = rewrite(arg);
+        }
+        node_ = node;
+        call_id += 1;
+    }
+
+    void CallStarConditionProcessor::visit_decl(const std::shared_ptr<FuncDecl>& node) {
+        for(auto& s: node->body) {
+            s = rewrite(s);
+        }
+        auto new_stmts = std::vector<std::shared_ptr<Statement>>();
+
+        for(auto& t: condition_tensors) {
+            new_stmts.push_back(IR::make<Initialize>(t));
+        }
+        auto& old_stmts = node->body;
+        new_stmts.insert(new_stmts.end(), old_stmts.begin(), old_stmts.end());
+        node->body = new_stmts;
+        node_ = node;
+    }
+
+    void DefinitionSplitter::visit(std::shared_ptr<Definition> node) {
+        node->rhs->accept(this);
+        node->id = def_id;
+        node_ = node;
+        def_id += 1;
+    }
+
+    void DefinitionSplitter::visit(std::shared_ptr<MultipleOutputDefinition> node) {
+        node->rhs->accept(this);
+        node->id = def_id;
+        node_ = node;
+        def_id += 1;
     }
 }
 

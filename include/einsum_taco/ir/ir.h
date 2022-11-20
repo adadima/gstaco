@@ -29,6 +29,7 @@ namespace einsum {
     struct Allocate;
     struct MemAssignment;
     struct Initialize;
+    struct MultipleOutputDefinition;
 
     struct ModuleComponent : IR {
         bool is_decl() const;
@@ -45,6 +46,9 @@ namespace einsum {
 
         bool is_def() const;
         std::shared_ptr<Definition> as_def();
+
+        bool is_multi_def() const;
+        std::shared_ptr<MultipleOutputDefinition> as_multi_def();
 
         bool is_expr() const;
         std::shared_ptr<Expression> as_expr();
@@ -291,7 +295,11 @@ namespace einsum {
     };
 
     struct Statement : ModuleComponent {
+        int id = -1;
 
+        Statement() = default;
+
+        explicit Statement(int id) : id(id) {}
     };
 
     struct Allocate : Acceptor<Allocate, Statement> {
@@ -327,16 +335,20 @@ namespace einsum {
         std::vector<std::shared_ptr<Reduction>> reduction_list;
         std::vector<std::shared_ptr<Access>> lhs;
         std::shared_ptr<Expression> rhs;
+        bool skip_codegen = false;
 
-        Definition(std::shared_ptr<Access> lhs, std::shared_ptr<Expression> rhs) :
-                    Definition({lhs}, rhs, {}) {}
+        Definition(std::shared_ptr<Access> lhs, std::shared_ptr<Expression> rhs, bool skip=false, int id=-1) :
+                    Definition({lhs}, rhs, {}, skip, id) {}
 
         Definition(const std::vector<std::shared_ptr<Access>>& lhs,
                    const std::shared_ptr<Expression>& rhs,
-                   const std::vector<std::shared_ptr<Reduction>>&  reds) :
+                   const std::vector<std::shared_ptr<Reduction>>&  reds,
+                   bool skip=false,
+                   int id=-1) : Base(id),
                    lhs(lhs),
                    rhs(rhs),
-                   reduction_list(reds) {}
+                   reduction_list(reds),
+                   skip_codegen(skip) {}
 
         std::string dump() const override;
 
@@ -453,11 +465,13 @@ namespace einsum {
     };
 
     struct CallStarCondition : Acceptor<CallStarCondition, Call> {
-        CallStarCondition(std::shared_ptr<Expression> stopCondition, std::string name, std::vector<std::shared_ptr<Expression>> arguments) :
-                Base(name, arguments), stopCondition(stopCondition) {}
+        std::shared_ptr<Definition> condition_def;
 
-        CallStarCondition(std::shared_ptr<Expression> stopCondition, std::shared_ptr<FuncDecl> function, std::vector<std::shared_ptr<Expression>> arguments) :
-                Base(function, arguments), stopCondition(stopCondition) {}
+        CallStarCondition(std::shared_ptr<Expression> stopCondition, std::string name, std::vector<std::shared_ptr<Expression>> arguments, std::shared_ptr<Definition> condition_def = nullptr) :
+                Base(name, arguments), stopCondition(stopCondition), condition_def(condition_def) {}
+
+        CallStarCondition(std::shared_ptr<Expression> stopCondition, std::shared_ptr<FuncDecl> function, std::vector<std::shared_ptr<Expression>> arguments, std::shared_ptr<Definition> condition_def = nullptr) :
+                Base(function, arguments), stopCondition(stopCondition), condition_def(condition_def) {}
 
         std::string dump() const override;
 
@@ -564,7 +578,42 @@ namespace einsum {
         void visit(std::shared_ptr<TupleType> node) override;
         void visit(std::shared_ptr<Operator> node) override;
 
-        virtual std::string name();
+        virtual std::string name() = 0;
+    };
+
+    struct DefaultIRVisitorUnsafe : DefaultIRVisitor {
+        void visit(std::shared_ptr<IndexVar> node) override;
+        void visit(std::shared_ptr<Literal> node) override;
+        void visit(std::shared_ptr<TensorVar> node) override;
+        void visit(std::shared_ptr<TupleVar> node) override;
+        void visit(std::shared_ptr<IndexVarExpr> node) override;
+        void visit(std::shared_ptr<TupleVarReadAccess> node) override;
+        void visit(std::shared_ptr<Access> node) override;
+        void visit(std::shared_ptr<ReadAccess> node) override;
+        void visit(std::shared_ptr<BinaryOp> node) override;
+        void visit(std::shared_ptr<UnaryOp> node) override;
+        void visit(std::shared_ptr<Definition> node) override;
+        void visit(std::shared_ptr<MultipleOutputDefinition> node) override;
+        void visit(std::shared_ptr<Allocate> node) override;
+        void visit(std::shared_ptr<MemAssignment> node) override;
+        void visit(std::shared_ptr<Initialize> node) override;
+        void visit(std::shared_ptr<FuncDecl> node) override;
+        void visit(std::shared_ptr<Call> node) override;
+        void visit(std::shared_ptr<CallStarRepeat> node) override;
+        void visit(std::shared_ptr<CallStarCondition> node) override;
+        void visit(std::shared_ptr<Module> node) override;
+        void visit(std::shared_ptr<Reduction> node) override;
+        void visit(std::shared_ptr<TensorType> node) override;
+        void visit(std::shared_ptr<TupleType> node) override;
+        void visit_call(std::shared_ptr<Call> node);
+        void visit(std::shared_ptr<Operator> node) override;
+        void visit(std::shared_ptr<AndOperator> node) override;
+        void visit(std::shared_ptr<OrOperator> node) override;
+        void visit(std::shared_ptr<AddOperator> node) override;
+        void visit(std::shared_ptr<MulOperator> node) override;
+        void visit(std::shared_ptr<MinOperator> node) override;
+        void visit(std::shared_ptr<ChooseOperator> node) override;
+        void visit(std::shared_ptr<Datatype> node) override;
     };
 }
 

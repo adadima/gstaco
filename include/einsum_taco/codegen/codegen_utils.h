@@ -19,5 +19,4 @@ std::string get_runtime_include_dir();
 
 std::string get_runtime_src_dir();
 
-std::string parse_variable_name(const std::string& var);
 #endif //EINSUM_TACO_CODEGEN_UTILS_H

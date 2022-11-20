@@ -52,7 +52,8 @@ namespace einsum {
     }
 
     void CodeGenVisitor::visit(std::shared_ptr<Access> node) {
-        *oss << parse_variable_name(node->tensor->name);
+        //*oss << parse_variable_name(node->tensor->name);
+        *oss << node->tensor->name;
         if (node->indices.size() == 0) {
             *oss << " = ";
             return;
@@ -63,7 +64,8 @@ namespace einsum {
     }
 
     void CodeGenVisitor::visit(std::shared_ptr<ReadAccess> node) {
-        *oss << parse_variable_name(node->tensor->name);
+        //*oss << parse_variable_name(node->tensor->name);
+        *oss << node->tensor->name;
         if (node->indices.size() == 0) {
             return;
         }

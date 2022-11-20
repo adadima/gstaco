@@ -95,16 +95,24 @@ namespace einsum {
     }
 
     void  IRRewriter::visit(std::shared_ptr<Call> node) {
+        context->enter_call(node);
         visit_call(node);
+        context->exit_call(node);
     }
 
     void  IRRewriter::visit(std::shared_ptr<CallStarRepeat> node) {
+        context->enter_call(node);
         visit_call(node);
+        context->exit_call(node);
     }
 
     void  IRRewriter::visit(std::shared_ptr<CallStarCondition> node) {
+        context->enter_call(node);
         node->stopCondition = rewrite(node->stopCondition);
         visit_call(node);
+        node->condition_def = rewrite(node->condition_def);
+        node_ = node;
+        context->exit_call(node);
     }
 
     void  IRRewriter::visit(std::shared_ptr<Module> node) {
@@ -169,26 +177,37 @@ namespace einsum {
     }
 
     std::shared_ptr<ModuleComponent> IRRewriter::visit(const std::shared_ptr<ModuleComponent>& node) {
-        std::shared_ptr<ModuleComponent> comp;
+        if (node->is_builtin()) {
+            return rewrite(node->as_builtin());
+        }
+        if (node->is_tuple_var()) {
+            return rewrite(node->as_tuple_var());
+        }
+        if (node->is_init()) {
+            return rewrite(node->as_init());
+        }
         if (node->is_decl()) {
-            comp = rewrite(node->as_decl());
+            return rewrite(node->as_decl());
         }
         if (node->is_var()) {
-            comp = rewrite(node->as_var());
+            return rewrite(node->as_var());
         }
         if (node->is_def()) {
-            comp = rewrite(node->as_def());
+            return rewrite(node->as_def());
+        }
+        if (node->is_multi_def()) {
+            return rewrite(node->as_multi_def());
         }
         if (node->is_expr()) {
-            comp = rewrite(node->as_expr());
+            return rewrite(node->as_expr());
         }
         if (node->is_allocate()) {
-            comp = rewrite(node->as_allocate());
+            return rewrite(node->as_allocate());
         }
         if (node->is_mem_assign()) {
-            comp = rewrite(node->as_mem_assign());
+            return rewrite(node->as_mem_assign());
         }
-        return comp;
+        return node;
     }
 
     std::shared_ptr<Statement> IRRewriter::visit(const std::shared_ptr<Statement> &node) {
@@ -198,6 +217,9 @@ namespace einsum {
         }
         if (node->is_def()) {
             return rewrite(node->as_def());
+        }
+        if (node->is_multi_def()) {
+            return rewrite(node->as_multi_def());
         }
         if (node->is_mem_assign()) {
             return rewrite(node->as_mem_assign());
