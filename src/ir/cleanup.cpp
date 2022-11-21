@@ -185,6 +185,9 @@ namespace einsum {
                         std::cout << "REPLACE: " << new_stmt->dump() << "\n";
                         auto def = stmt->as_def();
                         for(size_t i=0; i < def->lhs.size(); i++) {
+                            if (def->lhs[i]->tensor->name == "_") {
+                                continue;
+                            }
                             std::shared_ptr<TensorType> indexed_tensor_type;
                             if (auto t_ = std::dynamic_pointer_cast<Datatype>(t->type->tuple[i])) {
                                 indexed_tensor_type = IR::make<TensorType>(t_, std::vector<std::shared_ptr<Expression>>());

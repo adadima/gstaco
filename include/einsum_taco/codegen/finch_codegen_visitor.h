@@ -345,6 +345,8 @@ namespace einsum {
         void visit(std::shared_ptr<Call> node) override;
 
         void visit(std::shared_ptr<CallStarCondition> node) override;
+
+        void visit(std::shared_ptr<CallStarRepeat> node) override;
     };
 
     std::string fdump(std::shared_ptr<Datatype> node);

@@ -25,13 +25,13 @@ namespace einsum {
             finch_initialize();
             finch_initialize();
         }
-        //                   "using Pkg;"
-        //                   "Pkg.add(\"MatrixMarket\");"
-        //                   "using MatrixMarket;");
         finch_eval("using Finch;"
                    "using RewriteTools;"
                    "using Finch.IndexNotation: or_, choose;"
                    "using SparseArrays;"
+                   "using Pkg;"
+                   "Pkg.add(\"MatrixMarket\");"
+                   "using MatrixMarket;"
         );
     }
 
@@ -132,11 +132,12 @@ namespace einsum {
                              "    jl_value_t* edges;\n"
                              "};\n"
                              "\n"
-                             "int make_weights_and_edges(const char *graph_name, struct Graph* graph);\n"
+                             "int make_weights_and_edges(const char *graph_path, struct Graph* graph);\n"
                              "\n"
                              "void enter_finch();\n"
                              "\n"
-                             "void exit_finch();\n";
+                             "void exit_finch();\n"
+                             "void compile();\n";
         *oss << header;
     }
 
@@ -145,29 +146,27 @@ namespace einsum {
         std::string code = "#include <stdio.h>\n"
                            "\n"
                            "\n"
-                           "int make_weights_and_edges(const char* graph_name, struct Graph* graph) {\n"
+                           "int make_weights_and_edges(const char* graph_path, struct Graph* graph) {\n"
                            "    char code1[1000];\n"
-                           "    sprintf(code1, \"matrix = copy(transpose(MatrixMarket.mmread(\\\"./graphs/%s\\\")))\\n\\\n"
+                           "    sprintf(code1, \"matrix = copy(transpose(MatrixMarket.mmread(\\\"%s\\\")))\\n\\\n"
                            "        (n, m) = size(matrix)\\n\\\n"
                            "        @assert n == m\\n\\\n"
                            "        nzval = ones(size(matrix.nzval, 1))\\n\\\n"
                            "        Finch.Fiber(\\n\\\n"
                            "                 Dense(n,\\n\\\n"
                            "                 SparseList(n, matrix.colptr, matrix.rowval,\\n\\\n"
-                           "                 Element{0}(nzval))))\", graph_name);\n"
+                           "                 Element{0}(nzval))))\", graph_path);\n"
                            "    graph->edges = finch_eval(code1);\n"
-                           "    printf(\"Loaded edges\\n\");\n"
                            "\n"
                            "    char code2[1000];\n"
-                           "    sprintf(code2, \"matrix = copy(transpose(MatrixMarket.mmread(\\\"./graphs/%s\\\")))\\n\\\n"
+                           "    sprintf(code2, \"matrix = copy(transpose(MatrixMarket.mmread(\\\"%s\\\")))\\n\\\n"
                            "        (n, m) = size(matrix)\\n\\\n"
                            "        @assert n == m\\n\\\n"
                            "        Finch.Fiber(\\n\\\n"
                            "                 Dense(n,\\n\\\n"
                            "                 SparseList(n, matrix.colptr, matrix.rowval,\\n\\\n"
-                           "                 Element{0}(matrix.nzval))))\", graph_name);\n"
+                           "                 Element{0}(matrix.nzval))))\", graph_path);\n"
                            "    graph->weights = finch_eval(code2);\n"
-                           "    printf(\"Loaded weights\\n\");\n"
                            "\n"
                            "    int* n = (int*) finch_exec(\"%s.lvl.I\", graph->edges);\n"
                            "    return *n;\n"
@@ -358,6 +357,7 @@ namespace einsum {
         for(size_t i=0; i < tensor->getDimensions().size(); i++) {
             ss << ")";
         }
+        ss << ")";
         auto s = ss.str();
         *oss << "\"" << s << "\"";
         for(size_t i=0; i < tensor->getDimensions().size(); i++) {
@@ -698,6 +698,8 @@ T )";
         // tensor is zero dimensional => scalar
         if (node->getOrder() == 0) {
             *oss << fdump(node->type->getElementType()) << "\n";
+        } else if(node->name == "edges") {
+            *oss << "typeof(@fiber d(sl(e(0))))";
         } else {
             *oss << "typeof(@fiber ";
             for (size_t i=0; i < node->getOrder(); i++) {
@@ -878,6 +880,9 @@ T )";
                 }
             }
             ss << ")\n";
+            for(size_t i=0; i < node->reduction_list.size(); i++) {
+                ss << "         w_" << i << " = Scalar{0}()\n";
+            }
             ss << "         $code\n";
             ss << "     end\n";
             ss << "end\n";
@@ -886,9 +891,8 @@ T )";
             std::cout << vc;
             jl_value_t* expr = finch_exec(vc);
             std::cout << "Compiled finch\n";
-            jl_value_t* code = finch_exec("repr(last(%s.args))", expr);
+            jl_value_t* code = finch_exec("string(last(%s.args))", expr);
             auto s = jl_string_data(code);
-            std::cout << "Julia kernel\n";
 
             *old_oss << "finch_def_code" << node->id << " = finch_eval(\n";
 
@@ -1008,6 +1012,8 @@ T )";
     void FinchCompileVisitor::visit(std::shared_ptr<MultipleOutputDefinition> node) {
         node->rhs->accept(this);
     }
+
+    void FinchCompileVisitor::visit(std::shared_ptr<CallStarRepeat> node) {}
 
     std::string fdump(std::shared_ptr<Datatype> node) {
         switch (node->getKind()) {

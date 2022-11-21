@@ -84,7 +84,7 @@ public:
     }
 
     static std::string test_name_to_driver(const std::string& test_name) {
-        return get_test_data_dir() + "codegen/drivers/driver_" + test_name + ".cpp";
+        return get_test_data_dir() + "codegen/drivers/finch_driver_" + test_name + ".cpp";
     }
 
     static std::string test_name_to_generated_driver(const std::string& test_name) {
@@ -225,9 +225,10 @@ public:
         auto lines = getLines(output);
 
         for (int i=0; i < lines.size(); i++) {
+            std::cout << lines[i] << "\n";
             auto result = std::stof(lines[i]);
             auto expected = ranks[i];
-            EXPECT_FLOAT_EQ(result, expected);
+            ASSERT_NEAR(result, expected, 0.001);
         }
     }
 
@@ -290,7 +291,8 @@ INSTANTIATE_TEST_CASE_P(
 //                make_tuple("call_repeat4", get_compiler_path(), true, ExecutionParams()),
 //                make_tuple("call_repeat5", get_compiler_path(), true, ExecutionParams())
                 make_tuple("outer_loop_var1", get_compiler_path(), true, ExecutionParams()),
-                make_tuple("outer_loop_var2", get_compiler_path(), true, ExecutionParams())
+                make_tuple("outer_loop_var2", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("run1", get_compiler_path(), true, ExecutionParams())
         ));
 
 struct PageRankExecutionParams : ExecutionParams {
@@ -321,10 +323,16 @@ INSTANTIATE_TEST_CASE_P(
         ::testing::Values(
                 make_tuple("pagerank", get_compiler_path(), false, PageRankExecutionParams(
                         "graph1",
-                        {0.372532, 0.195814, 0.394155, 0.0375})),
+                        {0.4327485343369153, 0.23391813232975134, 0.3333333333333333})),
                 make_tuple("pagerank", get_compiler_path(), false, PageRankExecutionParams(
                         "graph2",
-                        {0.432749, 0.233918, 0.333333}))
+                        {0.037500000000000006, 0.053437500000000006, 0.130734375, 0.037500000000000006})),
+                make_tuple("pagerank", get_compiler_path(), false, PageRankExecutionParams(
+                        "graph3",
+                        {0.11617884375000004, 0.08638687500000003, 0.06633750000000002, 0.04275000000000001, 0.030000000000000006})),
+                make_tuple("pagerank", get_compiler_path(), false, PageRankExecutionParams(
+                        "graph4",
+                        {0.021428571428571432, 0.03827678571428572, 0.039642857142857146, 0.03827678571428572, 0.0539638392857143, 0.29575468749999995, 0.29575468749999995}))
         ));
 
 
