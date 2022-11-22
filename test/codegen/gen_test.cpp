@@ -378,26 +378,17 @@ INSTANTIATE_TEST_CASE_P(
         BFSTest,
         ::testing::Values(
                 make_tuple("bfs", get_compiler_path(), false, BFSExecutionParams(
-                        "graph1", 0,
+                        "graph1", 1,
                         {-2, 1, 1, -1})),
                 make_tuple("bfs", get_compiler_path(), false, BFSExecutionParams(
-                        "graph2", 0,
+                        "graph2", 1,
                         {-2, 1, 1})),
                 make_tuple("bfs", get_compiler_path(), false, BFSExecutionParams(
-                        "graph3", 0,
+                        "graph3", 5,
                         {-2, -1, -1, -1, -1})),
                 make_tuple("bfs", get_compiler_path(), false, BFSExecutionParams(
-                        "graph3", 4,
-                        {5, 3, 4, 5, -2})),
-                make_tuple("bfs", get_compiler_path(), false, BFSExecutionParams(
                         "graph3", 1,
-                        {2, -2, -1, -1, -1})),
-                make_tuple("bfs", get_compiler_path(), false, BFSExecutionParams(
-                        "graph3", 2,
-                        {2, 3, -2, -1, -1})),
-                make_tuple("bfs", get_compiler_path(), false, BFSExecutionParams(
-                        "graph3", 3,
-                        {2, 3, 4, -2, -1}))
+                        {5, 3, 4, 5, -2}))
         ));
 
 struct SSSPExecutionParams : ExecutionParams {

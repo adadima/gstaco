@@ -27,7 +27,7 @@ namespace einsum {
         }
         finch_eval("using Finch;"
                    "using RewriteTools;"
-                   "using Finch.IndexNotation: or_, choose;"
+                   "using Finch.IndexNotation: or, choose;"
                    "using SparseArrays;"
                    "using Pkg;"
                    "Pkg.add(\"MatrixMarket\");"
@@ -928,7 +928,7 @@ T )";
     }
 
     void FinchCompileVisitor::visit(std::shared_ptr<OrOperator> node) {
-        *oss << "<<or_>>";
+        *oss << "<<or>>";
     }
 
     void FinchCompileVisitor::visit(std::shared_ptr<TensorVar> tensor) {
