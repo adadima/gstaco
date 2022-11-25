@@ -27,6 +27,7 @@
   einsum::MulOp					*mul_op;
   einsum::Reduction 				*red;
   einsum::TensorType				*ttype;
+  einsum::StorageFormat				*sformat;
   einsum::FuncDecl				*fdecl;
   std::vector<std::shared_ptr<einsum::Statement>>	*stmt_vec;
   std::vector<std::shared_ptr<einsum::TensorVar>>	*tvar_vec;
@@ -52,6 +53,7 @@
 %type   <red>	     reduction
 %type   <reds_vec>   reduction_list
 %type   <ttype> 	type
+%type   <sformat> 	format
 %type   <fdecl> 	func
 %type   <stmt_vec>      statements
 %type   <tvar_vec> 	input_params
@@ -95,6 +97,8 @@
 %token	CLOSED_PAREN
 %token	OPEN_BRACKET
 %token	CLOSED_BRACKET
+%token  DENSE
+%token  SPARSE
 %token  ASSIGN
 %token  COLONS
 %token EOL
@@ -280,9 +284,17 @@ def:		def_lhs ASSIGN orexp	{	$$ = new einsum::Definition(
 											std::shared_ptr<einsum::Expression>($3),
 											*$6
 									);}
+format: DENSE  {
+               			$$ = new einsum::StorageFormat(Dense);
+               	}
+| SPARSE		{
+				$$ = new einsum::StorageFormat(Sparse);
+			}
+
 type: IDENTIFIER				{
 						auto dims = std::vector<std::shared_ptr<einsum::Expression>>();
-						$$ = new einsum::TensorType(std::make_shared<einsum::Datatype>(*$1), dims);}
+						auto formats = std::vector<std::shared_ptr<einsum::StorageFormat>>();
+						$$ = new einsum::TensorType(std::make_shared<einsum::Datatype>(*$1), dims, formats);}
 | type OPEN_BRACKET orexp CLOSED_BRACKET		{
 						 auto dims = std::vector<std::shared_ptr<einsum::Expression>>();
 						 for (int i=0; i < $1->getDimensions().size(); i++) {
@@ -291,8 +303,23 @@ type: IDENTIFIER				{
 						 dims.push_back(std::shared_ptr<einsum::Expression>($3));
 						 $$ = new einsum::TensorType($1->getElementType(), dims);
 						}
+| type OPEN_BRACKET format OPEN_BRACKET orexp CLOSED_BRACKET CLOSED_BRACKET {
+						 auto dims = std::vector<std::shared_ptr<einsum::Expression>>();
+						 for (int i=0; i < $1->getDimensions().size(); i++) {
+							dims.push_back(($1->getDimensions())[i]);
+						 }
+						 dims.push_back(std::shared_ptr<einsum::Expression>($5));
 
-param: IDENTIFIER type				{$$ = new einsum::TensorVar(*$1, std::shared_ptr<einsum::TensorType>($2), false);}
+						 auto forms = std::vector<std::shared_ptr<einsum::StorageFormat>>();
+						 for (int i=0; i < $1->getDimensions().size(); i++) {
+						 	forms.push_back($1->formats[i]);
+						 }
+						 forms.push_back(std::shared_ptr<einsum::StorageFormat>($3));
+						 $$ = new einsum::TensorType($1->getElementType(), dims, forms);
+}
+
+param: IDENTIFIER type				{assert($2 != nullptr);
+$$ = new einsum::TensorVar(*$1, std::shared_ptr<einsum::TensorType>($2), false);}
 
 param_list:					{$$ = new std::vector<std::shared_ptr<einsum::TensorVar>>();}
 | COM param param_list				{$3->insert($3->begin(), std::shared_ptr<einsum::TensorVar>($2));
@@ -312,7 +339,9 @@ statements:					{$$ = new std::vector<std::shared_ptr<einsum::Statement>>();}
 
 func:		LET IDENTIFIER input_params RARROW output_params EOL blank statements END {$$ = new einsum::FuncDecl(*$2, *$3, *$5, *$8);}
 
-tensor:	IDENTIFIER type				{$$ = new einsum::TensorVar(*$1, std::shared_ptr<einsum::TensorType>($2), true);}
+tensor:	IDENTIFIER type				{
+assert($2 != nullptr);
+$$ = new einsum::TensorVar(*$1, std::shared_ptr<einsum::TensorType>($2), true);}
 %%
 
 int yyerror(State state, string s)

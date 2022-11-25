@@ -349,7 +349,11 @@ namespace einsum {
         }
         ss << "Finch.Fiber(\\n\\\n";
         for(size_t i=0; i < tensor->getDimensions().size(); i++) {
-            ss << "Dense(N" << i << ",\\n\\\n";
+            if (tensor->type->formats[i]->format == Format::Dense) {
+                ss << "Dense(N" << i << ",\\n\\\n";
+            } else if (tensor->type->formats[i]->format == Format::Sparse) {
+                ss << "SparseList(N" << i << ", [1,1], Int64[],\\n\\\n";
+            }
         }
         ss << "Element{0,";
         ss << fdump(tensor->type->getElementType());
@@ -698,12 +702,14 @@ T )";
         // tensor is zero dimensional => scalar
         if (node->getOrder() == 0) {
             *oss << fdump(node->type->getElementType()) << "\n";
-        } else if(node->name == "edges") {
-            *oss << "typeof(@fiber d(sl(e(0))))";
         } else {
             *oss << "typeof(@fiber ";
             for (size_t i=0; i < node->getOrder(); i++) {
-                *oss << "d(";
+                if(node->type->formats[i]->format == Format::Dense) {
+                    *oss << "d(";
+                } else if(node->type->formats[i]->format == Format::Sparse) {
+                    *oss << "sl(";
+                }
             }
             *oss << "e(0)";
             for (size_t i=0; i < node->getOrder(); i++) {

@@ -1,6 +1,6 @@
 N int
 
-edges int[N][N]
+edges int[N][SparseList[N]]
 
 damp float
 

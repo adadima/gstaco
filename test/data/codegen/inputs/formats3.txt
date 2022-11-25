@@ -1,0 +1,13 @@
+N int
+
+M int
+
+Let repeated(a int, b int[N][SparseList[M]], c int) -> (na int, nb int[N][SparseList[M]], nc int)
+    na = a
+    nb = b
+    nc = c
+End
+
+Let Init(d int, p int[N][SparseList[M]]) -> (nd int, np int[N][SparseList[M]], r int)
+    nd, np, r = repeated*(d, p, 0) | (#2[#3] == 0)
+End

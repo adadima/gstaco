@@ -55,6 +55,9 @@ true|false    {yylval->bool_val = (std::string(yytext) == "true") ? true : false
 
 "End"       {yylval->id_val = new std::string(yytext); return END; }
 
+"SparseList"       {yylval->op_val = new std::string(yytext); return SPARSE; }
+
+"Dense"       {yylval->op_val = new std::string(yytext); return DENSE; }
 
 if|then|else {
             printf( "A keyword: %s\n", yytext );
@@ -72,4 +75,4 @@ if|then|else {
 
 "{"[^}\n]*"}"     /* eat up one-line comments */
 
-.		{ std::cerr << "SCANNER "; yyerror(State{}, ""); exit(1);	}
+.		{ std::cerr << "SCANNER " << std::string(yytext) << "\n"; yyerror(State{}, ""); exit(1);	}

@@ -97,8 +97,13 @@ namespace einsum {
 
     std::string TensorType::dump() const {
         std::string dims;
-        for (const auto &dimension : this->dimensions) {
-            dims += "[" + dimension->dump() + "]";
+        for (size_t i=0; i < getOrder(); i++) {
+            if (formats[i]->format == Dense) {
+                // default, don't print
+                dims += "[" + dimensions[i]->dump() + "]";
+            } else {
+                dims += "[" + formats[i]->dump() + "[" + dimensions[i]->dump() + "]]";
+            }
         }
         return this->getElementType()->dump() + dims;
     }
@@ -155,6 +160,10 @@ namespace einsum {
         return (int) this->dimensions.size();
     }
 
+    std::shared_ptr<StorageFormat> TensorType::getFormat(int i) const {
+        return formats[i];
+    }
+
     constexpr std::array<const char*, 4> arith_ops {"+", "-", "*", "/"};
 
     bool Operator::isArithmetic() const {
@@ -163,5 +172,24 @@ namespace einsum {
 
     std::string Operator::get_builtin_name() const {
         return "gstaco_" + class_name();
+    }
+
+    bool StorageFormat::isInt() const {
+        return false;
+    }
+
+    bool StorageFormat::isFloat() const {
+        return false;
+    }
+
+    bool StorageFormat::isBool() const {
+        return false;
+    }
+
+    std::string StorageFormat::dump() const {
+        if (format == Dense) {
+            return "Dense";
+        }
+        return "SparseList";
     }
 }

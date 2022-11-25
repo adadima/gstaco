@@ -67,7 +67,7 @@ namespace einsum {
 
         explicit CallStarConditionProcessor(IRContext* context) : IRRewriter(context) {}
 
-        void visit_decl(const std::shared_ptr<FuncDecl>& node);
+        void visit_decl(const std::shared_ptr<FuncDecl>& node) override;
         void visit(std::shared_ptr<CallStarCondition> node) override;
         void visit_call(std::shared_ptr<Call> node) override;
     };

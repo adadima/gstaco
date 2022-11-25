@@ -1,0 +1,5 @@
+M int
+
+Let Init() -> (A int[Dense[10]][SparseList[M]])
+    A[i][j] = (i == 5) * (j == 0) * 10
+End

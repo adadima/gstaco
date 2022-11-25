@@ -622,6 +622,7 @@ namespace einsum {
     void DefaultIRVisitor::visit(std::shared_ptr<Reduction> node) { throw std::runtime_error(name() + " IMPLEMENT ME: Reduction!");}
     void DefaultIRVisitor::visit(std::shared_ptr<Datatype> node) { throw std::runtime_error(name() + " IMPLEMENT ME: Datatype!");}
     void DefaultIRVisitor::visit(std::shared_ptr<TensorType> node) { throw std::runtime_error(name() + " IMPLEMENT ME: TensorType!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<StorageFormat> node) { throw std::runtime_error(name() + " IMPLEMENT ME: StorageFormat!");}
     void DefaultIRVisitor::visit(std::shared_ptr<TupleType> node) { throw std::runtime_error(name() + " IMPLEMENT ME: TupleType!");}
     void DefaultIRVisitor::visit(std::shared_ptr<Operator> node) { throw std::runtime_error(name() + " IMPLEMENT ME: Operator!");}
 
@@ -782,10 +783,15 @@ namespace einsum {
         node->reductionInit->accept(this);
     }
 
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<StorageFormat> node) {}
+
     void DefaultIRVisitorUnsafe::visit(std::shared_ptr<TensorType> node) {
         node->type->accept(this);
         for(auto& dim: node->dimensions) {
             dim->accept(this);
+        }
+        for(auto& format: node->formats) {
+            format->accept(this);
         }
     }
 

@@ -116,17 +116,44 @@ namespace einsum {
 
     struct Expression;
 
+    enum Format {
+        Dense,
+        Sparse
+    };
+
+    struct StorageFormat : public Acceptor<StorageFormat, Type> {
+    public:
+        explicit StorageFormat(Format format) : format(format) {}
+
+        bool isInt() const override;
+
+        bool isFloat() const override;
+
+        bool isBool() const override;
+
+        std::string dump() const override;
+
+        Format format;
+    };
+
     struct TensorType : public Acceptor<TensorType, Type> {
     public:
-        TensorType() : type(intType),
-                       dimensions(std::vector<std::shared_ptr<einsum::Expression>>()) {}
+        TensorType() : type(intType) {}
 
-        TensorType(std::shared_ptr<Datatype> type, std::vector<std::shared_ptr<einsum::Expression>> dimensions) : type(
-                std::move(type)), dimensions(std::move(dimensions)) {}
+        TensorType(std::shared_ptr<Datatype> type, std::vector<std::shared_ptr<einsum::Expression>>& dimensions_) : type(type), dimensions(dimensions_) {
+            for(auto& dim: dimensions_) {
+                formats.push_back(Type::make<StorageFormat>(Dense));
+            }
+        }
+
+        TensorType(std::shared_ptr<Datatype> type, std::vector<std::shared_ptr<einsum::Expression>>& dimensions, std::vector<std::shared_ptr<StorageFormat>>& formats) :
+        type(type), dimensions(dimensions), formats(formats) {}
 
         std::vector<std::shared_ptr<einsum::Expression>> getDimensions() const;
 
         std::shared_ptr<einsum::Expression> getDimension(int i) const;
+
+        std::shared_ptr<StorageFormat> getFormat(int i) const;
 
         std::shared_ptr<Datatype> getElementType() const;
 
@@ -141,6 +168,7 @@ namespace einsum {
         std::string dump() const override;
 
         std::vector<std::shared_ptr<einsum::Expression>> dimensions;
+        std::vector<std::shared_ptr<StorageFormat>> formats;
         std::shared_ptr<Datatype> type;
     };
 

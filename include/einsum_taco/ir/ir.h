@@ -204,7 +204,7 @@ namespace einsum {
         bool is_global;
 
         explicit TensorVar(std::string name, bool is_global) : name(std::move(name)), type(Type::make<TensorType>()), is_global(is_global) {}
-        TensorVar(std::string name, std::shared_ptr<TensorType>  type, bool is_global) : name(std::move(name)), type(std::move(type)), is_global(is_global) {}
+        TensorVar(std::string name, std::shared_ptr<TensorType>  type, bool is_global) : name(name), type(type), is_global(is_global) {}
 
         std::string dump() const override;
 
@@ -523,6 +523,7 @@ namespace einsum {
         virtual void visit(std::shared_ptr<Module> node) = 0;
         virtual void visit(std::shared_ptr<Reduction> node) = 0;
         virtual void visit(std::shared_ptr<Datatype> node) = 0;
+        virtual void visit(std::shared_ptr<StorageFormat> node) = 0;
         virtual void visit(std::shared_ptr<TensorType> node) = 0;
         virtual void visit(std::shared_ptr<TupleType> node) = 0;
         virtual void visit(std::shared_ptr<Operator> node) = 0;
@@ -574,6 +575,7 @@ namespace einsum {
         void visit(std::shared_ptr<Module> node) override;
         void visit(std::shared_ptr<Reduction> node) override;
         void visit(std::shared_ptr<Datatype> node) override;
+        void visit(std::shared_ptr<StorageFormat> node) override;
         void visit(std::shared_ptr<TensorType> node) override;
         void visit(std::shared_ptr<TupleType> node) override;
         void visit(std::shared_ptr<Operator> node) override;
@@ -603,6 +605,7 @@ namespace einsum {
         void visit(std::shared_ptr<CallStarCondition> node) override;
         void visit(std::shared_ptr<Module> node) override;
         void visit(std::shared_ptr<Reduction> node) override;
+        void visit(std::shared_ptr<StorageFormat> node) override;
         void visit(std::shared_ptr<TensorType> node) override;
         void visit(std::shared_ptr<TupleType> node) override;
         void visit_call(std::shared_ptr<Call> node);

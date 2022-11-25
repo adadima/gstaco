@@ -292,6 +292,10 @@ INSTANTIATE_TEST_CASE_P(
 //                make_tuple("call_repeat5", get_compiler_path(), true, ExecutionParams())
                 make_tuple("outer_loop_var1", get_compiler_path(), true, ExecutionParams()),
                 make_tuple("outer_loop_var2", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("formats1", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("formats2", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("formats3", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("formats4", get_compiler_path(), true, ExecutionParams()),
                 make_tuple("run1", get_compiler_path(), true, ExecutionParams())
         ));
 

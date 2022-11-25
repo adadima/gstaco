@@ -146,10 +146,18 @@ namespace einsum {
         node_ = node;
     }
 
+    void IRRewriter::visit(std::shared_ptr<StorageFormat> node) {
+        node_ = node;
+    }
+
     void IRRewriter::visit(std::shared_ptr<TensorType> node) {
         node->type = rewrite(node->type);
-        for (auto &i: node->dimensions) {
-            i = rewrite(i);
+        for (size_t i=0; i < node->dimensions.size(); i++) {
+            auto& dim = node->dimensions[i];
+            dim = rewrite(dim);
+
+            auto& format = node->formats[i];
+            format = rewrite(format);
         }
         node_ = node;
     }
