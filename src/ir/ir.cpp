@@ -10,6 +10,7 @@
 #include <map>
 #include <cxxabi.h>
 #include <algorithm>
+#include <limits.h>
 
 
 namespace einsum {
@@ -185,6 +186,26 @@ namespace einsum {
 
     std::string Reduction::dump() const {
         return this->reductionVar->dump() + ":" + "(" + this->reductionOp->op->reductionSign + ", " + this->reductionInit->dump() + ")";
+    }
+
+    std::shared_ptr<Reduction> Reduction::orReduction(std::shared_ptr<IndexVar> var) {
+        return IR::make<Reduction>(var, or_red, IR::make<Literal>(0, IR::make<Datatype>(Datatype::Kind::Int)));
+    }
+
+    std::shared_ptr<Reduction> Reduction::andReduction(std::shared_ptr<IndexVar> var) {
+        return IR::make<Reduction>(var, IR::make<AndOperator>(), IR::make<Literal>(1, IR::make<Datatype>(Datatype::Kind::Int)));
+    }
+
+    std::shared_ptr<Reduction> Reduction::addReduction(std::shared_ptr<IndexVar> var) {
+        return IR::make<Reduction>(var, IR::make<AddOperator>(), IR::make<Literal>(0, IR::make<Datatype>(Datatype::Kind::Int)));
+    }
+
+    std::shared_ptr<Reduction> Reduction::minReduction(std::shared_ptr<IndexVar> var) {
+        return IR::make<Reduction>(var, IR::make<MinOperator>(), IR::make<Literal>(std::numeric_limits<int>::max(), IR::make<Datatype>(Datatype::Kind::Int)));
+    }
+
+    std::shared_ptr<Reduction> Reduction::chooseReduction(std::shared_ptr<IndexVar> var) {
+        return IR::make<Reduction>(var, IR::make<ChooseOperator>(), IR::make<Literal>(0, IR::make<Datatype>(Datatype::Kind::Int)));
     }
 
     std::string Definition::dump() const {
@@ -648,6 +669,14 @@ namespace einsum {
 
     std::shared_ptr<Type> TupleVar::getType() const {
         return type;
+    }
+
+    std::vector<std::shared_ptr<IndexVar>> TupleVar::getIndices() {
+        return {};
+    }
+
+    std::map<std::string, std::set<std::shared_ptr<Expression>>> TupleVar::getIndexVarDims(IRContext* context) const {
+        return {};
     }
 
     std::string MultipleOutputDefinition::dump() const {

@@ -1,0 +1,13 @@
+Let repeated(a int[20], b int[10], c int) -> (na int[20], nb int[10], nc int)
+    na[i] = 0
+    nb[i] = 0
+    nc = 0
+End
+
+Let f(a int[10]) -> (b int[10])
+    b[i] = a[i]
+End
+
+Let Init(d int[20], p int[10]) -> (nd int[20], np int[10], r int)
+    nd, np, r = repeated*(d, p, 0) | ( (f*(p) | (#1 > 5)) == 0)
+End

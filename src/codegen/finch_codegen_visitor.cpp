@@ -746,6 +746,7 @@ T )";
         for (auto& acc: node->lhs) {
             *oss << "jl_function_t* finch_def_code" << node->id << ";\n";
         }
+        node->rhs->accept(this);
     }
 
     void JlFunctionInitializer::visit(std::shared_ptr<FuncDecl> node) {
@@ -817,7 +818,7 @@ T )";
             node->rhs->accept(this);
             return;
         }
-        std::cout << "FINCH NEEDED: " << node->dump() << "\n";
+        std::cout << "FINCH NEEDED FOR DEF " << node->id << ": " << node->dump() << "\n";
         auto old_oss = oss;
         for (auto& acc: node->lhs) {
             if (acc->tensor->name == "_") {
@@ -1121,6 +1122,7 @@ T )";
             def2tensor_args.insert({node->id, tensors});
             def2func_ptr.insert({node->id, func_name});
         }
+        node->rhs->accept(this);
     }
 
     void FuncPtr2TensorArgsMapper::visit(std::shared_ptr<FuncDecl> node) {
@@ -1224,9 +1226,11 @@ T )";
     }
 
     void NeedsFinchVisitor::visit(std::shared_ptr<Definition> node) {
-        auto checker = FinchDefinitionChecker();
-        node->accept(&checker);
-        def2needs_finch.insert({node->id, checker.needs_finch});
+        if (std::dynamic_pointer_cast<CallStarCondition>(node->rhs) == nullptr) {
+            auto checker = FinchDefinitionChecker();
+            node->accept(&checker);
+            def2needs_finch.insert({node->id, checker.needs_finch});
+        }
         node->rhs->accept(this);
     }
 }

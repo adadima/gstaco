@@ -187,14 +187,15 @@ namespace einsum {
         std::shared_ptr<Type> getType() const override;
     };
 
-    struct TupleVar : Acceptor<TupleVar, ModuleComponent> {
+    struct TupleVar : Acceptor<TupleVar, Expression> {
         std::string name;
         std::shared_ptr<TupleType> type;
 
-        TupleVar(std::string name, std::shared_ptr<TupleType> type) : name(name), type(type) {}
+        TupleVar(std::string& name, std::shared_ptr<TupleType> type) : Base(1), name(name), type(type) {}
 
         std::string dump() const override;
-
+        std::vector<std::shared_ptr<IndexVar>> getIndices() override;
+        std::map<std::string, std::set<std::shared_ptr<Expression>>> getIndexVarDims(IRContext* context) const override;
         std::shared_ptr<Type> getType() const;
     };
 
@@ -292,6 +293,16 @@ namespace einsum {
         }
 
         std::string dump() const override;
+
+        static std::shared_ptr<Reduction> orReduction(std::shared_ptr<IndexVar> var);
+
+        static std::shared_ptr<Reduction> andReduction(std::shared_ptr<IndexVar> var);
+
+        static std::shared_ptr<Reduction> addReduction(std::shared_ptr<IndexVar> var);
+
+        static std::shared_ptr<Reduction> minReduction(std::shared_ptr<IndexVar> var);
+
+        static std::shared_ptr<Reduction> chooseReduction(std::shared_ptr<IndexVar> var);
     };
 
     struct Statement : ModuleComponent {

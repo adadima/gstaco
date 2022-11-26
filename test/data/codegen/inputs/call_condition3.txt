@@ -1,0 +1,9 @@
+N int
+
+Let f(A int) -> (C int)
+    C = A
+End
+
+Let func(B int[N]) -> (A int[N])
+    A[i] = f*( (f*( (f*(2) | 6) ) | (#1 == 0)) ) | (#1 == 2)
+End

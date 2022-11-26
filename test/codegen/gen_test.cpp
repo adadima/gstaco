@@ -95,13 +95,14 @@ public:
         // read input
         auto input = readDataIntoString(test_name_to_input_file(test_name));
         std::cout << "INPUT:\n" << input << "\n";
+
         // parse
         auto mod = std::make_shared<Module>(parse(input));
         auto new_module = apply_default_rewriters(mod);
-        std::cout << "PRINT AST\n";
+
 //         print ast for debug
-        new_module->accept(&printer);
-        std::cout << printer.ast;
+//        new_module->accept(&printer);
+//        std::cout << printer.ast;
         std::cout << new_module->dump();
 
         // code generation
@@ -278,6 +279,7 @@ INSTANTIATE_TEST_CASE_P(
         GenTestSuite,
         GenTest,
         ::testing::Values(
+                make_tuple("call_condition3", get_compiler_path(), true, ExecutionParams()),
                 make_tuple("definition2", get_compiler_path(), true, ExecutionParams()),
                 make_tuple("definition1", get_compiler_path(), true, ExecutionParams()),
                 make_tuple("definition3", get_compiler_path(), true, ExecutionParams()),
@@ -292,6 +294,9 @@ INSTANTIATE_TEST_CASE_P(
 //                make_tuple("call_repeat5", get_compiler_path(), true, ExecutionParams())
                 make_tuple("outer_loop_var1", get_compiler_path(), true, ExecutionParams()),
                 make_tuple("outer_loop_var2", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("outer_loop_var3", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("outer_loop_var4", get_compiler_path(), true, ExecutionParams()),
+                make_tuple("outer_loop_var5", get_compiler_path(), true, ExecutionParams()),
                 make_tuple("formats1", get_compiler_path(), true, ExecutionParams()),
                 make_tuple("formats2", get_compiler_path(), true, ExecutionParams()),
                 make_tuple("formats3", get_compiler_path(), true, ExecutionParams()),

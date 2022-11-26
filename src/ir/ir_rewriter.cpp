@@ -108,10 +108,11 @@ namespace einsum {
 
     void  IRRewriter::visit(std::shared_ptr<CallStarCondition> node) {
         context->enter_call(node);
+        std::cout << "REWRITING STOP CONDITION: " << node->stopCondition->dump() << "\n";
         node->stopCondition = rewrite(node->stopCondition);
-        visit_call(node);
+        std::cout << "NEW STOP CONDITION: " << node->stopCondition->dump() << "\n";
         node->condition_def = rewrite(node->condition_def);
-        node_ = node;
+        visit_call(node);
         context->exit_call(node);
     }
 

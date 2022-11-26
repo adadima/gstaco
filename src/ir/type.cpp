@@ -12,6 +12,7 @@ namespace einsum {
     }
 
     Datatype::Datatype(std::string type_name) {
+        std::cout << "TYPE NAME: " << type_name << "\n";
         einsum_iassert( type_name == "int" || type_name == "float" || type_name == "bool");
         if (type_name == "int") {
             kind = Kind::Int;

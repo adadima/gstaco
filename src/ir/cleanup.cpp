@@ -35,11 +35,17 @@ namespace einsum {
         }
         tensor->is_global = context->is_global(tensor);
         if (tensor->name.rfind('#', 0) == 0) {
-            std::cout << "TUPLE TYPE: " << context->call_scope()->function->getOutputType()->dump() << "\n";
+//            std::cout << "Tensor: " << tensor->name << "\n";
+//            std::cout << "TUPLE TYPE: " << context->call_scope()->function->getOutputType()->dump() << "\n";
             int idx = parse_index(tensor->name);
+//            std::cout << "Idx: " << idx << "\n";
             tensor->name = parse_variable_name(idx);
+//            std::cout << "New name: " << tensor->name << "\n";
+//            std:: cout << "Call: " << context->call_scope()->dump() << "\n";
+//            std::cout << "Function: " << context->call_scope()->function->dump() << "\n";
+//            std::cout << "Associated input size: " << context->call_scope()->function->inputs.size() << "\n";
             tensor->type = context->call_scope()->function->inputs[idx]->type;
-            std::cout << "Element " << idx << " of tuple type: " << tensor->type->dump() << "\n";
+//            std::cout << "Element " << idx << " of tuple type: " << tensor->type->dump() << "\n";
         }
         node_ = tensor;
     }
@@ -142,6 +148,7 @@ namespace einsum {
         context->enter_module(node);
         auto new_comps = std::vector<std::shared_ptr<ModuleComponent>>();
         for (auto &op : reduction_ops) {
+            std::cout << "INSERTING REDUCTION BUILTIN: " << op->dump() << "\n";
             new_comps.push_back(op);
         }
         new_comps.insert(new_comps.end(), node->decls.begin(), node->decls.end());
@@ -168,7 +175,8 @@ namespace einsum {
                 }
 
                 std::shared_ptr<Statement> new_stmt;
-                for(auto&[tensor,call]: inner_calls) {
+                for(auto&tensor: temporaries) {
+                    auto& call = inner_calls[tensor];
                     // A,B,C = func(...)  =>
                     // temp = func(...);
                     //
@@ -218,10 +226,12 @@ namespace einsum {
                         std::cout << "ADDITIONAL: " << alloc->dump() << "\n";
                         std::cout << "ADDITIONAL: " << new_stmt->dump() << "\n";
                         new_stmts.push_back(new_stmt);
-                        std::cout << "NEW: " << stmt->dump() << "\n";
-                        new_stmts.push_back(stmt);
                     }
                 }
+                if (!std::dynamic_pointer_cast<TupleVar>(stmt->as_def()->rhs)) {
+                    new_stmts.push_back(stmt);
+                }
+
             } else {
                 new_stmts.push_back(IRRewriter::visit(stmt));
             }
@@ -232,7 +242,10 @@ namespace einsum {
     }
 
     void CallRewriter::visit_call(std::shared_ptr<Call> node) {
-        std::cout << "VISIT CALL\n";
+        for (auto& arg: node->arguments) {
+            arg = rewrite(arg);
+        }
+        std::cout << "VISIT CALL: " << node->dump() << "\n";
         auto out_type = std::dynamic_pointer_cast<TupleType>(node->getType());
         std::string name = "_temp_" + std::to_string(call_id);
         if (out_type->tuple.size() == 1) {
@@ -243,17 +256,21 @@ namespace einsum {
                 type = std::dynamic_pointer_cast<TensorType>(out_type->tuple[0]);
             }
             auto tensor = IR::make<TensorVar>(name, type, false);
+
             inner_calls.insert({tensor, node});
+            temporaries.push_back(tensor);
             node_ = IR::make<ReadAccess>(tensor, std::vector<std::shared_ptr<Expression>>());
             std::cout << "Replacing call node: " << node->dump() << "\n";
             std::cout << "with: " << node_->dump() << "\n";
         } else {
             auto output = IR::make<TupleVar>(name, out_type);
+            temporaries.push_back(output);
             inner_calls.insert({output, node});
-            node_ = node;
+            node_ = output;
+            std::cout << "Replacing call node: " << node->dump() << "\n";
+            std::cout << "with: " << node_->dump() << "\n";
         }
         call_id += 1;
-
     }
 
     void CallStarConditionProcessor::visit(std::shared_ptr<CallStarCondition> node) {
@@ -263,7 +280,15 @@ namespace einsum {
         auto tensor = IR::make<TensorVar>(name, type, false);
         auto idx = IR::make<IndexVar>("i", one);
         auto acc = IR::make<Access>(tensor, std::vector<std::shared_ptr<IndexVar>>({idx}));
-        node->condition_def = IR::make<Definition>(acc, node->stopCondition);
+        auto accs = std::vector<std::shared_ptr<Access>>({acc});
+        reductions.emplace_back();
+        inside_stop_condition = true;
+        index_vars.clear();
+        node->stopCondition = rewrite(node->stopCondition);
+        auto& reds = reductions.back();
+        node->condition_def = IR::make<Definition>(accs, node->stopCondition, reds);
+        reductions.pop_back();
+        inside_stop_condition = false;
         node_ = node;
         condition_tensors.insert(tensor);
         IRRewriter::visit(node);
@@ -290,6 +315,28 @@ namespace einsum {
         new_stmts.insert(new_stmts.end(), old_stmts.begin(), old_stmts.end());
         node->body = new_stmts;
         node_ = node;
+    }
+
+    void CallStarConditionProcessor::visit(std::shared_ptr<ReadAccess> node) {
+        // must be syntactic sugar for comparing an entire tensor to a scalar
+        // by this point all calls should have been taken out in temporaries
+        if (node->indices.empty() && node->tensor->getOrder() > 0 && inside_stop_condition) {
+            auto indices = std::vector<std::shared_ptr<Expression>>();
+            for(size_t i=0; i < node->tensor->getOrder(); i++) {
+                auto idx_var = "i"+ std::to_string(i);
+                std::shared_ptr<IndexVar> var = IR::make<IndexVar>(idx_var, node->tensor->type->dimensions[i]);
+                indices.push_back(IR::make<IndexVarExpr>(var));
+                if (index_vars.find(idx_var) == index_vars.end()) {
+                    auto& reds = reductions.back();
+                    reds.push_back(Reduction::orReduction(var));
+                    index_vars.insert(idx_var);
+                }
+            }
+            node->indices = indices;
+        }
+
+        node_ = node;
+
     }
 
     void DefinitionSplitter::visit(std::shared_ptr<Definition> node) {
