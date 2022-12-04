@@ -461,8 +461,8 @@ INSTANTIATE_TEST_CASE_P(
                         "graph4", 1, 20,
                         {0.0, 10.0, 1.0, 2.0, 3.0, 5.0, 4.0})),
                 make_tuple("sssp", get_compiler_path(), false, SSSPExecutionParams(
-                        "graph2", 1, 20,
-                        {2.0, 0, 1.0})),
+                        "graph2", 2, 20,
+                        {20.0, 0.0, 1.0, 20.0})),
                 make_tuple("sssp", get_compiler_path(), false, SSSPExecutionParams(
                         "graph1", 2, 20,
                         {2.0, 0.0, 1.0})),
@@ -513,10 +513,16 @@ INSTANTIATE_TEST_CASE_P(
         BCTestSuite,
         BCTest,
         ::testing::Values(
-//                make_tuple("bc", get_compiler_path(), false, BCExecutionParams(
-//                        "graph1", 0,
-//                        {0, 0, 0, 0})),
                 make_tuple("bc", get_compiler_path(), false, BCExecutionParams(
-                        "graph3", 4,
+                        "graph1", 1,
+                        {0, 0, 0, 0})),
+                make_tuple("bc", get_compiler_path(), false, BCExecutionParams(
+                        "graph2", 1,
+                        {0, 0, 1, 2, 0})),
+                make_tuple("bc", get_compiler_path(), false, BCExecutionParams(
+                        "graph3", 5,
+                        {0, 0, 1, 2, 0})),
+                make_tuple("bc", get_compiler_path(), false, BCExecutionParams(
+                        "graph4", 1,
                         {0, 0, 1, 2, 0}))
         ));
