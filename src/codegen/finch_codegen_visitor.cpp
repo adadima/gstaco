@@ -288,6 +288,9 @@ namespace einsum {
             *oss << "[";
             auto args = def2tensor_args[node->condition_def->id];
             for(size_t i=0; i < args.size(); i++) {
+                if (args[i]->is_global) {
+                    continue;
+                }
                 if (i > 0) {
                     *oss << ", ";
                 }

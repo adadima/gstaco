@@ -299,7 +299,7 @@ namespace einsum {
         inside_stop_condition = false;
         node_ = node;
         condition_tensors.insert(tensor);
-        IRRewriter::visit(node);
+        visit_call(node);
     }
 
     void CallStarConditionProcessor::visit_call(std::shared_ptr<Call> node) {
@@ -329,9 +329,9 @@ namespace einsum {
     void CallStarConditionProcessor::visit(std::shared_ptr<ReadAccess> node) {
         // must be syntactic sugar for comparing an entire tensor to a scalar
         // by this point all calls should have been taken out in temporaries
-        if (node->indices.empty() && node->tensor->getOrder() > 0 && inside_stop_condition) {
-            auto indices = std::vector<std::shared_ptr<Expression>>();
-            for(size_t i=0; i < node->tensor->getOrder(); i++) {
+        if (node->indices.size() < node->tensor->getOrder() && inside_stop_condition) {
+            auto indices = node->indices;
+            for(size_t i=node->indices.size(); i < node->tensor->getOrder(); i++) {
                 auto idx_var = "i"+ std::to_string(i);
                 std::shared_ptr<IndexVar> var = IR::make<IndexVar>(idx_var, node->tensor->type->dimensions[i]);
                 indices.push_back(IR::make<IndexVarExpr>(var));

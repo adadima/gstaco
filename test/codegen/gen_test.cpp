@@ -449,26 +449,26 @@ INSTANTIATE_TEST_CASE_P(
         SSSPTest,
         ::testing::Values(
                 make_tuple("sssp", get_compiler_path(), false, SSSPExecutionParams(
-                        "graph4", 0, 1000,
-                        {0, 1.0, 1.7, 1000.0})),
+                        "graph1", 1, 20,
+                        {0.0, 1.0, 2.0})),
                 make_tuple("sssp", get_compiler_path(), false, SSSPExecutionParams(
-                        "graph5", 0, 1000,
-                        {0, 2.0, 5.0, 1.0})),
+                        "graph2", 1, 20,
+                        {0.0, 1.0, 2.0, 20.0})),
                 make_tuple("sssp", get_compiler_path(), false, SSSPExecutionParams(
-                        "graph3", 4, 1000,
-                        {4.0, 3.0, 2.0, 1.0, 0})),
+                        "graph3", 5, 20,
+                        {3.0, 3.0, 2.0, 1.0, 0.0})),
                 make_tuple("sssp", get_compiler_path(), false, SSSPExecutionParams(
-                        "graph2", 0, 1000,
-                        {0, 1.0, 2.0})),
+                        "graph4", 1, 20,
+                        {0.0, 10.0, 1.0, 2.0, 3.0, 5.0, 4.0})),
                 make_tuple("sssp", get_compiler_path(), false, SSSPExecutionParams(
-                        "graph2", 1, 1000,
+                        "graph2", 1, 20,
                         {2.0, 0, 1.0})),
                 make_tuple("sssp", get_compiler_path(), false, SSSPExecutionParams(
-                        "graph2", 2, 1000,
-                        {1.0, 2.0, 0})),
+                        "graph1", 2, 20,
+                        {2.0, 0.0, 1.0})),
                 make_tuple("sssp", get_compiler_path(), false, SSSPExecutionParams(
-                        "graph1", 0, 1000,
-                        {0, 1.0, 2.0, 1000.0}))
+                        "graph3", 1, 20,
+                        {0, 20.0, 20.0, 20.0, 20.0}))
         ));
 
 struct BCExecutionParams : ExecutionParams {
