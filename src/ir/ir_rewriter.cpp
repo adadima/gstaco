@@ -87,7 +87,10 @@ namespace einsum {
     }
 
     void IRRewriter::visit_call(std::shared_ptr<Call> node) {
-        node->function = rewrite(node->function);
+        if (!node->function->is_builtin()) {
+            node->function = rewrite(node->function);
+        }
+
         for(auto& arg: node->arguments) {
             arg = rewrite(arg);
         }
@@ -291,6 +294,10 @@ namespace einsum {
     void IRRewriter::visit(std::shared_ptr<MultipleOutputDefinition> node) {
         node->lhs = rewrite(node->lhs);
         node->rhs = rewrite(node->rhs);
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<BuiltinFuncDecl> node) {
         node_ = node;
     }
 

@@ -147,7 +147,7 @@ namespace einsum {
         IRRewriter::visit(node);
         context->enter_module(node);
         auto new_comps = std::vector<std::shared_ptr<ModuleComponent>>();
-        for (auto &op : reduction_ops) {
+        for (auto &[sign,op] : reduction_ops) {
             std::cout << "INSERTING REDUCTION BUILTIN: " << op->dump() << "\n";
             new_comps.push_back(op);
         }
@@ -158,7 +158,9 @@ namespace einsum {
 
     void ReductionOpGenerator::visit(std::shared_ptr<Reduction> node) {
         IRRewriter::visit(node);
-        reduction_ops.insert(node->reductionOp);
+        if (reduction_ops.find(node->reductionOp->op->reductionSign) == reduction_ops.end()) {
+            reduction_ops.insert({node->reductionOp->op->reductionSign, node->reductionOp});
+        }
     }
 
     void CallRewriter::visit_decl(const std::shared_ptr<FuncDecl> &node) {
@@ -167,6 +169,7 @@ namespace einsum {
         for (auto &stmt: node->body) {
             if (stmt->is_def()) {
                 inner_calls.clear();
+                temporaries.clear();
                 stmt = rewrite(stmt);
 
                 if(inner_calls.empty()) {
@@ -176,7 +179,7 @@ namespace einsum {
 
                 std::shared_ptr<Statement> new_stmt;
                 for(auto&tensor: temporaries) {
-                    auto& call = inner_calls[tensor];
+                    auto& call = inner_calls.at(tensor);
                     // A,B,C = func(...)  =>
                     // temp = func(...);
                     //
@@ -242,6 +245,11 @@ namespace einsum {
     }
 
     void CallRewriter::visit_call(std::shared_ptr<Call> node) {
+        if (!node->getIndices().empty()) {
+            call_id += 1;
+            node_ = node;
+            return;
+        }
         for (auto& arg: node->arguments) {
             arg = rewrite(arg);
         }
@@ -310,6 +318,7 @@ namespace einsum {
 
         for(auto& t: condition_tensors) {
             new_stmts.push_back(IR::make<Initialize>(t));
+            new_stmts.push_back(IR::make<Allocate>(t));
         }
         auto& old_stmts = node->body;
         new_stmts.insert(new_stmts.end(), old_stmts.begin(), old_stmts.end());
@@ -328,7 +337,7 @@ namespace einsum {
                 indices.push_back(IR::make<IndexVarExpr>(var));
                 if (index_vars.find(idx_var) == index_vars.end()) {
                     auto& reds = reductions.back();
-                    reds.push_back(Reduction::orReduction(var));
+                    reds.push_back(Reduction::andReduction(var));
                     index_vars.insert(idx_var);
                 }
             }

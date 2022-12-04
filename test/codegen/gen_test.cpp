@@ -279,6 +279,7 @@ INSTANTIATE_TEST_CASE_P(
         GenTestSuite,
         GenTest,
         ::testing::Values(
+                make_tuple("reductions", get_compiler_path(), true, ExecutionParams()),
                 make_tuple("call_condition3", get_compiler_path(), true, ExecutionParams()),
                 make_tuple("definition2", get_compiler_path(), true, ExecutionParams()),
                 make_tuple("definition1", get_compiler_path(), true, ExecutionParams()),
@@ -358,6 +359,7 @@ struct BFSExecutionParams : ExecutionParams {
 class BFSTest : public BaseGenTest<BFSExecutionParams> {
 public:
     void check_bfs_output(const std::string& output, const std::vector<int>& distances) {
+        std::cout << output;
         auto lines = getLines(output);
 
         for (int i=0; i < lines.size(); i++) {
@@ -388,16 +390,19 @@ INSTANTIATE_TEST_CASE_P(
         ::testing::Values(
                 make_tuple("bfs", get_compiler_path(), false, BFSExecutionParams(
                         "graph1", 1,
-                        {-2, 1, 1, -1})),
-                make_tuple("bfs", get_compiler_path(), false, BFSExecutionParams(
-                        "graph2", 1,
                         {-2, 1, 1})),
                 make_tuple("bfs", get_compiler_path(), false, BFSExecutionParams(
+                        "graph2", 1,
+                        {-2, 1, 1, -1})),
+                make_tuple("bfs", get_compiler_path(), false, BFSExecutionParams(
                         "graph3", 5,
-                        {-2, -1, -1, -1, -1})),
+                        {5, 3, 4, 5, -2})),
                 make_tuple("bfs", get_compiler_path(), false, BFSExecutionParams(
                         "graph3", 1,
-                        {5, 3, 4, 5, -2}))
+                        {-2, -1, -1, -1, -1})),
+                make_tuple("bfs", get_compiler_path(), false, BFSExecutionParams(
+                        "graph4", 1,
+                        {-2, 3, 1, 3, 4, 5, 5}))
         ));
 
 struct SSSPExecutionParams : ExecutionParams {

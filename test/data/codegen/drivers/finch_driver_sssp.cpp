@@ -6,7 +6,7 @@
 #include <string>
 #include <fstream>
 #include "julia.h"
-#include "einsum_taco/gstrt/runtime.h"
+#include <iostream>
 
 int N;
 int P;

@@ -412,30 +412,43 @@ namespace einsum {
 
         BuiltinFuncDecl(std::shared_ptr<Operator> op, std::string funcName, std::vector<std::shared_ptr<TensorVar>> inputs, std::vector<std::shared_ptr<TensorVar>> outputs, std::vector<std::shared_ptr<Statement>> body) :
             Base(std::move(funcName), inputs, outputs, body), op(op) {}
+
+        virtual bool is_julia_builtin() const;
+        virtual bool is_finch_builtin() const;
+
     };
 
     struct AddOperator : Acceptor<AddOperator, BuiltinFuncDecl> {
-        AddOperator() : Base(add, "gstaco_add", {}, {}, {}) {}
+        AddOperator() : Base(add, "+", {}, {}, {}) {}
     };
 
     struct MulOperator : Acceptor<MulOperator, BuiltinFuncDecl> {
-        MulOperator() : Base(mul, "gstaco_mul", {}, {}, {}) {}
+        MulOperator() : Base(mul, "*", {}, {}, {}) {}
     };
 
     struct AndOperator : Acceptor<AndOperator, BuiltinFuncDecl> {
-        AndOperator() : Base(and_, "gstaco_and", {}, {}, {}) {}
+        AndOperator() : Base(and_, "&", {}, {}, {}) {}
     };
 
     struct OrOperator : Acceptor<OrOperator, BuiltinFuncDecl> {
-        OrOperator() : Base(or_, "gstaco_or", {}, {}, {}) {}
+        OrOperator() : Base(or_, "or", {}, {}, {}) {}
+
+        bool is_julia_builtin() const override;
+        bool is_finch_builtin() const override;
     };
 
     struct MinOperator : Acceptor<MinOperator, BuiltinFuncDecl> {
-        MinOperator() : Base(min, "gstaco_min", {}, {}, {}) {}
+        MinOperator() : Base(min, "min", {}, {}, {}) {}
+
+        bool is_julia_builtin() const override;
+        bool is_finch_builtin() const override;
     };
 
     struct ChooseOperator : Acceptor<ChooseOperator, BuiltinFuncDecl>{
-        ChooseOperator() : Base(choose, "gstaco_choose", {}, {}, {}) {}
+        ChooseOperator() : Base(choose, "choose", {IR::make<TensorVar>("a", false), IR::make<TensorVar>("b", false)}, {IR::make<TensorVar>("c", false)}, {}) {}
+
+        bool is_julia_builtin() const override;
+        bool is_finch_builtin() const override;
     };
 
     struct Call : Acceptor<Call, Expression> {
@@ -522,6 +535,7 @@ namespace einsum {
         virtual void visit(std::shared_ptr<MemAssignment> node) = 0;
         virtual void visit(std::shared_ptr<Initialize> node) = 0;
         virtual void visit(std::shared_ptr<FuncDecl> node) = 0;
+        virtual void visit(std::shared_ptr<BuiltinFuncDecl> node) = 0;
         virtual void visit(std::shared_ptr<AndOperator> node) = 0;
         virtual void visit(std::shared_ptr<OrOperator> node) = 0;
         virtual void visit(std::shared_ptr<AddOperator> node) = 0;
@@ -574,6 +588,7 @@ namespace einsum {
         void visit(std::shared_ptr<MemAssignment> node) override;
         void visit(std::shared_ptr<Initialize> node) override;
         void visit(std::shared_ptr<FuncDecl> node) override;
+        void visit(std::shared_ptr<BuiltinFuncDecl> node) override;
         void visit(std::shared_ptr<AndOperator> node) override;
         void visit(std::shared_ptr<OrOperator> node) override;
         void visit(std::shared_ptr<AddOperator> node) override;
@@ -606,6 +621,7 @@ namespace einsum {
         void visit(std::shared_ptr<BinaryOp> node) override;
         void visit(std::shared_ptr<UnaryOp> node) override;
         void visit(std::shared_ptr<Definition> node) override;
+        void visit(std::shared_ptr<BuiltinFuncDecl> node) override;
         void visit(std::shared_ptr<MultipleOutputDefinition> node) override;
         void visit(std::shared_ptr<Allocate> node) override;
         void visit(std::shared_ptr<MemAssignment> node) override;

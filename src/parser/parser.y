@@ -29,6 +29,7 @@
   einsum::TensorType				*ttype;
   einsum::StorageFormat				*sformat;
   einsum::FuncDecl				*fdecl;
+  einsum::BuiltinFuncDecl			*builtindecl;
   std::vector<std::shared_ptr<einsum::Statement>>	*stmt_vec;
   std::vector<std::shared_ptr<einsum::TensorVar>>	*tvar_vec;
   einsum::TensorVar				*tvar;
@@ -46,6 +47,7 @@
 %type	<expression> exp
 %type   <expr_vec>  access
 %type	<expr_vec>  args
+%type   <builtindecl>     builtin
 %type   <expression> call
 %type   <expression> call_star
 %type   <expression> call_repeat
@@ -207,8 +209,13 @@ args: orexp			{auto args = new std::vector<std::shared_ptr<einsum::Expression>>(
 				args->insert(args->end(), $3->begin(), $3->end());
 				$$ = args;}
 
+builtin: CHOOSE {$$ = einsum::choose_red.get();}
+| MIN {$$ = einsum::min_red.get();}
+
 call: IDENTIFIER OPEN_PAREN CLOSED_PAREN	{$$ = new einsum::Call(*$1, std::vector<std::shared_ptr<einsum::Expression>>());}
 | IDENTIFIER OPEN_PAREN args CLOSED_PAREN   {$$ = new einsum::Call(*$1, *$3);}
+| builtin OPEN_PAREN CLOSED_PAREN           {$$ = new einsum::Call(std::shared_ptr<einsum::BuiltinFuncDecl>($1), std::vector<std::shared_ptr<einsum::Expression>>());}
+| builtin OPEN_PAREN args CLOSED_PAREN      {$$ = new einsum::Call(std::shared_ptr<einsum::BuiltinFuncDecl>($1), *$3);}
 
 call_repeat: STAR_CALL OPEN_PAREN CLOSED_PAREN PIPE INTEGER_LITERAL	{$1->pop_back(); new einsum::CallStarRepeat($5, *$1, std::vector<std::shared_ptr<einsum::Expression>>());}
              | STAR_CALL OPEN_PAREN args CLOSED_PAREN PIPE INTEGER_LITERAL	{ $1->pop_back();

@@ -27,7 +27,7 @@ namespace einsum {
         }
         finch_eval("using Finch;"
                    "using RewriteTools;"
-                   "using Finch.IndexNotation: or, choose;"
+                   "using Finch: or, choose;"
                    "using SparseArrays;"
                    "using Pkg;"
                    "Pkg.add(\"MatrixMarket\");"
@@ -355,7 +355,12 @@ namespace einsum {
                 ss << "SparseList(N" << i << ", [1,1], Int64[],\\n\\\n";
             }
         }
-        ss << "Element{0,";
+        ss << "Element{";
+        if (tensor->type->getElementType()->isBool()) {
+            ss << "false,";
+        } else {
+            ss << "0,";
+        }
         ss << fdump(tensor->type->getElementType());
         ss << "}()";
         for(size_t i=0; i < tensor->getDimensions().size(); i++) {
@@ -451,7 +456,7 @@ namespace einsum {
         }
         std::cout << "CODEGEN ON: " << node->dump() << "WITH FINCH? " << def2needs_finch[node->id] << "\n";
         auto type = node->rhs->getType();
-        if (std::dynamic_pointer_cast<Call>(node->rhs)) {
+        if (!def2needs_finch[node->id] && std::dynamic_pointer_cast<Call>(node->rhs)) {
             for (int a=0; a < node->lhs.size(); a++) {
                 if (node->lhs[a]->tensor->name == "_") {
                     continue;
@@ -658,6 +663,10 @@ T )";
             acc->accept(this);
         }
 
+        for(auto& red: node->reduction_list) {
+            red->reductionInit->accept(this);
+        }
+
         node->rhs->accept(this);
     }
 
@@ -711,7 +720,14 @@ T )";
                     *oss << "sl(";
                 }
             }
-            *oss << "e(0)";
+            *oss << "e(";
+            if(node->type->getElementType()->isBool()) {
+                *oss << "false";
+            } else {
+                *oss << "0";
+            }
+//            *oss << node->type->getElementType()->
+            *oss << ")";
             for (size_t i=0; i < node->getOrder(); i++) {
                 *oss << ")";
             }
@@ -819,7 +835,7 @@ T )";
             return;
         }
         std::cout << "FINCH NEEDED FOR DEF " << node->id << ": " << node->dump() << "\n";
-        auto old_oss = oss;
+
         for (auto& acc: node->lhs) {
             if (acc->tensor->name == "_") {
                 continue;
@@ -836,46 +852,57 @@ T )";
             }
 //            kernel = @finch_program (@loop i (@loop k A[i,k] = w1[] where (@loop j w1[] *= w2[] where (@loop l w2[] += B[i,j,k,l] * C[j] * D[l])) ))
 
-            ss << "kernel = @finch_program ";
+            ss << "kernel = @finch_program (";
             for (auto& idx: acc->indices) {
-                ss << "(@loop " << idx->name << " ";
+                ss << "@loop " << idx->name << " ( ";
             }
 
             // TODO: replace dump() with fdump()
             // TODO: make sure non-zero init values work
+            *oss << "(";
             acc->accept(this);
             *oss << " = ";
             if (node->reduction_list.size() > 0) {
-                for (size_t i=0; i < node->reduction_list.size() - 1; i++) {
+                for (size_t i=0; i < node->reduction_list.size(); i++) {
                     auto& red = node->reduction_list[i];
-                    ss << "w_" << i << "[] where (w_" << i << "[] ";
+                    ss << "w_" << i << "[] ) where (";
+                    ss << "(@loop " << red->reductionVar->name << " ( w_" << i << "[] ";
+                    bool needs_brace = red->reductionOp->is_finch_builtin();
+                    if (needs_brace) {
+                        ss << "<<";
+                    }
                     red->reductionOp->accept(this);
+                    if (needs_brace) {
+                        ss << ">>";
+                    }
                     *oss << "= ";
                 }
-
-                size_t id = node->reduction_list.size() - 1;
-                auto& red = node->reduction_list[id];
-                ss << "w_" << id << "[] where";
-                for (auto& idx: node->getReductionVars()) {
-                    ss << " (@loop " << idx;
-                }
-                ss << " w_" << id << "[] ";
-                red->reductionOp->accept(this);
-                *oss << "= ";
             }
 
             node->rhs->accept(this);
 
             if (node->reduction_list.size() > 0) {
-                for (size_t i=0; i < 2 * node->reduction_list.size() - 1; i++) {
+                for (int i = (node->reduction_list.size() - 1); i >= 0; i--) {
+                    std::cout << "Red index: " << i << "\n";
                     ss << ")";
+                    if ( i == (node->reduction_list.size() - 1)) {
+                        ss << ")";
+                    }
+                    ss << " where (!w_" << i << "[] += ";
+                    node->reduction_list[i]->reductionInit->accept(this);
+                    ss << ")";
+                    if (i > 0) {
+                        ss << ")";
+                    }
                 }
             }
+
+            ss << ")";
 
             for (auto& idx: acc->indices) {
                 ss << ")";
             }
-            ss << "\n";
+            ss << ")\n";  // last paren from @finch_program
             ss << "kernel_code = Finch.execute_code_virtualized(kernel, ctx_2)\n";
             ss << "end\n";
             ss << "return quote\n";
@@ -901,25 +928,25 @@ T )";
             jl_value_t* code = finch_exec("string(last(%s.args))", expr);
             auto s = jl_string_data(code);
 
-            *old_oss << "finch_def_code" << node->id << " = finch_eval(\n";
+            *finch << "finch_def_code" << node->id << " = finch_eval(\n";
 
             std::stringstream ss_(s);
             std::string line;
             while(std::getline(ss_, line, '\n')){
-                *old_oss << "\"" << line << "\\n\"\n";
+                *finch << "\"" << line << "\\n\"\n";
             }
-            *old_oss << ");\n";
+            *finch << ");\n";
         }
 
-        oss = old_oss;
+        oss = finch;
     }
 
     void FinchCompileVisitor::visit(std::shared_ptr<MinOperator> node) {
-        *oss << "<<min>>";
+        *oss << "min";
     }
 
     void FinchCompileVisitor::visit(std::shared_ptr<ChooseOperator> node) {
-        *oss << "<<choose>>";
+        *oss << "choose(0)";
     }
 
     void FinchCompileVisitor::visit(std::shared_ptr<AddOperator> node) {
@@ -931,11 +958,11 @@ T )";
     }
 
     void FinchCompileVisitor::visit(std::shared_ptr<AndOperator> node) {
-        *oss << node->op->sign;
+        *oss << "&";
     }
 
     void FinchCompileVisitor::visit(std::shared_ptr<OrOperator> node) {
-        *oss << "<<or>>";
+        *oss << "or";
     }
 
     void FinchCompileVisitor::visit(std::shared_ptr<TensorVar> tensor) {
@@ -975,9 +1002,13 @@ T )";
     }
 
     void FinchCompileVisitor::visit(std::shared_ptr<Call> node) {
-        *oss << node->function->funcName << "(";
+        std::cout << "FINCH COMPILE ON: " << node->dump() << "\n";
+        auto old = oss;
+        node->function->accept(this);
+        oss = old;
+        *oss << "(";
         for (int i=0; i < node->arguments.size(); i++) {
-            *oss << node->arguments[i]->dump();
+            node->arguments[i]->accept(this);
             if (i < node->arguments.size() - 1) {
                 *oss << ", ";
             }
@@ -1003,24 +1034,37 @@ T )";
     }
 
     void FinchCompileVisitor::visit(std::shared_ptr<FuncDecl> node) {
+//        if (node->is_builtin()) {
+//            node->as_builtin()->accept(this);
+//            return;
+//        }
         for(auto& stmt: node->body) {
             if (stmt->is_def()) {
                 stmt->as_def()->accept(this);
             } else if (stmt->is_multi_def()) {
                 stmt->as_multi_def()->accept(this);
-            }
-            else {
-                std::cout << "NOT DEF: " << stmt->dump() << "\n";
-                std::cout << "TYPE: " << typeid(stmt).name() << "\n";
+            } else if (stmt->is_builtin()) {
+                stmt->as_builtin()->accept(this);
             }
         }
     }
 
     void FinchCompileVisitor::visit(std::shared_ptr<MultipleOutputDefinition> node) {
+//        oss = finch;
+        if (!def2needs_finch[node->id]) {
+            std::cout << "NO FINCH NEEDED: " << node->dump() << "\n";
+            oss = junk;
+            node->rhs->accept(this);
+            return;
+        }
         node->rhs->accept(this);
     }
 
     void FinchCompileVisitor::visit(std::shared_ptr<CallStarRepeat> node) {}
+
+    void FinchCompileVisitor::visit(std::shared_ptr<BuiltinFuncDecl> node) {
+        *oss << node->funcName;
+    }
 
     std::string fdump(std::shared_ptr<Datatype> node) {
         switch (node->getKind()) {
@@ -1037,6 +1081,9 @@ T )";
         tensors.clear();
         for (auto& acc: node->lhs) {
             acc->tensor->accept(this);
+        }
+        for (auto& red: node->reduction_list) {
+            red->reductionInit->accept(this);
         }
         node->rhs->accept(this);
     }
@@ -1110,16 +1157,16 @@ T )";
     void FuncPtr2TensorArgsMapper::visit(std::shared_ptr<Definition> node) {
         std::cout << "FuncPtr2TensorArgsMapper: " << node->dump() << "\n";
         auto v = TensorCollector();
-        node->rhs->accept(&v);
-        std::cout << "v.tensors size INITIALLY: " << v.tensors.size() << "\n";
+        node->accept(&v);
         for (auto& acc: node->lhs) {
             auto tensors = v.tensors;
-            tensors.push_back(acc->tensor);
-            std::cout << "v.tensors size: " << v.tensors.size() << "\n";
-            std::cout << "tensors.size: " << tensors.size() << "\n";
             char func_name[100];
             sprintf(func_name, "finch_def_code%d", node->id);
             def2tensor_args.insert({node->id, tensors});
+            std::cout << "Tensors for def: " << node->dump() << "\n";
+            for(auto& t: tensors) {
+                std::cout << t->name << "\n";
+            }
             def2func_ptr.insert({node->id, func_name});
         }
         node->rhs->accept(this);

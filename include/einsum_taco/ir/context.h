@@ -56,7 +56,9 @@ namespace einsum {
                 if (value->name == tensor->name) {
                     return value;
                 }
+                std::cout << "NOT MATCHING PARAM: " << value->name << "\n";
             }
+            std::cout << "PARAM: " << tensor->name << "\n";
 
             return nullptr;
         }

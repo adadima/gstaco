@@ -622,6 +622,7 @@ namespace einsum {
     void DefaultIRVisitor::visit(std::shared_ptr<Access> node) { throw std::runtime_error(name() + " IMPLEMENT ME: Access!");}
     void DefaultIRVisitor::visit(std::shared_ptr<ReadAccess> node) { throw std::runtime_error(name() + " IMPLEMENT ME: ReadAccess!");}
     void DefaultIRVisitor::visit(std::shared_ptr<TupleVarReadAccess> node) { throw std::runtime_error(name() + " IMPLEMENT ME: TupleVarReadAccess!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<BuiltinFuncDecl> node) { throw std::runtime_error(name() + " IMPLEMENT ME: BuiltinFuncDecl!");}
     void DefaultIRVisitor::visit(std::shared_ptr<BinaryOp> node) { throw std::runtime_error(name() + " IMPLEMENT ME: BinaryOp!");}
     void DefaultIRVisitor::visit(std::shared_ptr<UnaryOp> node) { throw std::runtime_error(name() + " IMPLEMENT ME: UnaryOp!");}
     void DefaultIRVisitor::visit(std::shared_ptr<Definition> node) { throw std::runtime_error(name() + " IMPLEMENT ME: Definition!");}
@@ -846,6 +847,11 @@ namespace einsum {
          // std::cout << name() << ": UNIMPLEMENTED TupleVarReadAccess\n";
     }
 
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<BuiltinFuncDecl> node) {
+        node->op->accept(this);
+        //TODO: visit inputs and outputs as well + stmt body
+    }
+
     void DefaultIRVisitorUnsafe::visit(std::shared_ptr<Operator> node) {
          // std::cout << name() << ": UNIMPLEMENTED Operator\n";
     }
@@ -878,4 +884,30 @@ namespace einsum {
          //  // std::cout << name() << ": UNIMPLEMENTED Datatype\n";
     }
 
+    bool BuiltinFuncDecl::is_julia_builtin() const {
+        return true;
+    }
+
+    bool BuiltinFuncDecl::is_finch_builtin() const {
+        return false;
+    }
+
+    bool OrOperator::is_julia_builtin() const {
+        return false;
+    }
+    bool OrOperator::is_finch_builtin() const {
+        return true;
+    }
+    bool MinOperator::is_julia_builtin() const {
+        return true;
+    }
+    bool MinOperator::is_finch_builtin() const {
+        return true;
+    }
+    bool ChooseOperator::is_julia_builtin() const {
+        return false;
+    }
+    bool ChooseOperator::is_finch_builtin() const {
+        return true;
+    }
 }

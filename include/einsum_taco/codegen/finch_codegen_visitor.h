@@ -311,7 +311,6 @@ namespace einsum {
         void visit(std::shared_ptr<FuncDecl> node) override;
 
         void visit(std::shared_ptr<Definition> node) override;
-
         void visit(std::shared_ptr<MultipleOutputDefinition> node) override;
 
         void visit(std::shared_ptr<Literal> node) override;
@@ -321,6 +320,8 @@ namespace einsum {
         void visit(std::shared_ptr<Access> node) override;
 
         void visit(std::shared_ptr<ReadAccess> node) override;
+
+        void visit(std::shared_ptr<BuiltinFuncDecl> node) override;
 
         void visit(std::shared_ptr<MinOperator> node) override;
 

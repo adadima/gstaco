@@ -7,7 +7,7 @@
 
 #include "einsum_taco//ir/ir_rewriter.h"
 #include <stack>
-#include <unordered_set>
+#include <unordered_map>
 
 namespace einsum {
     struct TensorVarRewriter : public IRRewriter {
@@ -43,7 +43,7 @@ namespace einsum {
     };
 
     struct ReductionOpGenerator : public IRRewriter {
-        std::unordered_set<std::shared_ptr<BuiltinFuncDecl>> reduction_ops;
+        std::unordered_map<std::string, std::shared_ptr<BuiltinFuncDecl>> reduction_ops;
 
         explicit ReductionOpGenerator(IRContext* context) : IRRewriter(context) {}
 
@@ -103,8 +103,8 @@ namespace einsum {
                 new AllocateInserter(new IRContext()),
                 new CallRewriter(new IRContext()),
                 new CallStarConditionProcessor(new IRContext()),
-                new DefinitionSplitter(new IRContext()),
-                new ReductionOpGenerator(new IRContext())
+                new DefinitionSplitter(new IRContext())
+//                new ReductionOpGenerator(new IRContext())
         };
         return apply_custom_rewriters(mod, rewriters);
     }

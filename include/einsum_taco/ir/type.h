@@ -101,8 +101,6 @@ namespace einsum {
             return make<Datatype>(Kind::Float);
         }
 
-
-
     private:
         Kind kind;
     };
