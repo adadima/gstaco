@@ -515,14 +515,14 @@ INSTANTIATE_TEST_CASE_P(
         ::testing::Values(
                 make_tuple("bc", get_compiler_path(), false, BCExecutionParams(
                         "graph1", 1,
-                        {0, 0, 0, 0})),
+                        {0, 0, 0})),
                 make_tuple("bc", get_compiler_path(), false, BCExecutionParams(
                         "graph2", 1,
-                        {0, 0, 1, 2, 0})),
+                        {0, 0, 0, 0})),
                 make_tuple("bc", get_compiler_path(), false, BCExecutionParams(
                         "graph3", 5,
                         {0, 0, 1, 2, 0})),
                 make_tuple("bc", get_compiler_path(), false, BCExecutionParams(
                         "graph4", 1,
-                        {0, 0, 1, 2, 0}))
+                        {0, 0, 5, 3, 2, 0, 0}))
         ));

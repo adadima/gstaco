@@ -503,7 +503,12 @@ namespace einsum {
                     *oss << tensor->name;
                 }
             }
-            *oss << ")\n";
+            *oss << ");\n";
+//            *oss << "finch_exec(\"println(\\\"" << acc->tensor->name << ": \\\", %s";
+//            for (int i=0; i <= acc->tensor->getOrder(); i++) {
+//                *oss << ".lvl";
+//            }
+//            *oss << ".val)\", " << acc->tensor->name << ");";
         }
     }
 
