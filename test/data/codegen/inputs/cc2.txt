@@ -9,8 +9,8 @@ Let Init() -> (IDs int[N], update0 int[1], update1 int[1])
 End
 
 Let EdgeUpdate(old_IDs int[N], old_update1 int[1], dummy int[N]) -> (new_IDs int[N], new_update1 int[1], temp int[N])
-    temp[old_IDs[j]] = old_IDs[old_IDs[i]] * ((edges[j][i] == 1) || (edges[i][j] == 1)) + (edges[j][i] == 0 && edges[i][j] == 0) * (N + 1) | i:(MIN, 2000000000)
-    new_IDs[i] = MIN(temp[i], old_IDs[i])
+    new_IDs[j] = old_IDs[old_IDs[i]] * ((edges[j][i] == 1) || (edges[i][j] == 1)) + (edges[j][i] == 0 && edges[i][j] == 0) * (N + 1) | i:(MIN, old_IDs[old_IDs[j]])
+    temp[i] = 0
     new_update1[j] = (old_IDs[old_IDs[i]] != new_IDs[old_IDs[i]]) | i:(CHOOSE, 0)
 End
 
