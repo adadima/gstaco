@@ -23,7 +23,9 @@ namespace einsum {
             return;
         }
         std::shared_ptr<TensorVar> tensor;
-        if (context->access_scope()) {
+        if (context->read_access_scope()) {
+            tensor = context->get_read_tensor(node);
+        } else if (context->access_scope()) {
             tensor = context->get_write_tensor(node);
         } else if (!context->tensor_scope().empty() && context->func_scope()) {
             tensor = context->get_read_tensor(node);
@@ -51,24 +53,35 @@ namespace einsum {
     }
 
     void TensorVarRewriter::visit(std::shared_ptr<ReadAccess> node) {
-        if (node->indices.empty() && context->def_scope()->has_index_var(node->tensor->name)) {
+        if (node->indices.empty() && (in_access || context->def_scope()->has_index_var(node->tensor->name)) ) {
             auto ivar = IR::make<IndexVar>(node->tensor->name, nullptr);
+            context->def_scope()->indexVars.insert(node->tensor->name);
             node_ = IR::make<IndexVarExpr>(ivar);
+            std::cout << "REPLACING READ ACCESS " << node->dump() << "WITH INDEX VAR: " << node_->dump() << "\n";
             return;
         }
         IRRewriter::visit(node);
     }
 
-    void IndexDimensionRewriter::visit(std::shared_ptr<IndexVar> node) {
-        auto ivar = context->get_index_var(node->getName());
-        node_ = ivar;
-        context->add_reduction_var(ivar);
+    void TensorVarRewriter::visit(std::shared_ptr<Access> node) {
+        in_access = true;
+        IRRewriter::visit(node);
+        in_access = false;
     }
 
-    void IndexDimensionRewriter::visit(std::shared_ptr<IndexVarExpr> node) {
-        auto ivar = context->get_index_var_expr(node->getName());
-        context->add_reduction_var(ivar->indexVar);
-        node_ = ivar;
+    void AccessRewriter::visit(std::shared_ptr<Access> node) {
+        index_vars.clear();
+        for (auto& idx: node->indices) {
+            idx->accept(this);
+        }
+        node->index_vars.insert(node->index_vars.end(), index_vars.begin(), index_vars.end());
+        node_ = node;
+    }
+
+    void AccessRewriter::visit(std::shared_ptr<IndexVarExpr> node) {
+        index_vars.push_back(node);
+        std::cout << "ADDING INDEX VAR EXPR TO SET: " << node->dump() << "\n";
+        node_ = node;
     }
 
     std::vector<std::shared_ptr<Statement>> init_alloc(std::shared_ptr<TensorVar> tensor) {
@@ -209,7 +222,8 @@ namespace einsum {
                             auto indexed_tensor = IR::make<TensorVar>(t->name + "_" + std::to_string(i), indexed_tensor_type, false);
                             auto init = IR::make<Initialize>(indexed_tensor);
                             new_stmts.push_back(init);
-                            auto index_assign = IR::make<Definition>(IR::make<Access>(indexed_tensor, std::vector<std::shared_ptr<IndexVar>>()), IR::make<TupleVarReadAccess>(t, i));
+
+                            auto index_assign = IR::make<Definition>(IR::make<Access>(indexed_tensor, std::vector<std::shared_ptr<Expression>>(), std::vector<std::shared_ptr<IndexVarExpr>>()), IR::make<TupleVarReadAccess>(t, i));
                             std::cout << "ADDITIONAL: " << index_assign->dump() << "\n";
                             new_stmts.push_back(index_assign);
 
@@ -221,7 +235,7 @@ namespace einsum {
                         auto t = tensor->as_var();
                         auto init = IR::make<Initialize>(t);
                         auto alloc = IR::make<Allocate>(t);
-                        auto acc = IR::make<Access>(t, std::vector<std::shared_ptr<IndexVar>>());
+                        auto acc = IR::make<Access>(t, std::vector<std::shared_ptr<Expression>>(), std::vector<std::shared_ptr<IndexVarExpr>>());
                         new_stmt = IR::make<Definition>(acc, call);
                         new_stmts.push_back(init);
                         new_stmts.push_back(alloc);
@@ -287,7 +301,7 @@ namespace einsum {
         auto type = IR::make<TensorType>(IR::make<Datatype>(Datatype::Kind::Bool), std::vector<std::shared_ptr<einsum::Expression>>({one}));
         auto tensor = IR::make<TensorVar>(name, type, false);
         auto idx = IR::make<IndexVar>("i", one);
-        auto acc = IR::make<Access>(tensor, std::vector<std::shared_ptr<IndexVar>>({idx}));
+        auto acc = IR::make<Access>(tensor, std::vector<std::shared_ptr<Expression>>({IR::make<IndexVarExpr>(idx)}), std::vector<std::shared_ptr<IndexVarExpr>>({IR::make<IndexVarExpr>(idx)}));
         auto accs = std::vector<std::shared_ptr<Access>>({acc});
         reductions.emplace_back();
         inside_stop_condition = true;

@@ -13,12 +13,11 @@ namespace einsum {
     class IRContext {
         struct DefinitionScope {
             std::shared_ptr<Definition> def;
-            std::set<std::string> leftIndexVars;
-            std::set<std::string> reductionIndexVars;
+            std::set<std::string> indexVars;
             std::map<std::string, std::set<std::shared_ptr<Expression>>> index_var_dimensions_;
 
             [[nodiscard]] bool has_index_var(const std::string& i) const {
-                return leftIndexVars.count(i) || reductionIndexVars.count(i);
+                return indexVars.count(i);
             }
 
             std::shared_ptr<Expression> getDimension(const std::string& name) {
@@ -132,7 +131,7 @@ namespace einsum {
 
         void enter_definition(const std::shared_ptr<Definition>& def) {
 
-            auto scope = new DefinitionScope{def, def->getReductionVars(), def->getLeftIndexVars(), def->getIndexVarDims(this)};
+            auto scope = new DefinitionScope{def, def->getReductionVars(), def->getIndexVarDims(this)};
             def_scope() = scope;
         }
 
@@ -140,38 +139,38 @@ namespace einsum {
             call_scope() = call;
         }
 
-        std::shared_ptr<IndexVar> get_index_var(std::string name) {
-            if (tensor_scope().empty()) {
-                auto dim = def_scope()->getDimension(name);
-                if (dim) {
-                    return std::make_shared<IndexVar>(name, dim);
-                }
-                return nullptr;
-            }
+//        std::shared_ptr<IndexVar> get_index_var(std::string name) {
+//            if (tensor_scope().empty()) {
+//                auto dim = def_scope()->getDimension(name);
+//                if (dim) {
+//                    return std::make_shared<IndexVar>(name, dim);
+//                }
+//                return nullptr;
+//            }
+//
+//            auto tensor = get_write_tensor(tensor_scope().top());
+//            if (tensor) {
+//                auto dim = tensor->getType()->getDimension(coordinate_);
+//                return IR::make<IndexVar>(name, dim);
+//            }
+//
+//            return nullptr;
+//        }
 
-            auto tensor = get_write_tensor(tensor_scope().top());
-            if (tensor) {
-                auto dim = tensor->getType()->getDimension(coordinate_);
-                return IR::make<IndexVar>(name, dim);
-            }
-
-            return nullptr;
-        }
-
-        std::shared_ptr<IndexVarExpr> get_index_var_expr(std::string name) {
-            if (tensor_scope().empty()) {
-                auto dim = def_scope()->getDimension(name);
-                auto index_var = std::make_shared<IndexVar>(name, dim);
-                return std::make_shared<IndexVarExpr>(index_var);
-            }
-            auto tensor = get_read_tensor(tensor_scope().top());
-            if (tensor) {
-                auto dim = tensor->getType()->getDimension(coordinate_);
-                auto index_var = std::make_shared<IndexVar>(name, dim);
-                return std::make_shared<IndexVarExpr>(index_var);
-            }
-            return nullptr;
-        }
+//        std::shared_ptr<IndexVarExpr> get_index_var_expr(std::string name) {
+//            if (tensor_scope().empty()) {
+//                auto dim = def_scope()->getDimension(name);
+//                auto index_var = std::make_shared<IndexVar>(name, dim);
+//                return std::make_shared<IndexVarExpr>(index_var);
+//            }
+//            auto tensor = get_read_tensor(tensor_scope().top());
+//            if (tensor) {
+//                auto dim = tensor->getType()->getDimension(coordinate_);
+//                auto index_var = std::make_shared<IndexVar>(name, dim);
+//                return std::make_shared<IndexVarExpr>(index_var);
+//            }
+//            return nullptr;
+//        }
 
         void add_reduction_var(const std::shared_ptr<IndexVar>& ivar) {
             reduction_dimensions_.emplace(ivar->getName(), ivar);
@@ -236,12 +235,14 @@ namespace einsum {
         }
 
         void enter_read_access(const std::shared_ptr<ReadAccess>& raccess) {
+            read_access_scope() = raccess;
             tensor_scope().push(raccess->tensor);
             coordinate() = -1;
 
         }
 
         void exit_read_access() {
+            read_access_scope() = nullptr;
             tensor_scope().pop();
         }
 

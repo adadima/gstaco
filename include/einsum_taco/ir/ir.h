@@ -249,11 +249,12 @@ namespace einsum {
 
     struct Access: Acceptor<Access> {
         std::shared_ptr<TensorVar> tensor;
-        std::vector<std::shared_ptr<IndexVar>> indices;
+        std::vector<std::shared_ptr<Expression>> indices;
+        std::vector<std::shared_ptr<IndexVarExpr>> index_vars;
 
-        explicit Access(std::string tensor, bool is_global) : tensor(make<TensorVar>(std::move(tensor), std::shared_ptr<TensorType>(new TensorType()), is_global)), indices(std::vector<std::shared_ptr<IndexVar>>()) {}
+        explicit Access(std::string tensor, bool is_global) : tensor(make<TensorVar>(std::move(tensor), std::shared_ptr<TensorType>(new TensorType()), is_global)), indices(std::vector<std::shared_ptr<Expression>>()) {}
 
-        Access(std::shared_ptr<TensorVar> tensor, std::vector<std::shared_ptr<IndexVar>> indices) : tensor(std::move(tensor)), indices(std::move(indices)) {}
+        Access(std::shared_ptr<TensorVar> tensor, std::vector<std::shared_ptr<Expression>> indices, std::vector<std::shared_ptr<IndexVarExpr>> index_vars) : tensor(std::move(tensor)), indices(std::move(indices)), index_vars(index_vars) {}
 
         std::map<std::string, std::set<std::shared_ptr<Expression>>> getIndexVarDims(IRContext* context) const;
 
@@ -364,7 +365,7 @@ namespace einsum {
         std::string dump() const override;
 
         std::map<std::string, std::set<std::shared_ptr<Expression>>> getIndexVarDims(IRContext* context) const;
-        std::set<std::string> getLeftIndexVars() const;
+        std::set<std::string> getLeftIndexVars(IRContext* context) const;
         std::set<std::string> getReductionVars() const;
     };
 

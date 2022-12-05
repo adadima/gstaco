@@ -1,53 +1,35 @@
-element Vertex end
-element Edge end
+N int
 
-const edges : edgeset{Edge}(Vertex,Vertex) = load (argv[1]);
+edges int[N][SparseList[N]]
 
-const vertices : vertexset{Vertex} = edges.getVertices();
-const IDs : vector{Vertex}(int) = 1;
+Let Init() -> (IDs int[N], update0 int[1], update1 int[1])
+    IDs[i] = i
+    update0[i] = 1
+    update1[i] = 1
+End
 
-const update: vector[1](int);
+Let EdgeUpdate(old_IDs int[N], old_update1 int[1], dummy int[N]) -> (new_IDs int[N], new_update1 int[1], temp int[N])
+    temp[old_IDs[j]] = old_IDs[old_IDs[i]] * ((edges[j][i] == 1) || (edges[i][j] == 1)) + (edges[j][i] == 0 && edges[i][j] == 0) * (N + 1) | i:(MIN, 2000000000)
+    new_IDs[i] = MIN(temp[i], old_IDs[i])
+    new_update1[j] = (old_IDs[old_IDs[i]] != new_IDs[old_IDs[i]]) | i:(CHOOSE, 0)
+End
 
-func updateEdge(src : Vertex, dst : Vertex)
-    var src_id: Vertex = IDs[src];
-    var dst_id: Vertex = IDs[dst];
+Let VertexUpdate(old_IDs int[N], old_update0 int[1]) -> (new_IDs int[N], new_update0 int[1])
+    new_IDs[i] = old_IDs[old_IDs[i]]
+    new_update0[j] = (old_IDs[old_IDs[i]] != old_IDs[i]) | i:(CHOOSE, 0)
+End
 
-    IDs[dst_id] min= IDs[src_id];
-    IDs[src_id] min= IDs[dst_id];
-end
 
-func init(v : Vertex)
-     IDs[v] = v;
-end
+Let CC_Step(old_IDs int[N], old_up0 int[1], old_up1 int[1], dummy1 int[1], dummy2 int[N]) -> (new_IDs int[N], new_up0 int[1], new_up1 int[1], inter_up0 int[1], inter_IDs int[N])
+    inter_IDs, new_up1, _ = EdgeUpdate(old_IDs, old_up1, dummy2)
+    inter_up0[i] = 1
+    new_IDs, new_up0 = VertexUpdate*(inter_IDs, inter_up0) | (#2 == 0)
+End
 
-func pjump(v: Vertex)
-    var y: Vertex = IDs[v];
-    var x: Vertex = IDs[y];
-    if x != y
-        IDs[v] = x;
-        update[0] = 1;
-    end
-end
 
-func main()
-    var n : int = edges.getVertices();
-    for trail in 0:10
-        var frontier : vertexset{Vertex} = new vertexset{Vertex}(n);
-        startTimer();
-        vertices.apply(init);
-        while (frontier.getVertexSetSize() != 0)
-            #s1# var output: vertexset{Vertex} = edges.from(frontier).applyModified(updateEdge,IDs);
-	    delete frontier;
-	    frontier = output;
-            update[0] = 1;
-            while update[0] != 0
-		update[0] = 0;
-		vertices.apply(pjump);
-            end
-        end
-        var elapsed_time : float = stopTimer();
-	delete frontier;
-        print "elapsed time: ";
-        print elapsed_time;
-    end
-end
+Let Main() -> (final_IDs int[N], update0 int[1], update1 int[1], IDs int[N], dummy1 int[1], dummy2 int[N])
+    IDs, update0, update1 = Init()
+    dummy1[i] = 0
+    dummy2[i] = 0
+    final_IDs, _, _, _, _ = CC_Step*(IDs, update0, update1, dummy1, dummy2) | (#3 == 0)
+End

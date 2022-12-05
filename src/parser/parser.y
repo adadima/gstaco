@@ -51,7 +51,6 @@
 %type   <expression> call
 %type   <expression> call_star
 %type   <expression> call_repeat
-%type   <inds_vec>   write_access
 %type   <red>	     reduction
 %type   <reds_vec>   reduction_list
 %type   <ttype> 	type
@@ -64,7 +63,6 @@
 %type   <tvar> 		param
 %type   <acc_vec>       def_lhs
 %type   <r_access>   read_tensor_access
-%type   <w_access>   write_tensor_access
 %type   <definition> def
 %type   <tvar> 	tensor
 %token  <int_val> INTEGER_LITERAL
@@ -158,47 +156,34 @@ access:						    {$$ = new std::vector<std::shared_ptr<einsum::Expression>>(); }
 read_tensor_access: IDENTIFIER access { $$ = new einsum::ReadAccess(
 							std::shared_ptr<einsum::TensorVar>(new einsum::TensorVar(
 								*$1,
-								std::shared_ptr<einsum::TensorType>(new einsum::TensorType())
+								std::shared_ptr<einsum::TensorType>(new einsum::TensorType()),
+								false
 							)),
 							*$2
 						);
 				}
 
-write_access:					{$$ = new std::vector<std::shared_ptr<einsum::IndexVar>>(); }
-| OPEN_BRACKET IDENTIFIER CLOSED_BRACKET  write_access {
-				auto list = new std::vector<std::shared_ptr<einsum::IndexVar>>();
-				list->push_back(std::shared_ptr<einsum::IndexVar>(new einsum::IndexVar(*$2, 0)));
-				list->insert( list->end(), $4->begin(), $4->end());
-				$$ = list;
-			}
-write_tensor_access: IDENTIFIER write_access { $$ = new einsum::Access(
-								std::shared_ptr<einsum::TensorVar>(new einsum::TensorVar(
-									*$1,
-									std::shared_ptr<einsum::TensorType>(new einsum::TensorType())
-								)),
-								*$2
-							);
-					}
-
-def_lhs: IDENTIFIER write_access		{auto acc =  new einsum::Access(
+def_lhs: IDENTIFIER access		{auto acc =  new einsum::Access(
 								std::shared_ptr<einsum::TensorVar>(new einsum::TensorVar(
 									*$1,
 									std::shared_ptr<einsum::TensorType>(new einsum::TensorType()),
 									false
 								)),
-								*$2
+								*$2,
+								std::vector<std::shared_ptr<IndexVarExpr>>()
 							);
 					auto outputs = new std::vector<std::shared_ptr<einsum::Access>>();
 					outputs->push_back(std::shared_ptr<einsum::Access>(acc));
 					$$ = outputs;}
-| IDENTIFIER write_access COM def_lhs	{
+| IDENTIFIER access COM def_lhs	{
 					auto acc =  new einsum::Access(
 						std::shared_ptr<einsum::TensorVar>(new einsum::TensorVar(
 							*$1,
 							std::shared_ptr<einsum::TensorType>(new einsum::TensorType()),
 							false
 						)),
-						*$2
+						*$2,
+						std::vector<std::shared_ptr<IndexVarExpr>>()
 					);
 					$4->insert($4->begin(), std::shared_ptr<einsum::Access>(acc));
 					$$ = $4;}
@@ -231,15 +216,7 @@ exp:		OPEN_PAREN orexp CLOSED_PAREN { $$ = $2;}
 		| INTEGER_LITERAL	{ $$ = new einsum::Literal($1, einsum::intType); }
 		| FLOAT_LITERAL		{ $$ = new einsum::Literal($1, einsum::floatType); }
 		| BOOL_LITERAL		{ $$ = new einsum::Literal($1, einsum::boolType); }
-		| IDENTIFIER access 	{ $$ = new einsum::ReadAccess(
-								std::shared_ptr<einsum::TensorVar>(new einsum::TensorVar(
-									*$1,
-									std::shared_ptr<einsum::TensorType>(new einsum::TensorType()),
-									false
-								)),
-								*$2
-							);
-					}
+		| read_tensor_access 	{ $$ = $1;}
 		| call	{$$ = $1;}
 		| call_repeat	{$$ = $1;}
 		| call_star	{$$ = $1;}

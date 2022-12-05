@@ -279,6 +279,7 @@ INSTANTIATE_TEST_CASE_P(
         GenTestSuite,
         GenTest,
         ::testing::Values(
+                make_tuple("scatter_gather", get_compiler_path(), true, ExecutionParams()),
                 make_tuple("reductions", get_compiler_path(), true, ExecutionParams()),
                 make_tuple("call_condition3", get_compiler_path(), true, ExecutionParams()),
                 make_tuple("definition2", get_compiler_path(), true, ExecutionParams()),
@@ -525,4 +526,61 @@ INSTANTIATE_TEST_CASE_P(
                 make_tuple("bc", get_compiler_path(), false, BCExecutionParams(
                         "graph4", 1,
                         {0, 0, 5, 3, 2, 0, 0}))
+        ));
+
+
+
+struct CCExecutionParams : ExecutionParams {
+    std::string graph_name;
+    std::vector<float> expected;
+
+    CCExecutionParams(const std::string&  graph_name, const std::vector<float>&  expected) :
+            ExecutionParams("CC_" + graph_name + ".txt"),
+            graph_name(graph_name), expected(expected) {}
+};
+
+class CCTest : public BaseGenTest<CCExecutionParams> {
+public:
+    void check_bc_output(const std::string& output, const std::vector<float>& distances) {
+        std::cout << "Output: " << output << "\n";
+        auto lines = getLines(output);
+
+        for (int i=0; i < lines.size(); i++) {
+            DEBUG_LOG << lines[i] << std::endl;
+            auto result = std::stof(lines[i]);
+            auto expected = distances[i];
+            EXPECT_EQ(result, expected);
+        }
+    }
+};
+
+
+TEST_P(CCTest, BC) {
+    auto test_name = std::get<0>(GetParam());
+    auto compiler = std::get<1>(GetParam());
+    auto add_main = std::get<2>(GetParam());
+    assert_compiles(test_name, compiler, add_main);
+
+    auto graph = std::get<3>(GetParam()).graph_name;
+    auto dist = std::get<3>(GetParam()).expected;
+    auto out = std::get<3>(GetParam()).output_filename;
+    assert_runs(test_name, graph, {out}, [&](std::string output) { check_bc_output(output, dist);});
+}
+
+INSTANTIATE_TEST_CASE_P(
+        CCTestSuite,
+        CCTest,
+        ::testing::Values(
+                make_tuple("cc2", get_compiler_path(), false, CCExecutionParams(
+                        "graph1",
+                        {1, 1, 1})),
+                make_tuple("cc2", get_compiler_path(), false, CCExecutionParams(
+                        "graph2",
+                        {1, 1, 1, 1})),
+                make_tuple("cc2", get_compiler_path(), false, CCExecutionParams(
+                        "graph3",
+                        {1, 1, 1, 1, 1})),
+                make_tuple("cc2", get_compiler_path(), false, CCExecutionParams(
+                        "graph4",
+                        {1, 1, 1, 1, 1, 1, 1}))
         ));

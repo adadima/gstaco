@@ -563,7 +563,16 @@ namespace einsum {
     }
 
     std::map<std::string, std::set<std::shared_ptr<Expression>>>  Access::getIndexVarDims(IRContext* context) const {
-        return getDimsFromAccess<IndexVar, IndexVar>(context->get_write_tensor(tensor), indices);
+        auto dims = std::map<std::string, std::set<std::shared_ptr<Expression>>> ();
+
+        for (auto &idx: indices) {
+            for (const auto &[key, value] : idx->getIndexVarDims(context)) {
+                auto &entry = dims[key];
+                entry.insert(value.begin(), value.end());
+            }
+        }
+
+        return dims;
     }
 
     std::map<std::string, std::set<std::shared_ptr<Expression>>> Definition::getIndexVarDims(IRContext* context) const {
@@ -584,14 +593,20 @@ namespace einsum {
         return dims;
     }
 
-    std::set<std::string> Definition::getLeftIndexVars() const {
-        auto s = std::set<std::string>();
-        for (auto &acc: lhs) {
-            for(auto &idx: acc->indices) {
-                s.insert(idx->getName());
+    std::set<std::string> Definition::getLeftIndexVars(IRContext* context) const {
+        auto vars = std::set<std::string>();
+
+        for (auto &&acc : lhs) {
+            for (const auto &[key, value] : acc->getIndexVarDims(context)) {
+                vars.insert(key);
             }
         }
-        return s;
+
+        for (const auto &[key, value] : rhs->getIndexVarDims(context)) {
+            vars.insert(key);
+        }
+
+        return vars;
     }
 
     std::set<std::string> Definition::getReductionVars() const {

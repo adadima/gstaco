@@ -803,7 +803,7 @@ T )";
     void FinchCompileVisitor::visit(std::shared_ptr<Access> node) {
         *oss << node->tensor->name << "[";
         for (size_t i=0; i < node->indices.size(); i++) {
-            *oss << node->indices[i]->dump();
+            node->indices[i]->accept(this);
             if (i != node->indices.size() - 1) {
                 *oss << ",";
             }
@@ -861,8 +861,8 @@ T )";
 //            kernel = @finch_program (@loop i (@loop k A[i,k] = w1[] where (@loop j w1[] *= w2[] where (@loop l w2[] += B[i,j,k,l] * C[j] * D[l])) ))
 
             ss << "kernel = @finch_program (";
-            for (auto& idx: acc->indices) {
-                ss << "@loop " << idx->name << " ( ";
+            for (auto& idx: acc->index_vars) {
+                ss << "@loop " << idx->indexVar->name << " ( ";
             }
 
             // TODO: replace dump() with fdump()
@@ -907,7 +907,7 @@ T )";
 
             ss << ")";
 
-            for (auto& idx: acc->indices) {
+            for (auto& idx: acc->index_vars) {
                 ss << ")";
             }
             ss << ")\n";  // last paren from @finch_program

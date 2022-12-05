@@ -11,17 +11,21 @@
 
 namespace einsum {
     struct TensorVarRewriter : public IRRewriter {
+        bool in_access = false;
+
         explicit TensorVarRewriter(IRContext* context) : IRRewriter(context) {}
 
         void visit(std::shared_ptr<TensorVar> node) override;
         void visit(std::shared_ptr<ReadAccess> node) override;
+        void visit(std::shared_ptr<Access> node) override;
     };
 
-    struct IndexDimensionRewriter : public IRRewriter {
+    struct AccessRewriter : public IRRewriter {
+        std::vector<std::shared_ptr<IndexVarExpr>> index_vars;
 
-        explicit IndexDimensionRewriter(IRContext* context) : IRRewriter(context) {}
+        explicit AccessRewriter(IRContext* context) : IRRewriter(context) {}
 
-        void visit(std::shared_ptr<IndexVar> node) override;
+        void visit(std::shared_ptr<Access> node) override;
         void visit(std::shared_ptr<IndexVarExpr> node) override;
     };
 
@@ -99,7 +103,7 @@ namespace einsum {
         std::vector<IRRewriter*> rewriters = {
                 new IRRewriter(new IRContext()),
                 new TensorVarRewriter(new IRContext()),
-                new IndexDimensionRewriter(new IRContext()),
+                new AccessRewriter(new IRContext()),
                 new AllocateInserter(new IRContext()),
                 new CallRewriter(new IRContext()),
                 new CallStarConditionProcessor(new IRContext()),
