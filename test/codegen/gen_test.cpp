@@ -555,7 +555,7 @@ public:
 };
 
 
-TEST_P(CCTest, BC) {
+TEST_P(CCTest, CC) {
     auto test_name = std::get<0>(GetParam());
     auto compiler = std::get<1>(GetParam());
     auto add_main = std::get<2>(GetParam());
