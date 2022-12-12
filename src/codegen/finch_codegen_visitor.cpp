@@ -91,7 +91,7 @@ namespace einsum {
                 *oss << "\n";
 
                 oss = oss_h;
-                visit_func_signature(comp->as_decl());
+                visit_func_signature(comp->as_decl(), true);
                 *oss << ";\n";
                 oss = oss_cpp;
             } else if (comp->is_init()) {
@@ -203,7 +203,7 @@ namespace einsum {
 //    }
 
 
-    void FinchCodeGenVisitor::visit_func_signature(std::shared_ptr<FuncDecl> node) {
+    void FinchCodeGenVisitor::visit_func_signature(std::shared_ptr<FuncDecl> node, bool header) {
         auto return_type = node->getOutputType();
         return_type->accept(this);
         *oss << " ";
@@ -218,11 +218,28 @@ namespace einsum {
             *oss << " ";
             *oss << input->name;
         }
+        int j = 0;
+        for (int i=0; i < node->storages.size(); i++) {
+            auto storage = node->storages[i];
+            if (storage == nullptr) {
+                continue;
+            }
+            if (j > 0 || !node->inputs.empty()) {
+                *oss << ", ";
+            }
+            j += 1;
+            storage->getType()->accept(this);
+            *oss << " ";
+            *oss << storage->name;
+            if (header) {
+                *oss << " = nullptr";
+            }
+        }
         *oss << ")";
     }
 
     void FinchCodeGenVisitor::visit(std::shared_ptr<FuncDecl> node) {
-        visit_func_signature(node);
+        visit_func_signature(node, false);
         *oss << " {\n";
         indent();
         for (auto &stmt: node->body) {
@@ -342,6 +359,9 @@ namespace einsum {
         if (!tensor || tensor->getOrder() == 0) {
             return;  // no need to allocate space for a scalar
         }
+        if (node->storage != nullptr) {
+            *oss << "if (" << node->storage->name << " == nullptr) {\n";
+        }
         *oss << "{\n";
         *oss << "char code[1000];\n";
         *oss << "sprintf(code, ";
@@ -379,6 +399,11 @@ namespace einsum {
         *oss << ");\n";
         *oss << tensor->name << " = finch_eval(code);\n";
         *oss << "}\n";
+        if (node->storage != nullptr) {
+            *oss << "} else {\n";
+            *oss << node->tensor->name << " = " << node->storage->name << ";\n";
+            *oss << "}\n";
+        }
     }
 
     // Something like: t1.data = t2.data
@@ -587,12 +612,14 @@ T )";
     }
 //
     void FinchCodeGenVisitor::visit(std::shared_ptr<Call> node) {
+        printf("ARGS FOR CALL TO %s\n", node->function->funcName.c_str());
         *oss << node->function->funcName;
         *oss << "(";
         for (int i=0; i < node->arguments.size(); i++) {
             if (i > 0) {
                 *oss << ", ";
             }
+            printf("ARG: %s\n", node->arguments[i]->dump().c_str());
             node->arguments[i]->accept(this);
         }
         *oss << ")";
@@ -600,51 +627,110 @@ T )";
 
     void FinchCodeGenVisitor::visit_call(const std::shared_ptr<Call>& node, const std::function<void()>& loop_generator) {
         *oss << "([&]{\n";
-
-        *oss << "auto out = ";
-        auto call = IR::make<Call>(node->function, node->arguments);
-        call->accept(this);
-        *oss << ";\n";
-
-        if (node->arguments.size() > 1) {
-            for(int i=0; i < node->arguments.size(); i++) {
-                auto var = "out" + std::to_string(i);
-                *oss << "auto " << var << " = std::get<" << i << ">(out);\n";
+        *oss << "int swap = -1;\n";
+        for (size_t i=0; i < node->function->storages.size(); i++) {
+            auto& st = node->function->storages[i];
+            if (st == nullptr) {
+                continue;
             }
-        } else {
-            *oss << "auto& out0 = out;\n";
+            auto out_name = "final_out" + std::to_string(i);
+            auto temp_name = "temp_out" + std::to_string(i);
+            auto tensor = IR::make<TensorVar>(out_name, st->type, st->is_global);
+            auto init = IR::make<Initialize>(tensor);
+            init->accept(this);
+            auto alloc = IR::make<Allocate>(tensor);
+            alloc->accept(this);
+            auto temp = IR::make<TensorVar>(temp_name, st->type, st->is_global);
+            auto temp_init = IR::make<Initialize>(temp);
+            temp_init->accept(this);
+        }
+        for(int i=0; i < node->arguments.size(); i++) {
+                auto var = "out" + std::to_string(i);
+                auto in = node->function->inputs[i];
+                auto tensor = IR::make<TensorVar>(var, in->type, in->is_global);
+                auto init = IR::make<Initialize>(tensor);
+                init->accept(this);
+                auto alloc = IR::make<Allocate>(tensor);
+                alloc->accept(this);
+                if (tensor->getOrder() > 0) {
+                    *oss << "finch_exec(\"copyto!(%s, %s)\", " << var << ", ";
+                    node->arguments[i]->accept(this);
+                    *oss << ");\n";
+                } else {
+                    *oss << var << " = ";
+                    node->arguments[i]->accept(this);
+                    *oss << ";\n";
+                }
+
         }
 
         loop_generator();
 
         indent();
+
         *oss << get_indent();
-        if (node->arguments.size() == 1) {
-            *oss << "out0";
-        } else {
+
+
+        if (node->arguments.size() > 1) {
             *oss << "std::tie(";
-            for(int i=0; i < node->arguments.size(); i++) {
-                if (i > 0) {
-                    *oss << ", ";
-                }
-                auto var = "out" + std::to_string(i);
-                *oss << var;
+        }
+
+        for(int i=0; i < node->arguments.size(); i++) {
+            if (i > 0) {
+                *oss << ", ";
             }
+            auto var = (node->function->storages[i] != nullptr) ? "final_out" + std::to_string(i) : "out" + std::to_string(i);
+            *oss << var;
+        }
+
+        if (node->arguments.size() > 1) {
             *oss << ")";
         }
+
         *oss << " = ";
         auto args = std::vector<std::shared_ptr<Expression>>();
         for(int i=0; i < node->arguments.size(); i++) {
             args.push_back(IR::make<ReadAccess>("out" + std::to_string(i), false));
         }
+        for(size_t i=0; i < node->function->storages.size(); i++) {
+            auto st = node->function->storages[i];
+            if (st == nullptr) {
+                continue;
+            }
+            args.push_back(IR::make<ReadAccess>("final_out" + std::to_string(i), false));
+        }
         auto call_ = IR::make<Call>(node->function, args);
         call_->accept(this);
         *oss << ";\n";
+
+        for (size_t i=0; i < node->function->storages.size(); i++) {
+            auto& st = node->function->storages[i];
+            if (st == nullptr) {
+                continue;
+            }
+            *oss << get_indent() << "temp_out" <<  std::to_string(i) << " = out" << std::to_string(i) << ";\n";
+            *oss << get_indent() << "out" << std::to_string(i) << " = final_out" << std::to_string(i) << ";\n";
+            *oss << get_indent() << "final_out" << std::to_string(i) << " = temp_out" << std::to_string(i) << ";\n";
+        }
+        *oss << "swap += 1;\n";
 
         unindent();
 
         *oss << get_indent();
         *oss << "}\n";
+//        *oss << "if (swap % 2 == 1) {\n";
+//        indent();
+//        for (size_t i=0; i < node->function->storages.size(); i++) {
+//            auto& st = node->function->storages[i];
+//            if (st == nullptr) {
+//                continue;
+//            }
+//            *oss << get_indent() << "temp_out" <<  std::to_string(i) << " = out" << std::to_string(i) << ";\n";
+//            *oss << get_indent() << "out" << std::to_string(i) << " = final_out" << std::to_string(i) << ";\n";
+//            *oss << get_indent() << "final_out" << std::to_string(i) << " = temp_out" << std::to_string(i) << ";\n";
+//        }
+//        unindent();
+//        *oss << "}\n";
         get_lambda_return(node->function->getOutputType(), node->arguments.size());
         *oss << "\n}())";
     }

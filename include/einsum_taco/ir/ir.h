@@ -316,6 +316,7 @@ namespace einsum {
 
     struct Allocate : Acceptor<Allocate, Statement> {
         std::shared_ptr<TensorVar> tensor;
+        std::shared_ptr<TensorVar> storage;
 
         explicit Allocate(const std::shared_ptr<TensorVar>&  tensor) :
             tensor(tensor){}
@@ -395,6 +396,7 @@ namespace einsum {
     struct FuncDecl : Acceptor<FuncDecl, ModuleComponent> {
         std::string funcName;
         std::vector<std::shared_ptr<TensorVar>> inputs;
+        std::vector<std::shared_ptr<TensorVar>> storages;
         std::vector<std::shared_ptr<TensorVar>> outputs;
         std::vector<std::shared_ptr<Statement>> body;
 

@@ -119,7 +119,7 @@ namespace einsum {
 
         void visit_call(const std::shared_ptr<Call>& node, const std::function<void()>& loop_generator);
 
-        void visit_func_signature(std::shared_ptr<FuncDecl> node);
+        void visit_func_signature(std::shared_ptr<FuncDecl> node, bool header = false);
     };
 
     struct DefinitionVisitor : DefaultIRVisitor {

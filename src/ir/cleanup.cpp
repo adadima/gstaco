@@ -375,5 +375,64 @@ namespace einsum {
         node_ = node;
         def_id += 1;
     }
+
+    void MemoryReuseRewriter::visit(std::shared_ptr<Definition> node) {
+        tensor_outputs.clear();
+        if (std::dynamic_pointer_cast<Call>(node->rhs) && !std::dynamic_pointer_cast<CallStarRepeat>(node->rhs) && !std::dynamic_pointer_cast<CallStarCondition>(node->rhs)) {
+//            printf("CALL PN RHS: %$s\n", node->rhs->dump().c_str());
+            for(size_t i=0; i < node->lhs.size(); i++) {
+                auto& acc = node->lhs[i];
+                if (acc->tensor->getOrder() > 0 || acc->tensor->name == "_") {
+                    tensor_outputs.push_back(acc->tensor);
+                }
+            }
+            node->rhs->accept(this);
+            node_ = node;
+        } else {
+            IRRewriter::visit(node);
+        }
+    }
+
+    void MemoryReuseRewriter::visit(std::shared_ptr<Call> node) {
+        if (!node->function->is_builtin()) {
+            for (size_t i=0; i < tensor_outputs.size(); i++) {
+                auto& t = tensor_outputs[i];
+                if (t->name == "_") {
+                    if (node->function->outputs[i]->getOrder() == 0) {
+                        printf("NOT ADDING PLACEHOLDER FOR SCALAR\n");
+                        continue;
+                    }
+                    printf("ADDING PLACEHOLDER FOR TENSOR\n");
+                    t = IR::make<TensorVar>("nullptr", t->type, t->is_global);
+                }
+                auto acc = IR::make<ReadAccess>(t, std::vector<std::shared_ptr<Expression>>());
+                node->arguments.push_back(acc);
+            }
+        }
+        tensor_outputs.clear();
+        IRRewriter::visit_call(node);
+    }
+
+
+    void FuncDeclRewriter::visit(std::shared_ptr<Allocate> node) {
+        if (context->func_scope() && storages.find(node->tensor->name) != storages.end()) {
+            node->storage = storages[node->tensor->name];
+        }
+        node_ = node;
+    }
+
+    void FuncDeclRewriter::visit_decl(const std::shared_ptr<FuncDecl>& node) {
+        storages.clear();
+        for (auto& out: node->outputs) {
+            if (out->getOrder() > 0) {
+                auto storage = IR::make<TensorVar>(out->name + "_storage", out->type, out->is_global);
+                storages.insert({out->name, storage});
+                node->storages.push_back(storage);
+            } else {
+                node->storages.push_back(nullptr);
+            }
+        }
+        IRRewriter::visit_decl(node);
+    }
 }
 

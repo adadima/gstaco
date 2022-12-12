@@ -91,6 +91,24 @@ namespace einsum {
         void visit(std::shared_ptr<MultipleOutputDefinition> node) override;
     };
 
+    struct FuncDeclRewriter : public IRRewriter {
+        std::map<std::string, std::shared_ptr<TensorVar>> storages;
+        bool from_call = false;
+
+        explicit FuncDeclRewriter(IRContext* context) : IRRewriter(context) {}
+
+        void visit(std::shared_ptr<Allocate> node) override;
+        void visit_decl(const std::shared_ptr<FuncDecl>& node) override;
+    };
+
+    struct MemoryReuseRewriter : public IRRewriter {
+        std::vector<std::shared_ptr<TensorVar>> tensor_outputs;
+        explicit MemoryReuseRewriter(IRContext* context) : IRRewriter(context) {}
+
+        void visit(std::shared_ptr<Call> node) override;
+        void visit(std::shared_ptr<Definition> node) override;
+    };
+
     std::shared_ptr<Module> apply_custom_rewriters(std::shared_ptr<Module> mod, const std::vector<IRRewriter*>& rewriters) {
         for (auto& rewriter: rewriters) {
             mod->accept(rewriter);
@@ -105,10 +123,11 @@ namespace einsum {
                 new TensorVarRewriter(new IRContext()),
                 new AccessRewriter(new IRContext()),
                 new AllocateInserter(new IRContext()),
+                new MemoryReuseRewriter(new IRContext()),
                 new CallRewriter(new IRContext()),
                 new CallStarConditionProcessor(new IRContext()),
-                new DefinitionSplitter(new IRContext())
-//                new ReductionOpGenerator(new IRContext())
+                new DefinitionSplitter(new IRContext()),
+                new FuncDeclRewriter(new IRContext())
         };
         return apply_custom_rewriters(mod, rewriters);
     }
