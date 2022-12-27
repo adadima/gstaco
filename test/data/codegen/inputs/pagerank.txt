@@ -11,18 +11,16 @@ Let InitRank() -> (r_out float[N])
 End
 
 
-Let PageRankStep(out_d_in int[N], contrib_in float[N], rank_in float[N], r_in float[N]) -> (out_d int[N], contrib float[N], rank float[N], r_out float[N])
-    out_d[j] = edges[i][j] | i:(+, 0)
-    contrib[i] = r_in[i] / out_d[i]
-
-    rank[i] = edges[i][j] * contrib[j] | j:(+, 0.0)
-
-    r_out[i] = beta_score + damp * (rank[i])
+Let PageRankStep(rank_in float[N], r_in float[N], scaled_edges float[N][SparseList[N]]) -> (rank float[N], r_out float[N], out float[N][SparseList[N]])
+    rank[i] = scaled_edges[i][j] * r_in[j] | j:(+, 0.0)
+    r_out[i] = beta_score + damp * rank[i]
+    out = scaled_edges
 End
 
-Let Main() -> (out_d int[N], contrib float[N], rank float[N], r_out float[N])
-    out_d[i] = 0
-    contrib[i] = 0.0
+
+Let Main() -> (rank float[N], out_d int[N], scaled_edges float[N][SparseList[N]], r_out float[N])
     rank[i] = 0.0
-    _, _, _, r_out = PageRankStep*(out_d, contrib, rank, InitRank()) | 20
+    out_d[j] = edges[i][j] | i:(+, 0)
+    scaled_edges[i][j] = edges[i][j] / out_d[j]
+    _, r_out, _ = PageRankStep*(rank, InitRank(), scaled_edges) | 20
 End
