@@ -59,6 +59,8 @@ true|false    {yylval->bool_val = (std::string(yytext) == "true") ? true : false
 
 "Dense"       {yylval->op_val = new std::string(yytext); return DENSE; }
 
+"Ord"           {yylval->op_val = new std::string(yytext); return ORD; }
+
 if|then|else {
             printf( "A keyword: %s\n", yytext );
             }

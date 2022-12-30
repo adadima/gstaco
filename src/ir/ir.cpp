@@ -486,16 +486,8 @@ namespace einsum {
         return name;
     }
 
-    std::shared_ptr<Expression> IndexVar::getDimension(int i) const {
-        return dimension;
-    }
-
     std::string IndexVarExpr::getName() const {
         return indexVar->getName();
-    }
-
-    std::shared_ptr<Expression> IndexVarExpr::getDimension(int i) const {
-        return indexVar->getDimension(i);
     }
 
     std::map<std::string, std::set<std::shared_ptr<Expression>>>  Literal::getIndexVarDims(IRContext* context) const {

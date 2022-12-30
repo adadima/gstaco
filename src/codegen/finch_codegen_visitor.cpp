@@ -944,57 +944,116 @@ T )";
                 acc->tensor->getType()->getElementType()->accept(this);
                 ss << "}()), ctx_2, :w_" << i << ")\n";
             }
-//            kernel = @finch_program (@loop i (@loop k A[i,k] = w1[] where (@loop j w1[] *= w2[] where (@loop l w2[] += B[i,j,k,l] * C[j] * D[l])) ))
-
-            ss << "kernel = @finch_program (";
-            for (auto& idx: acc->index_vars) {
-                ss << "@loop " << idx->indexVar->name << " ( ";
+            std::unordered_map<std::string, std::shared_ptr<Reduction>> ivar2red;
+            for(auto& red: node->reduction_list) {
+                ivar2red.insert({red->reductionVar->name, red});
+            }
+            std::vector<std::shared_ptr<IndexVar>>& index_vars = node->index_vars;
+            bool has_order = !node->index_vars.empty();
+            if (!has_order) {
+                for(auto& ivarexpr: acc->index_vars) {
+                    index_vars.push_back(ivarexpr->indexVar);
+                }
+                for(auto& red: node->reduction_list) {
+                    index_vars.push_back(red->reductionVar);
+                }
             }
 
-            // TODO: replace dump() with fdump()
-            // TODO: make sure non-zero init values work
-            *oss << "(";
-            acc->accept(this);
-            *oss << " = ";
-            if (node->reduction_list.size() > 0) {
-                for (size_t i=0; i < node->reduction_list.size(); i++) {
-                    auto& red = node->reduction_list[i];
-                    ss << "w_" << i << "[] ) where (";
-                    ss << "(@loop " << red->reductionVar->name << " ( w_" << i << "[] ";
-                    bool needs_brace = red->reductionOp->is_finch_builtin();
+            bool different_ops_or_init = false;
+            std::shared_ptr<Reduction> ref = nullptr;
+            for(auto& red: node->reduction_list) {
+                if (ref == nullptr) {
+                    ref = red;
+                    different_ops_or_init = !red->reductionInit->isZero();
+                } else if (ref->reductionOp->funcName != red->reductionOp->funcName) {
+                    // different_ops
+                    different_ops_or_init = true;
+                } else if (!ref->reductionInit->isZero() || !red->reductionInit->isZero()) {
+                    //different init
+                    different_ops_or_init = true;
+                }
+
+                if (different_ops_or_init) {
+                    break;
+                }
+            }
+            ss << "kernel = @finch_program (";
+            if (!different_ops_or_init) {
+                // this is the common case and can be optimized:
+                // when all reductions have the same operator and initial value
+                for (auto &idx: index_vars) {
+                    ss << "@loop " << idx->name << " (";
+                }
+                acc->accept(this);
+                *oss << " ";
+                if (ref != nullptr) {
+                    bool needs_brace = ref->reductionOp->is_finch_builtin();
                     if (needs_brace) {
                         ss << "<<";
                     }
-                    red->reductionOp->accept(this);
+                    ref->reductionOp->accept(this);
                     if (needs_brace) {
                         ss << ">>";
                     }
-                    *oss << "= ";
                 }
-            }
-
-            node->rhs->accept(this);
-
-            if (node->reduction_list.size() > 0) {
-                for (int i = (node->reduction_list.size() - 1); i >= 0; i--) {
-                    std::cout << "Red index: " << i << "\n";
+                *oss << "= ";
+                node->rhs->accept(this);
+                for (auto &idx: index_vars) {
                     ss << ")";
-                    if ( i == (node->reduction_list.size() - 1)) {
-                        ss << ")";
-                    }
-                    ss << " where (!w_" << i << "[] += ";
-                    node->reduction_list[i]->reductionInit->accept(this);
-                    ss << ")";
-                    if (i > 0) {
-                        ss << ")";
+                }
+            } else {
+
+                // this case will be handled the old way => inefficiently
+                // does not support scheduling
+                for (auto &idx: acc->index_vars) {
+                    ss << "@loop " << idx->indexVar->name << " ( ";
+                }
+
+                // TODO: replace dump() with fdump()
+                // TODO: make sure non-zero init values work
+                *oss << "(";
+                acc->accept(this);
+                *oss << " = ";
+                if (node->reduction_list.size() > 0) {
+                    for (size_t i = 0; i < node->reduction_list.size(); i++) {
+                        auto &red = node->reduction_list[i];
+                        ss << "w_" << i << "[] ) where (";
+                        ss << "(@loop " << red->reductionVar->name << " ( w_" << i << "[] ";
+                        bool needs_brace = red->reductionOp->is_finch_builtin();
+                        if (needs_brace) {
+                            ss << "<<";
+                        }
+                        red->reductionOp->accept(this);
+                        if (needs_brace) {
+                            ss << ">>";
+                        }
+                        *oss << "= ";
                     }
                 }
-            }
 
-            ss << ")";
+                node->rhs->accept(this);
 
-            for (auto& idx: acc->index_vars) {
+                if (node->reduction_list.size() > 0) {
+                    for (int i = (node->reduction_list.size() - 1); i >= 0; i--) {
+                        std::cout << "Red index: " << i << "\n";
+                        ss << ")";
+                        if (i == (node->reduction_list.size() - 1)) {
+                            ss << ")";
+                        }
+                        ss << " where (!w_" << i << "[] += ";
+                        node->reduction_list[i]->reductionInit->accept(this);
+                        ss << ")";
+                        if (i > 0) {
+                            ss << ")";
+                        }
+                    }
+                }
+
                 ss << ")";
+
+                for (auto &idx: acc->index_vars) {
+                    ss << ")";
+                }
             }
             ss << ")\n";  // last paren from @finch_program
             ss << "kernel_code = Finch.execute_code_virtualized(kernel, ctx_2)\n";

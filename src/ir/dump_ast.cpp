@@ -22,7 +22,6 @@ void einsum::DumpAstVisitor::unindent() {
 
 void einsum::DumpAstVisitor::visit(std::shared_ptr<IndexVar> node) {
     indent();
-    node->dimension->accept(this);
     auto dim = ast;
     ast = get_indent() + "<" + node->class_name() + "\n";
     indent();

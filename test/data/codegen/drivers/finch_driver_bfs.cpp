@@ -14,12 +14,15 @@ jl_value_t* edges;
 
 int main(int argc, char* argv[]) {
     enter_finch();
+    compile();
+//    printf("Compiled finch\n");
+
     Graph g = Graph{};
     N = make_weights_and_edges(argv[1], &g);
+//    printf("Loaded edges\n");
     edges = g.edges;
     source = std::atoi(argv[2]);
 
-    compile();
     auto res = Main();
     auto parents = std::get<0>(res);
     jl_value_t *val = finch_exec("%s.lvl.lvl.val", parents);

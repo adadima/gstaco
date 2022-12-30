@@ -66,18 +66,10 @@ namespace einsum {
 
     struct IndexVar : Acceptor<IndexVar> {
         std::string name;
-        int* coordinate;
-        std::shared_ptr<Expression> dimension;
 
-        IndexVar(std::string name, std::shared_ptr<Expression> dimension) :
-            name(std::move(name)), dimension(std::move(dimension)), coordinate(nullptr) {}
-
-        IndexVar(std::string name, std::shared_ptr<Expression> dimension, int* coordinate) :
-            name(std::move(name)), dimension(std::move(dimension)), coordinate(coordinate) {}
+        IndexVar(std::string name) : name(name) {}
 
         std::string getName() const;
-
-        std::shared_ptr<Expression> getDimension(int i) const;
 
         std::string dump() const override;
     };
@@ -96,6 +88,10 @@ namespace einsum {
         std::string dump() const override = 0;
         virtual std::vector<std::shared_ptr<IndexVar>> getIndices() = 0;
         virtual std::map<std::string, std::set<std::shared_ptr<Expression>>> getIndexVarDims(IRContext* context) const = 0;
+
+        virtual bool isZero() {
+            return false;
+        }
     };
 
     struct Literal : Acceptor<Literal, Expression> {
@@ -135,6 +131,14 @@ namespace einsum {
         bool isFloat() const;
 
         bool isBool() const;
+
+        bool isZero() override {
+            auto rep = dump();
+            std::istringstream iss(rep);
+            float f;
+            iss >> f;
+            return iss.eof() && !iss.fail() && f == 0;
+        }
 
     private:
         void* ptr;
@@ -242,8 +246,6 @@ namespace einsum {
 
         std::string getName() const;
 
-        std::shared_ptr<Expression> getDimension(int i) const;
-
         std::shared_ptr<Type> getType() const override;
     };
 
@@ -346,6 +348,7 @@ namespace einsum {
 
     struct Definition : Acceptor<Definition, Statement> {
         std::vector<std::shared_ptr<Reduction>> reduction_list;
+        std::vector<std::shared_ptr<IndexVar>> index_vars;
         std::vector<std::shared_ptr<Access>> lhs;
         std::shared_ptr<Expression> rhs;
         bool skip_codegen = false;

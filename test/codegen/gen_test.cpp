@@ -346,6 +346,29 @@ INSTANTIATE_TEST_CASE_P(
                         {0.021428571428571432, 0.03827678571428572, 0.039642857142857146, 0.03827678571428572, 0.0539638392857143, 0.29575468749999995, 0.29575468749999995}))
         ));
 
+//
+//TEST_P(PageRankTest, PageRankBench) {
+//    auto test_name = std::get<0>(GetParam());
+//    auto compiler = std::get<1>(GetParam());
+//    auto add_main = std::get<2>(GetParam());
+//    assert_compiles(test_name, compiler, add_main);
+//
+//    auto out = get_test_dir() + "tmp/codegen/pr_bench_out";
+//    auto graph = std::get<3>(GetParam()).graph_name;
+//    out = std::get<3>(GetParam()).output_filename;
+//    auto starter = get_test_data_dir() + "codegen/graphs/starter.txt";
+//    assert_runs(test_name, graph, {starter, "0.85", out}, [&](std::string output){std::cout << output << "\n";});
+//}
+//
+//INSTANTIATE_TEST_CASE_P(
+//        PageRankBenchTestSuite,
+//        PageRankTest,
+//        ::testing::Values(
+//                make_tuple("pagerank_bench", get_compiler_path(), false, PageRankExecutionParams(
+//                        "soc-LiveJournal1",
+//                        {}))
+//                        ));
+
 
 struct BFSExecutionParams : ExecutionParams {
     std::string graph_name;

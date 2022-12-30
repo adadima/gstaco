@@ -54,7 +54,7 @@ namespace einsum {
 
     void TensorVarRewriter::visit(std::shared_ptr<ReadAccess> node) {
         if (node->indices.empty() && (in_access || context->def_scope()->has_index_var(node->tensor->name)) ) {
-            auto ivar = IR::make<IndexVar>(node->tensor->name, nullptr);
+            auto ivar = IR::make<IndexVar>(node->tensor->name);
             context->def_scope()->indexVars.insert(node->tensor->name);
             node_ = IR::make<IndexVarExpr>(ivar);
             std::cout << "REPLACING READ ACCESS " << node->dump() << "WITH INDEX VAR: " << node_->dump() << "\n";
@@ -300,7 +300,7 @@ namespace einsum {
         auto one = IR::make<Literal>(1, IR::make<Datatype>(Datatype::Kind::Int));
         auto type = IR::make<TensorType>(IR::make<Datatype>(Datatype::Kind::Bool), std::vector<std::shared_ptr<einsum::Expression>>({one}));
         auto tensor = IR::make<TensorVar>(name, type, false);
-        auto idx = IR::make<IndexVar>("i", one);
+        auto idx = IR::make<IndexVar>("i");
         auto acc = IR::make<Access>(tensor, std::vector<std::shared_ptr<Expression>>({IR::make<IndexVarExpr>(idx)}), std::vector<std::shared_ptr<IndexVarExpr>>({IR::make<IndexVarExpr>(idx)}));
         auto accs = std::vector<std::shared_ptr<Access>>({acc});
         reductions.emplace_back();
@@ -347,7 +347,7 @@ namespace einsum {
             auto indices = node->indices;
             for(size_t i=node->indices.size(); i < node->tensor->getOrder(); i++) {
                 auto idx_var = "i"+ std::to_string(i);
-                std::shared_ptr<IndexVar> var = IR::make<IndexVar>(idx_var, node->tensor->type->dimensions[i]);
+                std::shared_ptr<IndexVar> var = IR::make<IndexVar>(idx_var);
                 indices.push_back(IR::make<IndexVarExpr>(var));
                 if (index_vars.find(idx_var) == index_vars.end()) {
                     auto& reds = reductions.back();

@@ -23,7 +23,6 @@ namespace einsum {
     }
 
     void IRRewriter::visit(std::shared_ptr<IndexVar> node) {
-        node->dimension = rewrite(node->dimension);
         node_ = node;
     }
 
