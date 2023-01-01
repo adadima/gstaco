@@ -215,6 +215,10 @@ namespace einsum {
         [[nodiscard]] bool isArithmetic() const;
     };
 
+    struct IfElseOp : Operator {
+        IfElseOp() : Operator(0, "ifelse", true, nullptr) {};
+    };
+
     struct MinOp : Operator {
         MinOp() : Operator(0, "MIN", "MIN", nullptr) {};
     };
@@ -278,6 +282,8 @@ namespace einsum {
     struct NeqOp : Operator {
         NeqOp() : Operator(7, "!=", Datatype::boolType()) {}
     };
+
+    inline std::shared_ptr<IfElseOp> ifelse = std::make_shared<IfElseOp>();
 
     inline std::shared_ptr<MinOp> min = std::make_shared<MinOp>();
 

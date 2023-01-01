@@ -27,7 +27,7 @@ Let Forward(frontier_list int[N][SparseList[N]], num_paths int[N], visited int[N
 End
 
 Let Backwards_Vertex(frontier_list int[N][SparseList[N]], num_paths int[N], deps int[N], visited int[N], round int) -> (backward_deps int[N], backward_visited int[N], backward_round int)
-        backward_deps[j] = deps[j] + (num_paths[j] != 0) * frontier_list[round - 1][j] / ( (num_paths[j] == 0) * P + num_paths[j])
+        backward_deps[j] = deps[j] + ifelse(num_paths[j] != 0, frontier_list[round - 1][j] / num_paths[j], 0)
 		backward_visited[j] = CHOOSE(frontier_list[round - 1][j], visited[j])
 		backward_round = round - 1
 End
@@ -44,7 +44,7 @@ Let Backward_Step(frontier_list int[N][SparseList[N]], num_paths int[N], deps in
 End
 
 Let ComputeFinal(deps int[N], num_paths int[N]) -> (new_deps int[N])
-    new_deps[i] = (num_paths[i] != 0) * (deps[i] * num_paths[i] - 1)
+    new_deps[i] = ifelse(num_paths[i] != 0, deps[i] * num_paths[i] - 1, 0)
 End
 
 {Final Result}

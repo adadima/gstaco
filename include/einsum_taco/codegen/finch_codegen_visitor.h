@@ -69,6 +69,8 @@ namespace einsum {
 
         void visit(std::shared_ptr<MinOperator> node) override;
 
+        void visit(std::shared_ptr<IfElseOperator> node) override;
+
         void visit(std::shared_ptr<ChooseOperator> node) override;
 //
         void visit(std::shared_ptr<Call> node) override;
@@ -325,6 +327,8 @@ namespace einsum {
         void visit(std::shared_ptr<BuiltinFuncDecl> node) override;
 
         void visit(std::shared_ptr<MinOperator> node) override;
+
+        void visit(std::shared_ptr<IfElseOperator> node) override;
 
         void visit(std::shared_ptr<ChooseOperator> node) override;
 

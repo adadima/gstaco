@@ -109,6 +109,7 @@
 %token ORD
 %token FORMAT_RULE
 %token AT
+%token IFELSE
 %token EOL
 
 
@@ -203,6 +204,7 @@ args: orexp			{auto args = new std::vector<std::shared_ptr<einsum::Expression>>(
 
 builtin: CHOOSE {$$ = einsum::choose_red.get();}
 | MIN {$$ = einsum::min_red.get();}
+| IFELSE {$$ = einsum::ifelse_red.get();}
 
 call: IDENTIFIER OPEN_PAREN CLOSED_PAREN	{$$ = new einsum::Call(*$1, std::vector<std::shared_ptr<einsum::Expression>>());}
 | IDENTIFIER OPEN_PAREN args CLOSED_PAREN   {$$ = new einsum::Call(*$1, *$3);}

@@ -454,6 +454,13 @@ namespace einsum {
         bool is_finch_builtin() const override;
     };
 
+    struct IfElseOperator : Acceptor<IfElseOperator, BuiltinFuncDecl> {
+        IfElseOperator() : Base(ifelse, "ifelse", {}, {}, {}) {}
+
+        bool is_julia_builtin() const override;
+        bool is_finch_builtin() const override;
+    };
+
     struct ChooseOperator : Acceptor<ChooseOperator, BuiltinFuncDecl>{
         ChooseOperator() : Base(choose, "choose", {IR::make<TensorVar>("a", false), IR::make<TensorVar>("b", false)}, {IR::make<TensorVar>("c", false)}, {}) {}
 
@@ -589,6 +596,7 @@ namespace einsum {
         virtual void visit(std::shared_ptr<AddOperator> node) = 0;
         virtual void visit(std::shared_ptr<MulOperator> node) = 0;
         virtual void visit(std::shared_ptr<MinOperator> node) = 0;
+        virtual void visit(std::shared_ptr<IfElseOperator> node) = 0;
         virtual void visit(std::shared_ptr<ChooseOperator> node) = 0;
         virtual void visit(std::shared_ptr<Call> node) = 0;
         virtual void visit(std::shared_ptr<FormatRule> node) = 0;
@@ -612,7 +620,7 @@ namespace einsum {
         }
 
     }
-
+    inline std::shared_ptr<IfElseOperator> ifelse_red = std::make_shared<IfElseOperator>();
     inline std::shared_ptr<MulOperator> mul_red = std::make_shared<MulOperator>();
     inline std::shared_ptr<AddOperator> add_red = std::make_shared<AddOperator>();
     inline std::shared_ptr<AndOperator> and_red = std::make_shared<AndOperator>();
@@ -643,6 +651,7 @@ namespace einsum {
         void visit(std::shared_ptr<AddOperator> node) override;
         void visit(std::shared_ptr<MulOperator> node) override;
         void visit(std::shared_ptr<MinOperator> node) override;
+        void visit(std::shared_ptr<IfElseOperator> node) override;
         void visit(std::shared_ptr<ChooseOperator> node) override;
         void visit(std::shared_ptr<FormatRule> node) override;
         void visit(std::shared_ptr<Call> node) override;
@@ -693,6 +702,7 @@ namespace einsum {
         void visit(std::shared_ptr<AddOperator> node) override;
         void visit(std::shared_ptr<MulOperator> node) override;
         void visit(std::shared_ptr<MinOperator> node) override;
+        void visit(std::shared_ptr<IfElseOperator> node) override;
         void visit(std::shared_ptr<ChooseOperator> node) override;
         void visit(std::shared_ptr<Datatype> node) override;
     };

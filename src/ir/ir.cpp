@@ -663,6 +663,7 @@ namespace einsum {
     void DefaultIRVisitor::visit(std::shared_ptr<AddOperator> node) { throw std::runtime_error(name() + " IMPLEMENT ME: AddOperator!");}
     void DefaultIRVisitor::visit(std::shared_ptr<MulOperator> node) { throw std::runtime_error(name() + " IMPLEMENT ME: MulOperator!");}
     void DefaultIRVisitor::visit(std::shared_ptr<MinOperator> node) { throw std::runtime_error(name() + " IMPLEMENT ME: MinOperator!");}
+    void DefaultIRVisitor::visit(std::shared_ptr<IfElseOperator> node) { throw std::runtime_error(name() + " IMPLEMENT ME: IfElseOperator!");}
     void DefaultIRVisitor::visit(std::shared_ptr<ChooseOperator> node) { throw std::runtime_error(name() + " IMPLEMENT ME: ChooseOperator!");}
     void DefaultIRVisitor::visit(std::shared_ptr<Call> node) { throw std::runtime_error(name() + " IMPLEMENT ME: Call!");}
     void DefaultIRVisitor::visit(std::shared_ptr<CallStarRepeat> node) { throw std::runtime_error(name() + " IMPLEMENT ME: CallStarRepeat!");}
@@ -911,6 +912,10 @@ namespace einsum {
          // std::cout << name() << ": UNIMPLEMENTED MinOperator\n";
     }
 
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<IfElseOperator> node) {
+        // std::cout << name() << ": UNIMPLEMENTED MinOperator\n";
+    }
+
     void DefaultIRVisitorUnsafe::visit(std::shared_ptr<ChooseOperator> node) {
          // std::cout << name() << ": UNIMPLEMENTED ChooseOperator";
     }
@@ -945,6 +950,12 @@ namespace einsum {
         return true;
     }
     bool MinOperator::is_finch_builtin() const {
+        return true;
+    }
+    bool IfElseOperator::is_julia_builtin() const {
+        return true;
+    }
+    bool IfElseOperator::is_finch_builtin() const {
         return true;
     }
     bool ChooseOperator::is_julia_builtin() const {

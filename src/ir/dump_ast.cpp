@@ -401,6 +401,10 @@ void einsum::DumpAstVisitor::visit(shared_ptr<MinOperator> node) {
 
 }
 
+void einsum::DumpAstVisitor::visit(shared_ptr<IfElseOperator> node) {
+
+}
+
 void einsum::DumpAstVisitor::visit(shared_ptr<ChooseOperator> node) {
 
 }

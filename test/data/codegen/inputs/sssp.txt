@@ -9,14 +9,14 @@ weights float[Dense[N]][SparseList[N]]
 source int
 
 Let Init(source int) -> (dist float[N], priorityQ int[P][SparseList[N]])
-    dist[j] = (j != source) * P
-    priorityQ[p][j] = (p == 1 && j == source) + (p == P && j != source)
+    dist[j] = ifelse(j != source, P, 0)
+    priorityQ[p][j] = ifelse( (p == 1 && j == source) || (p == P && j != source), 1, 0)
 End
 
 Let UpdateEdges(dist float[N], priorityQ int[P][SparseList[N]], priority int, temp_in int[N]) -> (new_dist float[N], new_priorityQ int[P][SparseList[N]], new_priority int, temp_out int[N])
-    temp_out[j] = edges[j][k] * priorityQ[priority][k] * (weights[j][k] + dist[k]) + (edges[j][k] * priorityQ[priority][k] == 0) * P | k:(MIN, 2000000000)
+    temp_out[j] = ifelse(edges[j][k] * priorityQ[priority][k] == 1, weights[j][k] + dist[k], P) | k:(MIN, 2000000000)
     new_dist[j] = MIN(temp_out[j], dist[j])
-    new_priorityQ[j][k] = (dist[k] > new_dist[k]) * (j <= new_dist[k] &&  new_dist[k] < j + 1) + (dist[k] == new_dist[k] && j != priority) * priorityQ[j][k]
+    new_priorityQ[j][k] = ifelse(dist[k] > new_dist[k] && j <= new_dist[k] &&  new_dist[k] < j + 1, 1, ifelse(dist[k] == new_dist[k] && j != priority, priorityQ[j][k], 0))
 	new_priority = priority
 End
 

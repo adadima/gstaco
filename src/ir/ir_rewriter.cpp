@@ -267,6 +267,10 @@ namespace einsum {
         node_ = node;
     }
 
+    void IRRewriter::visit(std::shared_ptr<IfElseOperator> node) {
+        node_ = node;
+    }
+
     void IRRewriter::visit(std::shared_ptr<ChooseOperator> node) {
         node_ = node;
     }

@@ -21,6 +21,6 @@ End
 Let Main() -> (rank float[N], out_d int[N], scaled_edges float[N][SparseList[N]], r_out float[N])
     rank[i] = 0.0
     out_d[j] = edges[i][j] | i:(+, 0) Ord i, j
-    scaled_edges[i][j] = edges[i][j] / out_d[j]
+    scaled_edges[i][j] = ifelse(out_d[j] != 0, edges[i][j] / out_d[j], 0)
     _, r_out, _ = PageRankStep*(rank, InitRank(), scaled_edges) | 20
 End

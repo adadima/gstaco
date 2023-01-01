@@ -790,6 +790,10 @@ T )";
         *oss << node->dump();
     }
 
+    void FinchCodeGenVisitor::visit(std::shared_ptr<IfElseOperator> node) {
+
+    }
+
 
     void DefinitionVisitor::visit(std::shared_ptr<Definition> node) {
         for (auto& acc: node->lhs) {
@@ -1140,6 +1144,10 @@ T )";
 
     void FinchCompileVisitor::visit(std::shared_ptr<MinOperator> node) {
         *oss << "min";
+    }
+
+    void FinchCompileVisitor::visit(std::shared_ptr<IfElseOperator> node) {
+        *oss << "ifelse";
     }
 
     void FinchCompileVisitor::visit(std::shared_ptr<ChooseOperator> node) {

@@ -35,6 +35,7 @@ namespace einsum{
         void visit(std::shared_ptr<AddOperator> node) override;
         void visit(std::shared_ptr<MulOperator> node) override;
         void visit(std::shared_ptr<MinOperator> node) override;
+        void visit(std::shared_ptr<IfElseOperator> node) override;
         void visit(std::shared_ptr<ChooseOperator> node) override;
         void visit(std::shared_ptr<Call> node) override;
         void visit(std::shared_ptr<CallStarRepeat> node) override;
