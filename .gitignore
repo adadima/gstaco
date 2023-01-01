@@ -4,3 +4,5 @@ cmake-build-*/
 /test/tmp/
 /test/data/codegen/graphs/graph-dataset-small/
 dump_test_*
+*soc-LiveJournal1.txt*
+pagerank_benchmarks.csv

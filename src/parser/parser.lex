@@ -61,6 +61,9 @@ true|false    {yylval->bool_val = (std::string(yytext) == "true") ? true : false
 
 "Ord"           {yylval->op_val = new std::string(yytext); return ORD; }
 
+"FormatRule"    {yylval->op_val = new std::string(yytext); return FORMAT_RULE; }
+
+"@"             {yylval->op_val = new std::string(yytext); return AT; }
 if|then|else {
             printf( "A keyword: %s\n", yytext );
             }

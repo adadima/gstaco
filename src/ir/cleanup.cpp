@@ -33,7 +33,7 @@ namespace einsum {
             tensor = node;
         }
         if (tensor == nullptr) {
-            std::cout << "PRoblematic tensor: " << node->name << std::endl;
+            std::cout << "Problematic tensor: " << node->name << std::endl;
         }
         tensor->is_global = context->is_global(tensor);
         if (tensor->name.rfind('#', 0) == 0) {
@@ -295,6 +295,50 @@ namespace einsum {
         call_id += 1;
     }
 
+    void CallStarConditionProcessor::visit(std::shared_ptr<CallStarRepeat> node) {
+        for(auto& rule: node->format_rules) {
+            rule = rewrite(rule);
+        }
+        visit_call(node);
+    }
+
+    void CallStarConditionProcessor::visit(std::shared_ptr<FormatRule> node) {
+        std::string name = "rule_condition_" + std::to_string(rule_id);
+        auto one = IR::make<Literal>(1, IR::make<Datatype>(Datatype::Kind::Int));
+        auto type = IR::make<TensorType>(IR::make<Datatype>(Datatype::Kind::Bool), std::vector<std::shared_ptr<einsum::Expression>>({one}));
+        auto tensor = IR::make<TensorVar>(name, type, false);
+        auto idx = IR::make<IndexVar>("i");
+        auto acc = IR::make<Access>(tensor, std::vector<std::shared_ptr<Expression>>({IR::make<IndexVarExpr>(idx)}), std::vector<std::shared_ptr<IndexVarExpr>>({IR::make<IndexVarExpr>(idx)}));
+        auto accs = std::vector<std::shared_ptr<Access>>({acc});
+        reductions.emplace_back();
+        inside_stop_condition = true;
+        index_vars.clear();
+        node->condition = rewrite(node->condition);
+        auto& reds = reductions.back();
+        node->format_switch_cond = IR::make<Definition>(accs, node->condition, reds);
+        reductions.pop_back();
+        inside_stop_condition = false;
+        condition_tensors.insert(tensor);
+
+        // add switch def as well
+        name = "new_format" + std::to_string(rule_id);
+        tensor = IR::make<TensorVar>(name, node->dst_tensor->type, false);
+        auto indices = std::vector<std::shared_ptr<Expression>>();
+        auto index_vars = std::vector<std::shared_ptr<IndexVarExpr>>();
+        for(int i=0; i < tensor->type->getOrder(); i++) {
+            auto ivar = IR::make<IndexVarExpr>(IR::make<IndexVar>("i" + std::to_string(i)));
+            indices.push_back(ivar);
+            index_vars.push_back(ivar);
+        }
+        acc = IR::make<Access>(tensor, indices, index_vars);
+        node->format_switch_def = IR::make<Definition>(acc, IR::make<ReadAccess>(node->src_tensor, indices));
+        condition_tensors.insert(tensor);
+
+        node_ = node;
+
+        rule_id += 1;
+    }
+
     void CallStarConditionProcessor::visit(std::shared_ptr<CallStarCondition> node) {
         std::string name = "call_condition_" + std::to_string(call_id);
         auto one = IR::make<Literal>(1, IR::make<Datatype>(Datatype::Kind::Int));
@@ -313,6 +357,10 @@ namespace einsum {
         inside_stop_condition = false;
         node_ = node;
         condition_tensors.insert(tensor);
+
+        for(auto& rule: node->format_rules) {
+            rule = rewrite(rule);
+        }
         visit_call(node);
     }
 
@@ -433,6 +481,40 @@ namespace einsum {
             }
         }
         IRRewriter::visit_decl(node);
+    }
+
+    void FormatRuleRewriter::visit_decl(const std::shared_ptr<FuncDecl> &node) {
+        std::vector<std::shared_ptr<Statement>> body;
+        for (auto& stmt: node->body) {
+            if (!stmt->is_format_rule()) {
+                body.push_back(rewrite(stmt));
+            } else {
+                stmt->accept(this);
+            }
+        }
+        node->body = body;
+        node_ = node;
+    }
+
+    void FormatRuleRewriter::visit(std::shared_ptr<CallStarRepeat> node) {
+        for (auto& rule: rules) {
+            node->format_rules.push_back(rule);
+        }
+        node_ = node;
+        rules.clear();
+    }
+
+    void FormatRuleRewriter::visit(std::shared_ptr<CallStarCondition> node) {
+        for (auto& rule: rules) {
+            node->format_rules.push_back(rule);
+        }
+        node_ = node;
+        rules.clear();
+    }
+
+    void FormatRuleRewriter::visit(std::shared_ptr<FormatRule> node) {
+        rules.push_back(node);
+        node_ = node;
     }
 }
 

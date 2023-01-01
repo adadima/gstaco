@@ -29,6 +29,22 @@ namespace einsum {
         void visit(std::shared_ptr<IndexVarExpr> node) override;
     };
 
+    struct FormatRuleRewriter : public IRRewriter {
+        std::vector<std::shared_ptr<FormatRule>> rules;
+        int rule_id = 0;
+
+        explicit FormatRuleRewriter(IRContext* context) : IRRewriter(context) {}
+
+        void visit_decl(const std::shared_ptr<FuncDecl>& node) override;
+        void visit(std::shared_ptr<CallStarCondition> node) override;
+        void visit(std::shared_ptr<CallStarRepeat> node) override;
+        void visit(std::shared_ptr<FormatRule> node) override;
+
+        std::string name() override {
+            return "FormatRuleRewriter";
+        }
+    };
+
     struct AllocateInserter : public IRRewriter {
         int num_allocations_ = 0;
 
@@ -71,12 +87,15 @@ namespace einsum {
         std::vector<std::vector<std::shared_ptr<Reduction>>> reductions;
         std::set<std::string> index_vars;
         int call_id = 0;
+        int rule_id = 0;
         bool inside_stop_condition = false;
 
         explicit CallStarConditionProcessor(IRContext* context) : IRRewriter(context) {}
 
         void visit_decl(const std::shared_ptr<FuncDecl>& node) override;
         void visit(std::shared_ptr<CallStarCondition> node) override;
+        void visit(std::shared_ptr<CallStarRepeat> node) override;
+        void visit(std::shared_ptr<FormatRule> node) override;
         void visit_call(std::shared_ptr<Call> node) override;
         void visit(std::shared_ptr<ReadAccess> node) override;
     };
@@ -113,6 +132,9 @@ namespace einsum {
         for (auto& rewriter: rewriters) {
             mod->accept(rewriter);
             mod = std::dynamic_pointer_cast<Module>(rewriter->node_);
+            if (rewriter->name() == "FormatRuleRewriter") {
+                std::cout << mod->dump() << "\n";
+            }
         }
         return mod;
     }
@@ -120,6 +142,7 @@ namespace einsum {
     std::shared_ptr<Module> apply_default_rewriters(std::shared_ptr<Module> mod) {
         std::vector<IRRewriter*> rewriters = {
                 new IRRewriter(new IRContext()),
+                new FormatRuleRewriter(new IRContext()),
                 new TensorVarRewriter(new IRContext()),
                 new AccessRewriter(new IRContext()),
                 new AllocateInserter(new IRContext()),

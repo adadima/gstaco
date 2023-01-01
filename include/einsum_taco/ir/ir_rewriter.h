@@ -42,6 +42,10 @@ namespace einsum {
             return ret;
         }
 
+        virtual std::string name() {
+            return "IRRewriter";
+        }
+
         void visit(std::shared_ptr<IndexVar> node) override;
         void visit(std::shared_ptr<Literal> node) override;
         void visit(std::shared_ptr<TensorVar> node) override;
@@ -66,6 +70,7 @@ namespace einsum {
         void visit(std::shared_ptr<MinOperator> node) override;
         void visit(std::shared_ptr<ChooseOperator> node) override;
         void visit(std::shared_ptr<Call> node) override;
+        void visit(std::shared_ptr<FormatRule> node) override;
         void visit(std::shared_ptr<CallStarRepeat> node) override;
         void visit(std::shared_ptr<CallStarCondition> node) override;
         void visit(std::shared_ptr<Module> node) override;

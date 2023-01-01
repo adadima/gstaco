@@ -30,6 +30,7 @@ namespace einsum {
     struct MemAssignment;
     struct Initialize;
     struct MultipleOutputDefinition;
+    struct FormatRule;
 
     struct ModuleComponent : IR {
         bool is_decl() const;
@@ -61,6 +62,9 @@ namespace einsum {
 
         bool is_init() const;
         std::shared_ptr<Initialize> as_init();
+
+        bool is_format_rule() const;
+        std::shared_ptr<FormatRule> as_format_rule();
     };
 
 
@@ -477,6 +481,44 @@ namespace einsum {
 
         std::shared_ptr<FuncDecl> function;
         std::vector<std::shared_ptr<Expression>> arguments;
+        std::vector<std::shared_ptr<FormatRule>> format_rules;
+    };
+
+    struct FormatRule : Acceptor<FormatRule, Statement> {
+        std::shared_ptr<TensorVar> src_tensor;
+        std::shared_ptr<TensorVar> dst_tensor;
+        std::shared_ptr<Expression> condition;
+        std::shared_ptr<Definition> format_switch_def;
+        std::shared_ptr<Definition> format_switch_cond;
+
+        FormatRule(std::shared_ptr<TensorVar> src, std::shared_ptr<TensorVar> dst, std::shared_ptr<Expression> cond,
+                   std::shared_ptr<Definition> switch_def = nullptr, std::shared_ptr<Definition> switch_cond = nullptr) :
+                    src_tensor(src), dst_tensor(dst), condition(cond),
+                    format_switch_cond(switch_cond), format_switch_def(switch_def) {
+//            auto index_vars = std::vector<std::shared_ptr<IndexVar>>();
+//            for(int i=0; i < src_tensor->type->getOrder(); i++) {
+//                index_vars.push_back(IR::make<IndexVar>("i_" + std::to_string(i)));
+//            }
+//            auto index_var_exprs = std::vector<std::shared_ptr<Expression>>();
+//            for(auto& ivar: index_vars) {
+//                index_var_exprs.push_back(IR::make<IndexVarExpr>(ivar));
+//            }
+//            auto acc = IR::make<Access>(dst_tensor, index_var_exprs, std::vector<std::shared_ptr<IndexVarExpr>>());
+//
+//            auto rhs = IR::make<ReadAccess>(src_tensor, index_var_exprs);
+//            format_switch_def = IR::make<Definition>(acc, rhs);
+//
+//            std::string name = "rule_condition_" + std::to_string(FormatRule::id);
+//            FormatRule::id += 1;
+//            auto one = IR::make<Literal>(1, IR::make<Datatype>(Datatype::Kind::Int));
+//            auto type = IR::make<TensorType>(IR::make<Datatype>(Datatype::Kind::Bool), std::vector<std::shared_ptr<einsum::Expression>>({one}));
+//            auto tensor = IR::make<TensorVar>(name, type, false);
+//            auto idx = IR::make<IndexVar>("i1000");
+//            acc = IR::make<Access>(tensor, std::vector<std::shared_ptr<Expression>>({IR::make<IndexVarExpr>(idx)}), std::vector<std::shared_ptr<IndexVarExpr>>({IR::make<IndexVarExpr>(idx)}));
+//            format_switch_cond = IR::make<Definition>(acc, condition);
+        }
+
+        std::string dump() const override;
     };
 
     struct CallStarRepeat : Acceptor<CallStarRepeat, Call> {
@@ -549,6 +591,7 @@ namespace einsum {
         virtual void visit(std::shared_ptr<MinOperator> node) = 0;
         virtual void visit(std::shared_ptr<ChooseOperator> node) = 0;
         virtual void visit(std::shared_ptr<Call> node) = 0;
+        virtual void visit(std::shared_ptr<FormatRule> node) = 0;
         virtual void visit(std::shared_ptr<CallStarRepeat> node) = 0;
         virtual void visit(std::shared_ptr<CallStarCondition> node) = 0;
         virtual void visit(std::shared_ptr<Module> node) = 0;
@@ -601,6 +644,7 @@ namespace einsum {
         void visit(std::shared_ptr<MulOperator> node) override;
         void visit(std::shared_ptr<MinOperator> node) override;
         void visit(std::shared_ptr<ChooseOperator> node) override;
+        void visit(std::shared_ptr<FormatRule> node) override;
         void visit(std::shared_ptr<Call> node) override;
         void visit(std::shared_ptr<CallStarRepeat> node) override;
         void visit(std::shared_ptr<CallStarCondition> node) override;
@@ -633,6 +677,7 @@ namespace einsum {
         void visit(std::shared_ptr<MemAssignment> node) override;
         void visit(std::shared_ptr<Initialize> node) override;
         void visit(std::shared_ptr<FuncDecl> node) override;
+        void visit(std::shared_ptr<FormatRule> node) override;
         void visit(std::shared_ptr<Call> node) override;
         void visit(std::shared_ptr<CallStarRepeat> node) override;
         void visit(std::shared_ptr<CallStarCondition> node) override;

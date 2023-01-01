@@ -104,15 +104,21 @@ namespace einsum {
 
     void  IRRewriter::visit(std::shared_ptr<CallStarRepeat> node) {
         context->enter_call(node);
+        for(auto& rule: node->format_rules) {
+            rule = rewrite(rule);
+        }
         visit_call(node);
         context->exit_call(node);
     }
 
     void  IRRewriter::visit(std::shared_ptr<CallStarCondition> node) {
         context->enter_call(node);
-        std::cout << "REWRITING STOP CONDITION: " << node->stopCondition->dump() << "\n";
+        for(auto& rule: node->format_rules) {
+            rule = rewrite(rule);
+        }
+//        std::cout << "REWRITING STOP CONDITION: " << node->stopCondition->dump() << "\n";
         node->stopCondition = rewrite(node->stopCondition);
-        std::cout << "NEW STOP CONDITION: " << node->stopCondition->dump() << "\n";
+//        std::cout << "NEW STOP CONDITION: " << node->stopCondition->dump() << "\n";
         node->condition_def = rewrite(node->condition_def);
         visit_call(node);
         context->exit_call(node);
@@ -297,6 +303,15 @@ namespace einsum {
     }
 
     void IRRewriter::visit(std::shared_ptr<BuiltinFuncDecl> node) {
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<FormatRule> node) {
+        node->src_tensor = rewrite(node->src_tensor);
+        node->dst_tensor = rewrite(node->dst_tensor);
+        node->condition = rewrite(node->condition);
+        node->format_switch_cond = rewrite(node->format_switch_cond);
+        node->format_switch_def = rewrite(node->format_switch_def);
         node_ = node;
     }
 

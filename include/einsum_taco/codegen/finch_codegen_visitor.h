@@ -210,6 +210,7 @@ namespace einsum {
         }
 
         void visit(std::shared_ptr<Definition> node) override;
+        void visit(std::shared_ptr<FormatRule> node) override;
     };
 
     struct TensorCollector : DefaultIRVisitor {

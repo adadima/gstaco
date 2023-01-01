@@ -666,6 +666,45 @@ T )";
 
         loop_generator();
 
+        for(auto& rule: node->format_rules) {
+            *oss << "if (";
+            // need to extract the boolean value out of the jl_value_t*
+            if (def2needs_finch.find(rule->format_switch_cond->id) != def2needs_finch.end()) {
+                *oss << "[";
+                auto args = def2tensor_args[rule->format_switch_cond->id];
+                for(size_t i=0; i < args.size(); i++) {
+                    if (args[i]->is_global) {
+                        continue;
+                    }
+                    if (i > 0) {
+                        *oss << ", ";
+                    }
+                    *oss << "&" << args[i]->name;
+                }
+                *oss << "]() {\n";
+                rule->format_switch_cond->accept(this);
+                *oss << ";\n";
+                *oss << "jl_value_t *val = finch_exec(\"%s.lvl.lvl.val\", " << rule->format_switch_cond->lhs[0]->tensor->name << ");\n";
+                *oss << "int* data = (int*) jl_array_data(val);\n";
+                *oss << "return data[0];\n";
+                *oss << "}()";
+            } else {
+                rule->format_switch_cond->accept(this);
+            }
+            *oss << ") {\n";
+
+            indent();
+            *oss << get_indent();
+
+            // switch formats and assign out
+            rule->format_switch_def->accept(this);
+            *oss << rule->src_tensor->name << " = " << rule->format_switch_def->lhs[0]->tensor->name << ";\n";
+
+            unindent();
+            *oss << get_indent();
+            *oss << "}\n";
+        }
+
         indent();
 
         *oss << get_indent();
@@ -837,11 +876,17 @@ T )";
         for(auto& inp: node->arguments) {
             inp->accept(this);
         }
+        for(auto& rule: node->format_rules) {
+            rule->accept(this);
+        }
     }
 
     void DefinitionVisitor::visit(std::shared_ptr<CallStarCondition> node) {
         for(auto& inp: node->arguments) {
             inp->accept(this);
+        }
+        for(auto& rule: node->format_rules) {
+            rule->accept(this);
         }
         node->stopCondition->accept(this);
     }
@@ -1082,7 +1127,6 @@ T )";
             auto s = jl_string_data(code);
 
             *finch << "finch_def_code" << node->id << " = finch_eval(\n";
-
             std::stringstream ss_(s);
             std::string line;
             while(std::getline(ss_, line, '\n')){
@@ -1171,6 +1215,11 @@ T )";
 
     void FinchCompileVisitor::visit(std::shared_ptr<CallStarCondition> node) {
         std::cout << "GENERATING FINCH FOR WHILE CONDITION\n";
+        for(auto& rule: node->format_rules) {
+            auto old = oss;
+            rule->accept(this);
+            oss = old;
+        }
         node->condition_def->accept(this);
     }
 
@@ -1213,7 +1262,11 @@ T )";
         node->rhs->accept(this);
     }
 
-    void FinchCompileVisitor::visit(std::shared_ptr<CallStarRepeat> node) {}
+    void FinchCompileVisitor::visit(std::shared_ptr<CallStarRepeat> node) {
+        for(auto& rule: node->format_rules) {
+            rule->accept(this);
+        }
+    }
 
     void FinchCompileVisitor::visit(std::shared_ptr<BuiltinFuncDecl> node) {
         *oss << node->funcName;
@@ -1277,10 +1330,16 @@ T )";
 
     void TensorCollector::visit(std::shared_ptr<CallStarRepeat> node) {
         visit_call(node);
+        for(auto& rule: node->format_rules) {
+            rule->accept(this);
+        }
     }
 
     void TensorCollector::visit(std::shared_ptr<CallStarCondition> node) {
         visit_call(node);
+        for(auto& rule: node->format_rules) {
+            rule->accept(this);
+        }
         node->condition_def->accept(this);
     }
 
@@ -1351,6 +1410,9 @@ T )";
 
     void FuncPtr2TensorArgsMapper::visit(std::shared_ptr<CallStarCondition> node) {
         std::cout << "FuncPtr2TensorArgsMapper: CALLSTAR";
+        for(auto& rule: node->format_rules) {
+            rule->accept(this);
+        }
         node->condition_def->accept(this);
     }
 
@@ -1359,6 +1421,7 @@ T )";
     }
 
     void FinchDefinitionChecker::visit(std::shared_ptr<Definition> node) {
+        std::cout << "NEEDS FINCH: " << node->dump() << "\n";
         if (!node->reduction_list.empty()) {
             needs_finch = true;
         }
@@ -1366,7 +1429,6 @@ T )";
             acc->accept(this);
         }
         node->rhs->accept(this);
-
     }
 
     void FinchDefinitionChecker::visit(std::shared_ptr<Literal> node) {
@@ -1391,11 +1453,17 @@ T )";
 
     void FinchDefinitionChecker::visit(std::shared_ptr<CallStarCondition> node) {
         visit_call(node);
+        for(auto& rule: node->format_rules) {
+            rule->accept(this);
+        }
         node->condition_def->accept(this);
     }
 
     void FinchDefinitionChecker::visit(std::shared_ptr<CallStarRepeat> node) {
         visit_call(node);
+        for(auto& rule: node->format_rules) {
+            rule->accept(this);
+        }
     }
 
     void FinchDefinitionChecker::visit(std::shared_ptr<Call> node) {
@@ -1432,5 +1500,11 @@ T )";
             def2needs_finch.insert({node->id, checker.needs_finch});
         }
         node->rhs->accept(this);
+    }
+
+    void NeedsFinchVisitor::visit(std::shared_ptr<FormatRule> node) {
+        std::cout << "IN NEEDS FINCH FORMAT RULE\n";
+        node->format_switch_cond->accept(this);
+        node->format_switch_def->accept(this);
     }
 }

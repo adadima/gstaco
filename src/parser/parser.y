@@ -30,6 +30,7 @@
   einsum::StorageFormat				*sformat;
   einsum::FuncDecl				*fdecl;
   einsum::BuiltinFuncDecl			*builtindecl;
+  einsum::FormatRule				*formrule;
   std::vector<std::shared_ptr<einsum::Statement>>	*stmt_vec;
   std::vector<std::shared_ptr<einsum::TensorVar>>	*tvar_vec;
   einsum::TensorVar				*tvar;
@@ -49,6 +50,7 @@
 %type	<expr_vec>  args
 %type   <builtindecl>     builtin
 %type   <expression> call
+%type   <formrule>   format_rule
 %type   <expression> call_star
 %type   <expression> call_repeat
 %type   <red>	     reduction
@@ -105,6 +107,8 @@
 %token  ASSIGN
 %token  COLONS
 %token ORD
+%token FORMAT_RULE
+%token AT
 %token EOL
 
 
@@ -333,12 +337,20 @@ output_params:					{$$ = new std::vector<std::shared_ptr<einsum::TensorVar>>();}
 statements:					{$$ = new std::vector<std::shared_ptr<einsum::Statement>>();}
 |  def EOL blank statements				{$4->insert($4->begin(), std::shared_ptr<einsum::Statement>($1));
 						 $$ = $4;}
+| format_rule EOL blank statements		{$4->insert($4->begin(), std::shared_ptr<einsum::Statement>($1));
+                                                						 $$ = $4;}
 
 func:		LET IDENTIFIER input_params RARROW output_params EOL blank statements END {$$ = new einsum::FuncDecl(*$2, *$3, *$5, *$8);}
 
 tensor:	IDENTIFIER type				{
 assert($2 != nullptr);
 $$ = new einsum::TensorVar(*$1, std::shared_ptr<einsum::TensorType>($2), true);}
+
+format_rule: FORMAT_RULE IDENTIFIER type RARROW type AT orexp {
+	auto src = IR::make<TensorVar>(*$2, std::shared_ptr<einsum::TensorType>($3), false);
+	auto dst = IR::make<TensorVar>(*$2, std::shared_ptr<einsum::TensorType>($5), false);
+	$$ = new einsum::FormatRule(src, dst, std::shared_ptr<einsum::Expression>($7));
+}
 %%
 
 int yyerror(State state, string s)

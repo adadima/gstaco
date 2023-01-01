@@ -299,13 +299,21 @@ namespace einsum {
 
     std::string CallStarRepeat::dump() const {
         auto call = this->function->funcName + "*" + this->dump_args();
-        return call + " | " + std::to_string(this->numIterations);
+        std::string rules;
+        for (auto& rule: format_rules) {
+            rules += rule->dump() + "   ,   ";
+        }
+        return call + " | " + std::to_string(this->numIterations) + rules;
     }
 
     std::string CallStarCondition::dump() const {
         auto call = this->function->funcName + "*" + this->dump_args();
+        std::string rules;
+        for (auto& rule: format_rules) {
+            rules += rule->dump() + "   ,   ";
+        }
         //  TODO: think of when to wrap condition around parens
-        return call + " | " + "(" + this->stopCondition->dump() + ")";
+        return call + " | " + "(" + this->stopCondition->dump() + ")" + rules;
     }
 
     std::vector<std::shared_ptr<Type>> FuncDecl::getInputType() const {
@@ -452,6 +460,18 @@ namespace einsum {
 
     bool ModuleComponent::is_tuple_var() const {
         return dynamic_cast<const TupleVar*>(this) != nullptr;
+    }
+
+    bool ModuleComponent::is_format_rule() const {
+        return dynamic_cast<const FormatRule*>(this) != nullptr;
+    }
+
+    std::shared_ptr<FormatRule> ModuleComponent::as_format_rule() {
+        try {
+            return std::dynamic_pointer_cast<FormatRule>(this->shared_from_this());
+        } catch (const std::bad_weak_ptr& exp) {
+            std::abort();
+        }
     }
 
     std::shared_ptr<Initialize> ModuleComponent::as_init() {
@@ -655,6 +675,8 @@ namespace einsum {
     void DefaultIRVisitor::visit(std::shared_ptr<TupleType> node) { throw std::runtime_error(name() + " IMPLEMENT ME: TupleType!");}
     void DefaultIRVisitor::visit(std::shared_ptr<Operator> node) { throw std::runtime_error(name() + " IMPLEMENT ME: Operator!");}
 
+    void DefaultIRVisitor::visit(std::shared_ptr<FormatRule> node) {throw std::runtime_error(name() + " IMPLEMENT ME: FormatRule!");}
+
     std::string TupleVarReadAccess::dump() const {
         return "<" + std::to_string(idx) + ">" + var->dump();
     }
@@ -774,9 +796,15 @@ namespace einsum {
 
     void DefaultIRVisitorUnsafe::visit(std::shared_ptr<CallStarRepeat> node) {
         visit_call(node);
+        for(auto& rule: node->format_rules) {
+            rule->accept(this);
+        }
     }
     void DefaultIRVisitorUnsafe::visit(std::shared_ptr<CallStarCondition> node) {
         visit_call(node);
+        for(auto& rule: node->format_rules) {
+            rule->accept(this);
+        }
         node->condition_def->accept(this);
     }
 
@@ -891,6 +919,14 @@ namespace einsum {
          //  // std::cout << name() << ": UNIMPLEMENTED Datatype\n";
     }
 
+    void DefaultIRVisitorUnsafe::visit(std::shared_ptr<FormatRule> node) {
+        node->src_tensor->accept(this);
+        node->dst_tensor->accept(this);
+        node->condition->accept(this);
+        node->format_switch_cond->accept(this);
+        node->format_switch_def->accept(this);
+    }
+
     bool BuiltinFuncDecl::is_julia_builtin() const {
         return true;
     }
@@ -916,5 +952,11 @@ namespace einsum {
     }
     bool ChooseOperator::is_finch_builtin() const {
         return true;
+    }
+
+    std::string FormatRule::dump() const {
+        return " FormatRule " + src_tensor->name + " " +
+                src_tensor->type->dump() + " -> " + dst_tensor->type->dump() +
+                " @ " + condition->dump();
     }
 }
