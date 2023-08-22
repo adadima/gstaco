@@ -35,12 +35,6 @@ public:
 
     BaseGenTest() : generator(&oss_cpp, &oss_h, &oss_drive, std::get<0>(this->GetParam())), execution_params(std::get<3>(this->GetParam())) {}
 
-    static void writeStringToFile(const std::string& filename, const std::string& generated_code) {
-        std::ofstream out(filename);
-        out << generated_code;
-        out.close();
-    }
-
     static std::string get_runtime_dir() {
         return {INCLUDE_GSTACO_RUNTIME};
     }
@@ -193,6 +187,7 @@ public:
         GTEST_LOG_(INFO) << get_julia_include_dir() << "\n";
         cmdss << " -I'" << get_julia_include_dir() << "' -fPIC -I" << get_finch_embed_dir() << "  -L'" << get_julia_lib_dir() << "' -L" << get_finch_embed_dir() << " -Wl,-rpath,'" << get_julia_lib_dir() << "' -ljulia -lfinch";
 #if __APPLE__
+        cmdss << " -O3";
         cmdss << " -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/";
 #endif
         cmdss << " " << tmp_in << " " << driver;
@@ -346,28 +341,28 @@ INSTANTIATE_TEST_CASE_P(
                         {0.021428571428571432, 0.03827678571428572, 0.039642857142857146, 0.03827678571428572, 0.0539638392857143, 0.29575468749999995, 0.29575468749999995}))
         ));
 
-//
-//TEST_P(PageRankTest, PageRankBench) {
-//    auto test_name = std::get<0>(GetParam());
-//    auto compiler = std::get<1>(GetParam());
-//    auto add_main = std::get<2>(GetParam());
-//    assert_compiles(test_name, compiler, add_main);
-//
-//    auto out = get_test_dir() + "tmp/codegen/pr_bench_out";
-//    auto graph = std::get<3>(GetParam()).graph_name;
-//    out = std::get<3>(GetParam()).output_filename;
-//    auto starter = get_test_data_dir() + "codegen/graphs/starter.txt";
-//    assert_runs(test_name, graph, {starter, "0.85", out}, [&](std::string output){std::cout << output << "\n";});
-//}
-//
-//INSTANTIATE_TEST_CASE_P(
-//        PageRankBenchTestSuite,
-//        PageRankTest,
-//        ::testing::Values(
-//                make_tuple("pagerank_bench", get_compiler_path(), false, PageRankExecutionParams(
-//                        "soc-LiveJournal1",
-//                        {}))
-//                        ));
+
+TEST_P(PageRankTest, PageRankBench) {
+    auto test_name = std::get<0>(GetParam());
+    auto compiler = std::get<1>(GetParam());
+    auto add_main = std::get<2>(GetParam());
+    assert_compiles(test_name, compiler, add_main);
+
+    auto out = get_test_dir() + "tmp/codegen/pr_bench_out";
+    auto graph = std::get<3>(GetParam()).graph_name;
+    out = std::get<3>(GetParam()).output_filename;
+    auto starter = get_test_data_dir() + "codegen/graphs/starter.txt";
+    assert_runs(test_name, graph, {starter, "0.85", out}, [&](std::string output){std::cout << output << "\n";});
+}
+
+INSTANTIATE_TEST_CASE_P(
+        PageRankBenchTestSuite,
+        PageRankTest,
+        ::testing::Values(
+                make_tuple("pagerank_bench", get_compiler_path(), false, PageRankExecutionParams(
+                        "soc-LiveJournal1",
+                        {}))
+                        ));
 
 
 struct BFSExecutionParams : ExecutionParams {

@@ -165,13 +165,13 @@ TEST_F(DumpTest, ReadAccessTest3) {
 }
 
 TEST_F(DumpTest, AccessTest) {
-    EXPECT_EQ(einsum::Access(A, {}).dump(), "A");
+    EXPECT_EQ(einsum::Access(A, {}, {}).dump(), "A");
 
-    EXPECT_EQ(einsum::Access(A, {i}).dump(), "A[i]");
+    EXPECT_EQ(einsum::Access(A, {i}, {i}).dump(), "A[i]");
 
-    EXPECT_EQ(einsum::Access(A, {i, j}).dump(), "A[i][j]");
+    EXPECT_EQ(einsum::Access(A, {i, j}, {i, j}).dump(), "A[i][j]");
 
-    EXPECT_EQ(einsum::Access(A, {i, j, k}).dump(), "A[i][j][k]");
+    EXPECT_EQ(einsum::Access(A, {i, j, k}, {i, j, k}).dump(), "A[i][j][k]");
 }
 
 TEST_F(DumpTest, BinaryExprTest) {
@@ -320,8 +320,8 @@ TEST_F(DumpTest, CallMultipleInputsTest) {
 
     auto def = einsum::IR::make<einsum::Definition>(
             einsum::IR::make_vec<einsum::Access>(
-                    einsum::IR::make<einsum::Access>(round_out, einsum::IR::make_vec<einsum::IndexVar>()),
-                    einsum::IR::make<einsum::Access>(unused_out, einsum::IR::make_vec<einsum::IndexVar>())
+                    einsum::IR::make<einsum::Access>(round_out, einsum::IR::make_vec<einsum::Expression>(), einsum::IR::make_vec<einsum::IndexVar>()),
+                    einsum::IR::make<einsum::Access>(unused_out, einsum::IR::make_vec<einsum::Expression>(), einsum::IR::make_vec<einsum::IndexVar>())
             ),
             call,
             einsum::IR::make_vec<einsum::Reduction>()
@@ -354,7 +354,7 @@ TEST_F(DumpTest, CallStarRepeatTest) {
 
     auto def = einsum::IR::make<einsum::Definition>(
             einsum::IR::make_vec<einsum::Access>(
-                    einsum::IR::make<einsum::Access>(round_out, einsum::IR::make_vec<einsum::IndexVar>())),
+                    einsum::IR::make<einsum::Access>(round_out, einsum::IR::make_vec<einsum::Expression>(), einsum::IR::make_vec<einsum::IndexVar>())),
             call,
             einsum::IR::make_vec<einsum::Reduction>()
     );
@@ -402,8 +402,8 @@ TEST_F(DumpTest, CallStarConditionTest) {
 
     auto def = einsum::IR::make<einsum::Definition>(
             einsum::IR::make_vec<einsum::Access>(
-                    einsum::IR::make<einsum::Access>(round_out, einsum::IR::make_vec<einsum::IndexVar>()),
-                    einsum::IR::make<einsum::Access>(unused_out, einsum::IR::make_vec<einsum::IndexVar>())
+                    einsum::IR::make<einsum::Access>(round_out, einsum::IR::make_vec<einsum::IndexVar>(), einsum::IR::make_vec<einsum::IndexVar>()),
+                    einsum::IR::make<einsum::Access>(unused_out, einsum::IR::make_vec<einsum::IndexVar>(), einsum::IR::make_vec<einsum::IndexVar>())
             ),
             call,
             einsum::IR::make_vec<einsum::Reduction>()

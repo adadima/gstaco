@@ -5,6 +5,7 @@
 #ifndef EINSUM_TACO_UTILS_H
 #define EINSUM_TACO_UTILS_H
 
+#include <iostream>
 #include <string_view>
 #include <fstream>
 #include <streambuf>
@@ -31,13 +32,13 @@ inline einsum::Module parse(std::string_view code) {
     return module;
 }
 
-#ifndef EINSUM_TACO_TEST_DATADIR
-#error "Did not receive test data dir."
-#endif
+// #ifndef EINSUM_TACO_TEST_DATADIR
+// #error "Did not receive test data dir."
+// #endif
 
-#ifndef TEST_CXX_COMPILER
-#error "Did not set c++ compiler variable."
-#endif
+// #ifndef TEST_CXX_COMPILER
+// #error "Did not set c++ compiler variable."
+// #endif
 
 inline std::string get_test_data_dir() {
     return {EINSUM_TACO_TEST_DATADIR};
@@ -76,4 +77,11 @@ static std::string readFileIntoString(const std::string& path) {
 
     return buffer.str();
 }
+
+static void writeStringToFile(const std::string& filename, const std::string& text) {
+    std::ofstream out(filename);
+    out << text;
+    out.close();
+}
+
 #endif //EINSUM_TACO_UTILS_H

@@ -7,6 +7,7 @@ edges int[Dense[N]][SparseList[N]]
 Let BFS_Step(F_in int[SparseList[N]], P_in int[Dense[N]], V_in int[SparseList[N]], temp_in int[N][1], num_in int[1], numf_in int[1]) -> (F_out int[SparseList[N]], P_out int[N], V_out int[SparseList[N]], temp_out int[N][1], num_out int[1], numf_out int[1])
     V_out[j] = ifelse(P_in[j] == 0 - 1, 1, 0)
     F_out[j] = edges[j][k] * F_in[k] * V_out[j] | k: (CHOOSE, 0)
+    P_out[j] = edges[j][k] * F_in[k] * V_out[j] * k | k:(CHOOSE, P_in[j])
     temp_out[j][m] = edges[j][k] * F_in[k] * V_out[j] * k | k:(CHOOSE, 0)
     P_out[j] = CHOOSE(temp_out[j][1], P_in[j])
     num_out[j] = V_out[i]  | i:(+, 0)
@@ -26,6 +27,6 @@ Let Main() -> (P_out int[N], F_in int[SparseList[N]], P_in int[N], V int[SparseL
     numf[i] = 1
 
     FormatRule #3 int[SparseList[N]] -> int[N] @ (#5 > N / 4)
-    FormatRule #1 int[SparseList[N]] -> int[N] @ (#6 > 1)
+    FormatRule #1 int[SparseList[N]] -> int[N] @ (#6 > N / 5)
     _, P_out, _, _, _, _ = BFS_Step*(F_in, P_in, V, temp_in, num, numf) | (#1 == 0)
 End
