@@ -1,6 +1,9 @@
 N int
+
 P int
+
 edges int[N][SparseList[N]]
+
 source int
 
 Let Init() -> (frontier_list int[N][SparseList[N]], num_paths int[N], deps int[N], visited int[N])
@@ -10,8 +13,7 @@ Let Init() -> (frontier_list int[N][SparseList[N]], num_paths int[N], deps int[N
     frontier_list[r][j] = (r == 1 && j == source)
 End
 
-Let Forward_Step(frontier_in int[SparseList[N]], frontier_list int[N][SparseList[N]], num_paths int[N], visited int[N], round int) ->
-(frontier int[SparseList[N]], forward_frontier_list int[N][SparseList[N]], forward_num_paths int[N], forward_visited int[N], forward_round int)
+Let Forward_Step(frontier_in int[SparseList[N]], frontier_list int[N][SparseList[N]], num_paths int[N], visited int[N], round int) -> (frontier int[SparseList[N]], forward_frontier_list int[N][SparseList[N]], forward_num_paths int[N], forward_visited int[N], forward_round int)
 	frontier[j] = edges[j][k] * frontier_list[round - 1][k] * (visited[j] == 0) | k:(CHOOSE, 0)
 	forward_frontier_list[r][j] = frontier[j] * (r == round) + frontier_list[r][j] * (r != round)
 	forward_num_paths[j] = edges[j][k] * frontier_list[round - 1][k] * (visited[j] == 0) * num_paths[k] | k:(+, num_paths[j])
@@ -19,8 +21,7 @@ Let Forward_Step(frontier_in int[SparseList[N]], frontier_list int[N][SparseList
 	forward_round = round + 1
 End
 
-Let Forward(frontier_list int[N][SparseList[N]], num_paths int[N], visited int[N]) ->
-(dummy int[N], new_forward_frontier_list int[N][SparseList[N]], new_forward_num_paths int[N], new_forward_visited int[N], new_forward_round int)
+Let Forward(frontier_list int[N][SparseList[N]], num_paths int[N], visited int[N]) -> (dummy int[N], new_forward_frontier_list int[N][SparseList[N]], new_forward_num_paths int[N], new_forward_visited int[N], new_forward_round int)
 	dummy[j] = 0
 	_, new_forward_frontier_list, new_forward_num_paths, new_forward_visited, new_forward_round = Forward_Step*(dummy, frontier_list, num_paths, visited, 2) | (#2[#5-1] == 0)
 End
@@ -35,8 +36,7 @@ Let Backwards_Edge(frontier_list int[N][SparseList[N]], num_paths int[N], deps i
 	backward_deps[j] = edges[k][j] * frontier_list[round][k] * (visited[j] == 0) * deps[k] * (j != source) | k:(+, deps[j])
 End
 
-Let Backward_Step(frontier_list int[N][SparseList[N]], num_paths int[N], deps int[N], visited int[N], round int, dummy int[N]) ->
-(final_frontier_list int[N][SparseList[N]], final_num_paths int[N], final_deps int[N], final_visited int[N], final_round int, backward_deps int[N])
+Let Backward_Step(frontier_list int[N][SparseList[N]], num_paths int[N], deps int[N], visited int[N], round int, dummy int[N]) -> (final_frontier_list int[N][SparseList[N]], final_num_paths int[N], final_deps int[N], final_visited int[N], final_round int, backward_deps int[N])
 	final_frontier_list[r][j] = frontier_list[r][j]
 	final_num_paths[j] = num_paths[j]
 	backward_deps, final_visited, final_round = Backwards_Vertex(frontier_list, num_paths, deps, visited, round)
@@ -57,4 +57,3 @@ Let Main() -> (result int[N], final_deps int[N], final_num_paths int[N], frontie
     d, v = Backwards_Vertex(final_frontier_list, final_num_paths, final_deps, final_visited, final_round)
     result = ComputeFinal(d, final_num_paths)
 End
-

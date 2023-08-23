@@ -33,7 +33,3 @@ Let Main() -> (final_IDs int[N], update0 int[1], update1 int[1], IDs int[N], dum
     dummy2[i] = 0
     final_IDs, _, _, _, _ = CC_Step*(IDs, update0, update1, dummy1, dummy2) | (#3 == 0)
 End
-
-
-
-
