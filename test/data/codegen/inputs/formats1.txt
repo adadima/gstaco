@@ -1,0 +1,3 @@
+Let func(B int[Dense[10]][Dense[20]], C int[20], j int, i int, k int) -> (A int[SparseList[10]])
+    A[i] = B[i][j] * C[j] * C[k] | j:(+, 0)
+End

@@ -4,6 +4,9 @@
 #include <string>
 #include <sstream>
 #include <ostream>
+#include <iostream>
+
+#define DEBUG_LOG :: std::cerr << __FILE__ << ":" << __LINE__ << ": "
 
 namespace einsum {
 

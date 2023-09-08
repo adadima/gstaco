@@ -7,46 +7,80 @@
 
 #include "einsum_taco/ir/ir.h"
 #include "einsum_taco/ir/context.h"
+#include <type_traits>
 
 //TODO: make a rewriter base clarr and overwrite rewrite for different use cases ( see taco, builtit)
 
 namespace einsum {
-    class IRRewriter : public IRMutator {
+    class IRRewriter : public IRVisitor {
     protected:
         IRContext* context;
 
+        std::shared_ptr<BinaryOp> rewrite_binary(std::shared_ptr<BinaryOp> node);
+        std::shared_ptr<UnaryOp> rewrite_unary(std::shared_ptr<UnaryOp> node);
+        std::shared_ptr<ModuleComponent> visit(const std::shared_ptr<ModuleComponent>& node);
+        std::shared_ptr<Statement> visit(const std::shared_ptr<Statement>& node);
+        virtual void visit_decl(const std::shared_ptr<FuncDecl>& node);
+
+        virtual void visit_call(std::shared_ptr<Call> node);
+
     public:
-        std::shared_ptr<Definition> def;
-        std::shared_ptr<Expression> expr;
-        std::shared_ptr<FuncDecl> func;
-        std::shared_ptr<Module> module;
-        std::shared_ptr<TensorVar> tensor;
-        std::shared_ptr<Access> access;
-        std::shared_ptr<IndexVar> index_var;
+          std::shared_ptr<IR> node_;
 
         explicit IRRewriter(IRContext* context) : context(context) {}
 
-        void visit(IndexVar& node) override;
-        void visit(Literal& node) override;
-        void visit(TensorVar& node) override;
-        void visit(IndexVarExpr& node) override;
-        void visit(Access& node) override;
-        void visit(ReadAccess& node) override;
-        void visit(Definition& node) override;
-        void visit(BinaryOp& node) override;
-        void visit(UnaryOp& node) override;
-        void visit(FuncDecl& node) override;
-        void visit(Call& node) override;
-        void visit(CallStarRepeat& node) override;
-        void visit(CallStarCondition& node) override;
-        void visit(Module& node) override;
-        void visit(Reduction& node) override;
-        std::shared_ptr<ModuleComponent> visit(ModuleComponent& node);
-        std::shared_ptr<Expression> visit(Expression& node);
+        template <typename T>
+        std::shared_ptr<T> rewrite(const std::shared_ptr<T>& node) {
+            if (!node) {
+                return node;
+            }
+            auto tmp = node_;
+            node_.reset();
+            node->accept(this);
+            auto ret = std::dynamic_pointer_cast<T>(node_);
+            node_ = tmp;
+            return ret;
+        }
 
-        std::shared_ptr<BinaryOp> rewrite_binary(BinaryOp& node);
+        virtual std::string name() {
+            return "IRRewriter";
+        }
 
-        std::shared_ptr<UnaryOp> rewrite_unary(UnaryOp& node);
+        void visit(std::shared_ptr<IndexVar> node) override;
+        void visit(std::shared_ptr<Literal> node) override;
+        void visit(std::shared_ptr<TensorVar> node) override;
+        void visit(std::shared_ptr<TupleVar> node) override;
+        void visit(std::shared_ptr<IndexVarExpr> node) override;
+        void visit(std::shared_ptr<Access> node) override;
+        void visit(std::shared_ptr<ReadAccess> node) override;
+        void visit(std::shared_ptr<TupleVarReadAccess> node) override;
+        void visit(std::shared_ptr<Definition> node) override;
+        void visit(std::shared_ptr<MultipleOutputDefinition> node) override;
+        void visit(std::shared_ptr<Allocate> node) override;
+        void visit(std::shared_ptr<MemAssignment> node) override;
+        void visit(std::shared_ptr<Initialize> node) override;
+        void visit(std::shared_ptr<BinaryOp> node) override;
+        void visit(std::shared_ptr<UnaryOp> node) override;
+        void visit(std::shared_ptr<BuiltinFuncDecl> node) override;
+        void visit(std::shared_ptr<FuncDecl> node) override;
+        void visit(std::shared_ptr<AndOperator> node) override;
+        void visit(std::shared_ptr<OrOperator> node) override;
+        void visit(std::shared_ptr<AddOperator> node) override;
+        void visit(std::shared_ptr<MulOperator> node) override;
+        void visit(std::shared_ptr<MinOperator> node) override;
+        void visit(std::shared_ptr<IfElseOperator> node) override;
+        void visit(std::shared_ptr<ChooseOperator> node) override;
+        void visit(std::shared_ptr<Call> node) override;
+        void visit(std::shared_ptr<FormatRule> node) override;
+        void visit(std::shared_ptr<CallStarRepeat> node) override;
+        void visit(std::shared_ptr<CallStarCondition> node) override;
+        void visit(std::shared_ptr<Module> node) override;
+        void visit(std::shared_ptr<Reduction> node) override;
+        void visit(std::shared_ptr<Datatype> node) override;
+        void visit(std::shared_ptr<StorageFormat> node) override;
+        void visit(std::shared_ptr<TensorType> node) override;
+        void visit(std::shared_ptr<TupleType> node) override;
+        void visit(std::shared_ptr<Operator> node) override;
     };
 
 }

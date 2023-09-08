@@ -2,6 +2,8 @@ Let f(A int) -> (C int)
     C = A
 End
 
+N int
+
 Let func(B int[N]) -> (A int[N])
     A[i] = (f*(2) | 6) * B[i]
 End

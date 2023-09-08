@@ -8,27 +8,46 @@
 #include<einsum_taco/ir/ir.h>
 
 namespace einsum{
-    class DumpAstVisitor : public IRVisitor {
+    class DumpAstVisitor : public DefaultIRVisitor {
     public:
         std::string ast;
         int indent_ = 0;
 
-        void visit(const IndexVar& node) override;
+        void visit(std::shared_ptr<IndexVar> node) override;
 
-        void visit(const Literal& node) override;
-        void visit(const TensorVar& node) override;
-        void visit(const IndexVarExpr& node) override;
-        void visit(const Access& node) override;
-        void visit(const ReadAccess& node) override;
-        void visit(const BinaryOp& node) override;
-        void visit(const UnaryOp& node) override;
-        void visit(const Definition& node) override;
-        void visit(const FuncDecl& node) override;
-        void visit(const Call& node) override;
-        void visit(const CallStarRepeat& node) override;
-        void visit(const CallStarCondition& node) override;
-        void visit(const Module& node) override;
-        void visit(const Reduction& node) override;
+        void visit(std::shared_ptr<Literal> node) override;
+        void visit(std::shared_ptr<TupleVar> node) override;
+        void visit(std::shared_ptr<TensorVar> node) override;
+        void visit(std::shared_ptr<IndexVarExpr> node) override;
+        void visit(std::shared_ptr<Access> node) override;
+        void visit(std::shared_ptr<ReadAccess> node) override;
+        void visit(std::shared_ptr<TupleVarReadAccess> node) override;
+        void visit(std::shared_ptr<BinaryOp> node) override;
+        void visit(std::shared_ptr<UnaryOp> node) override;
+        void visit(std::shared_ptr<Definition> node) override;
+        void visit(std::shared_ptr<MultipleOutputDefinition> node) override;
+        void visit(std::shared_ptr<Allocate> node) override;
+        void visit(std::shared_ptr<MemAssignment> node) override;
+        void visit(std::shared_ptr<Initialize> node) override;
+        void visit(std::shared_ptr<FuncDecl> node) override;
+        void visit(std::shared_ptr<AndOperator> node) override;
+        void visit(std::shared_ptr<OrOperator> node) override;
+        void visit(std::shared_ptr<AddOperator> node) override;
+        void visit(std::shared_ptr<MulOperator> node) override;
+        void visit(std::shared_ptr<MinOperator> node) override;
+        void visit(std::shared_ptr<IfElseOperator> node) override;
+        void visit(std::shared_ptr<ChooseOperator> node) override;
+        void visit(std::shared_ptr<Call> node) override;
+        void visit(std::shared_ptr<CallStarRepeat> node) override;
+        void visit(std::shared_ptr<CallStarCondition> node) override;
+        void visit(std::shared_ptr<Module> node) override;
+        void visit(std::shared_ptr<Reduction> node) override;
+        void visit(std::shared_ptr<Datatype> node) override;
+        void visit(std::shared_ptr<TensorType> node) override;
+        void visit(std::shared_ptr<TupleType> node) override;
+        void visit(std::shared_ptr<Operator> node) override;
+
+        std::string name() override;
 
         std::string get_indent() const;
 

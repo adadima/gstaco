@@ -50,7 +50,7 @@ public:
                         einsum::Datatype::make_datatype<V>(),
                         dimensions
                     );
-        return einsum::IR::make<einsum::TensorVar>(name, tType);
+        return einsum::IR::make<einsum::TensorVar>(name, tType, false);
     }
 
     static inline const auto A = make_tensor<int>("A",
@@ -82,7 +82,7 @@ public:
                                 mul, nullptr),
                         mul, nullptr
                 ),
-                einsum::IR::make_vec<einsum::Reduction>(einsum::IR::make<einsum::Reduction>(k, or_, zero)));
+                einsum::IR::make_vec<einsum::Reduction>(einsum::IR::make<einsum::Reduction>(k, einsum::or_red, zero)));
 
     }
 
@@ -106,10 +106,10 @@ public:
     }
 
     std::shared_ptr<einsum::FuncDecl> func1() {
-        auto frontier = make_tensor<int>("frontier", {einsum::Type::make<einsum::ReadAccess>("N")});
-        auto visited = make_tensor<int>("visited", {einsum::Type::make<einsum::ReadAccess>("N")});
-        auto frontier_list = make_tensor<int>("frontier_list", {einsum::Type::make<einsum::ReadAccess>("N"),
-                                                                einsum::Type::make<einsum::ReadAccess>("N")});
+        auto frontier = make_tensor<int>("frontier", {einsum::Type::make<einsum::ReadAccess>("N", false)});
+        auto visited = make_tensor<int>("visited", {einsum::Type::make<einsum::ReadAccess>("N", false)});
+        auto frontier_list = make_tensor<int>("frontier_list", {einsum::Type::make<einsum::ReadAccess>("N", false),
+                                                                einsum::Type::make<einsum::ReadAccess>("N", false)});
 
         return einsum::IR::make<einsum::FuncDecl>(
                 "Frontier",
@@ -119,7 +119,7 @@ public:
                         make_tensor<int>("round_in", {})
                 ),
                 einsum::IR::make_vec<einsum::TensorVar>(frontier, make_tensor<int>("round_out", {})),
-                einsum::IR::make_vec<einsum::Definition>(definition1(), definition2())
+                einsum::IR::make_vec<einsum::Statement>(definition1(), definition2())
         );
     }
 
@@ -165,13 +165,13 @@ TEST_F(DumpTest, ReadAccessTest3) {
 }
 
 TEST_F(DumpTest, AccessTest) {
-    EXPECT_EQ(einsum::Access(A, {}).dump(), "A");
+    EXPECT_EQ(einsum::Access(A, {}, {}).dump(), "A");
 
-    EXPECT_EQ(einsum::Access(A, {i}).dump(), "A[i]");
+    EXPECT_EQ(einsum::Access(A, {i}, {i}).dump(), "A[i]");
 
-    EXPECT_EQ(einsum::Access(A, {i, j}).dump(), "A[i][j]");
+    EXPECT_EQ(einsum::Access(A, {i, j}, {i, j}).dump(), "A[i][j]");
 
-    EXPECT_EQ(einsum::Access(A, {i, j, k}).dump(), "A[i][j][k]");
+    EXPECT_EQ(einsum::Access(A, {i, j, k}, {i, j, k}).dump(), "A[i][j][k]");
 }
 
 TEST_F(DumpTest, BinaryExprTest) {
@@ -255,7 +255,7 @@ TEST_F(DumpTest, FuncDeclTest1) {
                     round_in
             ),
             einsum::IR::make_vec<einsum::TensorVar>(round_out),
-            einsum::IR::make_vec<einsum::Definition>(definition2())
+            einsum::IR::make_vec<einsum::Statement>(definition2())
     );
     EXPECT_EQ(func->dump(),
               "Let Round(round_in int) -> (round_out int)\n"
@@ -281,7 +281,7 @@ TEST_F(DumpTest, CallTest) {
                                  make_tensor<int>("round_in", {})
                          ),
                          einsum::IR::make_vec<einsum::TensorVar>(make_tensor<int>("round_out", {})),
-                         einsum::IR::make_vec<einsum::Definition>(definition2())
+                         einsum::IR::make_vec<einsum::Statement>(definition2())
                  ),
                 einsum::IR::make_vec<einsum::Expression>(zero)
              );
@@ -312,7 +312,7 @@ TEST_F(DumpTest, CallMultipleInputsTest) {
                            round_out,
                            unused_out
                     ),
-                    einsum::IR::make_vec<einsum::Definition>(definition2())
+                    einsum::IR::make_vec<einsum::Statement>(definition2())
             ),
             args
     );
@@ -320,8 +320,8 @@ TEST_F(DumpTest, CallMultipleInputsTest) {
 
     auto def = einsum::IR::make<einsum::Definition>(
             einsum::IR::make_vec<einsum::Access>(
-                    einsum::IR::make<einsum::Access>(round_out, einsum::IR::make_vec<einsum::IndexVar>()),
-                    einsum::IR::make<einsum::Access>(unused_out, einsum::IR::make_vec<einsum::IndexVar>())
+                    einsum::IR::make<einsum::Access>(round_out, einsum::IR::make_vec<einsum::Expression>(), einsum::IR::make_vec<einsum::IndexVar>()),
+                    einsum::IR::make<einsum::Access>(unused_out, einsum::IR::make_vec<einsum::Expression>(), einsum::IR::make_vec<einsum::IndexVar>())
             ),
             call,
             einsum::IR::make_vec<einsum::Reduction>()
@@ -346,7 +346,7 @@ TEST_F(DumpTest, CallStarRepeatTest) {
                             round_in
                     ),
                     einsum::IR::make_vec<einsum::TensorVar>(round_out),
-                    einsum::IR::make_vec<einsum::Definition>(definition2())
+                    einsum::IR::make_vec<einsum::Statement>(definition2())
             ),
             args
     );
@@ -354,7 +354,7 @@ TEST_F(DumpTest, CallStarRepeatTest) {
 
     auto def = einsum::IR::make<einsum::Definition>(
             einsum::IR::make_vec<einsum::Access>(
-                    einsum::IR::make<einsum::Access>(round_out, einsum::IR::make_vec<einsum::IndexVar>())),
+                    einsum::IR::make<einsum::Access>(round_out, einsum::IR::make_vec<einsum::Expression>(), einsum::IR::make_vec<einsum::IndexVar>())),
             call,
             einsum::IR::make_vec<einsum::Reduction>()
     );
@@ -394,7 +394,7 @@ TEST_F(DumpTest, CallStarConditionTest) {
                             round_out,
                             unused_out
                     ),
-                    einsum::IR::make_vec<einsum::Definition>(definition2())
+                    einsum::IR::make_vec<einsum::Statement>(definition2())
             ),
             args
     );
@@ -402,8 +402,8 @@ TEST_F(DumpTest, CallStarConditionTest) {
 
     auto def = einsum::IR::make<einsum::Definition>(
             einsum::IR::make_vec<einsum::Access>(
-                    einsum::IR::make<einsum::Access>(round_out, einsum::IR::make_vec<einsum::IndexVar>()),
-                    einsum::IR::make<einsum::Access>(unused_out, einsum::IR::make_vec<einsum::IndexVar>())
+                    einsum::IR::make<einsum::Access>(round_out, einsum::IR::make_vec<einsum::IndexVar>(), einsum::IR::make_vec<einsum::IndexVar>()),
+                    einsum::IR::make<einsum::Access>(unused_out, einsum::IR::make_vec<einsum::IndexVar>(), einsum::IR::make_vec<einsum::IndexVar>())
             ),
             call,
             einsum::IR::make_vec<einsum::Reduction>()

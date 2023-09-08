@@ -1,0 +1,9 @@
+N int
+
+M int
+
+edges int[Dense[N]][SparseList[M]]
+
+Let func(frontier_list int[SparseList[10]][SparseList[M]], visited int[N], round int) -> (frontier int[N])
+    frontier[j] = edges[j][k] * frontier_list[round][k] * (visited[j] == 0) | k:(OR, 0)
+End

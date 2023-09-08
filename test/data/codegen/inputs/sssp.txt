@@ -1,0 +1,32 @@
+N int
+
+P int
+
+edges int[Dense[N]][SparseList[N]]
+
+weights float[Dense[N]][SparseList[N]]
+
+source int
+
+Let Init(source int) -> (dist float[N], priorityQ int[P][SparseList[N]])
+    dist[j] = ifelse(j != source, P, 0)
+    priorityQ[p][j] = ifelse( (p == 1 && j == source) || (p == P && j != source), 1, 0)
+End
+
+Let UpdateEdges(dist float[N], priorityQ int[P][SparseList[N]], priority int, temp_in int[N]) -> (new_dist float[N], new_priorityQ int[P][SparseList[N]], new_priority int, temp_out int[N])
+    temp_out[j] = ifelse(edges[j][k] * priorityQ[priority][k] == 1, weights[j][k] + dist[k], P) | k:(MIN, 2000000000)
+    new_dist[j] = MIN(temp_out[j], dist[j])
+    new_priorityQ[j][k] = ifelse(dist[k] > new_dist[k] && j <= new_dist[k] &&  new_dist[k] < j + 1, 1, ifelse(dist[k] == new_dist[k] && j != priority, priorityQ[j][k], 0))
+	new_priority = priority
+End
+
+Let SSSP_one_priority_lvl(dist float[N], priorityQ int[P][SparseList[N]], priority int, temp_in int[N]) -> (new_dist float[N], new_priorityQ int[P][SparseList[N]], new_priority int, temp_out int[N])
+	new_dist, new_priorityQ, _, temp_out = UpdateEdges*(dist, priorityQ, priority, temp_in) | (#2[#3] == 0)
+    new_priority = priority + 1
+End
+
+Let Main() -> (new_dist float[N], dist float[N], priorityQ int[P][SparseList[N]], temp int[N])
+	dist, priorityQ = Init(source)
+	temp[i] = 0
+	new_dist, _, _ = SSSP_one_priority_lvl*(dist, priorityQ, 1, temp) | (#2 == 0 || #3 == (P+1))
+End

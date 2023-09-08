@@ -18,7 +18,7 @@
   einsum::Expression              		 *expression;
   std::vector<std::shared_ptr<einsum::Expression>>    *expr_vec;
   std::vector<std::shared_ptr<einsum::Reduction>>     *reds_vec;
-  std::vector<std::shared_ptr<einsum::IndexVar>>     *inds_vec;
+  std::vector<std::shared_ptr<einsum::IndexVar>>     *ord;
   einsum::Definition				*definition;
   einsum::ReadAccess				*r_access;
   einsum::Access				*w_access;
@@ -27,8 +27,11 @@
   einsum::MulOp					*mul_op;
   einsum::Reduction 				*red;
   einsum::TensorType				*ttype;
+  einsum::StorageFormat				*sformat;
   einsum::FuncDecl				*fdecl;
-  std::vector<std::shared_ptr<einsum::Definition>>	*defs_vec;
+  einsum::BuiltinFuncDecl			*builtindecl;
+  einsum::FormatRule				*formrule;
+  std::vector<std::shared_ptr<einsum::Statement>>	*stmt_vec;
   std::vector<std::shared_ptr<einsum::TensorVar>>	*tvar_vec;
   einsum::TensorVar				*tvar;
 }
@@ -45,22 +48,28 @@
 %type	<expression> exp
 %type   <expr_vec>  access
 %type	<expr_vec>  args
+%type   <builtindecl>     builtin
 %type   <expression> call
+%type   <formrule>   format_rule
 %type   <expression> call_star
-%type   <inds_vec>   write_access
+%type   <expression> call_repeat
 %type   <red>	     reduction
 %type   <reds_vec>   reduction_list
+%type   <ord>	     order_list
 %type   <ttype> 	type
+%type   <sformat> 	format
 %type   <fdecl> 	func
-%type   <defs_vec>      statements
+%type   <stmt_vec>      statements
 %type   <tvar_vec> 	input_params
 %type   <tvar_vec>	output_params
 %type   <tvar_vec>	param_list
 %type   <tvar> 		param
 %type   <acc_vec>       def_lhs
 %type   <r_access>   read_tensor_access
-%type   <w_access>   write_tensor_access
 %type   <definition> def
+%type   <definition> def1
+%type   <definition> def2
+%type   <tvar> 	tensor
 %token  <int_val> INTEGER_LITERAL
 %token  <bool_val> BOOL_LITERAL
 %token  <float_val> FLOAT_LITERAL
@@ -85,52 +94,62 @@
 %token  NEQ
 %token	AND
 %token	OR
+%token	MIN
+%token	CHOOSE
+%token  OR_RED
+%token  AND_RED
 %token	OPEN_PAREN
 %token	CLOSED_PAREN
 %token	OPEN_BRACKET
 %token	CLOSED_BRACKET
+%token  DENSE
+%token  SPARSE
 %token  ASSIGN
 %token  COLONS
+%token ORD
+%token FORMAT_RULE
+%token AT
+%token IFELSE
 %token EOL
 
 
 %%
-// func EOL blank EOL def EOL blank EOL orexp EOL
 input: | blank
        | input func blank  {state.module->add(std::shared_ptr<ModuleComponent>($2));}
        | input orexp blank {state.module->add(std::shared_ptr<ModuleComponent>($2));}
        | input def blank   {state.module->add(std::shared_ptr<ModuleComponent>($2));}
+       | input tensor blank {state.module->add(std::shared_ptr<ModuleComponent>($2));}
  ;
 
 blank:
 | blank EOL
 
 orexp:		andexp
-		| orexp OR andexp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::OrOp>(), einsum::Type::make<Datatype>(einsum::Datatype::Kind::Bool));};
+		| orexp OR andexp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), einsum::or_, einsum::boolType);};
 
-andexp:		eqexp | andexp AND eqexp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::AndOp>(), einsum::Type::make<Datatype>(einsum::Datatype::Kind::Bool)); };
+andexp:		eqexp | andexp AND eqexp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), einsum::and_, einsum::boolType); };
 
 eqexp: 		compexp
-		| eqexp EQ compexp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::EqOp>(), einsum::Type::make<Datatype>(einsum::Datatype::Kind::Bool)); }
-		| eqexp NEQ compexp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::NeqOp>(), einsum::Type::make<Datatype>(einsum::Datatype::Kind::Bool)); };
+		| eqexp EQ compexp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3),einsum::eq, einsum::boolType); }
+		| eqexp NEQ compexp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), einsum::neq, einsum::boolType); };
 
 compexp: 	as_exp
-		| compexp GT as_exp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::GtOp>(), einsum::Type::make<Datatype>(einsum::Datatype::Kind::Bool)); }
-		| compexp GTE as_exp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::GteOp>(), einsum::Type::make<Datatype>(einsum::Datatype::Kind::Bool)); }
-		| compexp LT as_exp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::LtOp>(), einsum::Type::make<Datatype>(einsum::Datatype::Kind::Bool)); }
-		| compexp LTE as_exp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::LteOp>(), einsum::Type::make<Datatype>(einsum::Datatype::Kind::Bool)); };
+		| compexp GT as_exp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), einsum::gt, einsum::boolType); }
+		| compexp GTE as_exp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), einsum::gte, einsum::boolType); }
+		| compexp LT as_exp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), einsum::lt, einsum::boolType); }
+		| compexp LTE as_exp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), einsum::lte, einsum::boolType); };
 
 as_exp: 	mdm_exp
-		| as_exp PLUS mdm_exp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::AddOp>(), nullptr);}
-		| as_exp SUB mdm_exp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::SubOp>(), nullptr);};
+		| as_exp PLUS mdm_exp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), einsum::add, nullptr);}
+		| as_exp SUB mdm_exp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), einsum::sub, nullptr);};
 
 mdm_exp: 	notexp
-		| mdm_exp MUL notexp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::MulOp>(), nullptr);}
-		| mdm_exp DIV notexp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::DivOp>(), nullptr);};
-		| mdm_exp MOD notexp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), std::make_shared<einsum::ModOp>(), einsum::Type::make<Datatype>(einsum::Datatype::Kind::Int));};
+		| mdm_exp MUL notexp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), einsum::mul, nullptr);}
+		| mdm_exp DIV notexp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), einsum::div, nullptr);};
+		| mdm_exp MOD notexp { $$ = new einsum::BinaryOp(std::shared_ptr<einsum::Expression>($1), std::shared_ptr<einsum::Expression>($3), einsum::mod, einsum::intType);};
 
 notexp: 	exp
-		| NOT notexp { $$ = new einsum::UnaryOp(std::shared_ptr<einsum::Expression>($2), std::make_shared<einsum::NotOp>(), einsum::Type::make<Datatype>(einsum::Datatype::Kind::Bool));};
+		| NOT notexp { $$ = new einsum::UnaryOp(std::shared_ptr<einsum::Expression>($2), einsum::not_, einsum::boolType);};
 
 
 access:						    {$$ = new std::vector<std::shared_ptr<einsum::Expression>>(); }
@@ -145,113 +164,140 @@ access:						    {$$ = new std::vector<std::shared_ptr<einsum::Expression>>(); }
 read_tensor_access: IDENTIFIER access { $$ = new einsum::ReadAccess(
 							std::shared_ptr<einsum::TensorVar>(new einsum::TensorVar(
 								*$1,
-								std::shared_ptr<einsum::TensorType>(new einsum::TensorType())
+								std::shared_ptr<einsum::TensorType>(new einsum::TensorType()),
+								false
 							)),
 							*$2
 						);
 				}
 
-write_access:					{$$ = new std::vector<std::shared_ptr<einsum::IndexVar>>(); }
-| OPEN_BRACKET IDENTIFIER CLOSED_BRACKET  write_access {
-				auto list = new std::vector<std::shared_ptr<einsum::IndexVar>>();
-				list->push_back(std::shared_ptr<einsum::IndexVar>(new einsum::IndexVar(*$2, 0)));
-				list->insert( list->end(), $4->begin(), $4->end());
-				$$ = list;
-			}
-write_tensor_access: IDENTIFIER write_access { $$ = new einsum::Access(
+def_lhs: IDENTIFIER access		{auto acc =  new einsum::Access(
 								std::shared_ptr<einsum::TensorVar>(new einsum::TensorVar(
 									*$1,
-									std::shared_ptr<einsum::TensorType>(new einsum::TensorType())
+									std::shared_ptr<einsum::TensorType>(new einsum::TensorType()),
+									false
 								)),
-								*$2
-							);
-					}
-
-def_lhs: IDENTIFIER write_access		{auto acc =  new einsum::Access(
-								std::shared_ptr<einsum::TensorVar>(new einsum::TensorVar(
-									*$1,
-									std::shared_ptr<einsum::TensorType>(new einsum::TensorType())
-								)),
-								*$2
+								*$2,
+								std::vector<std::shared_ptr<IndexVarExpr>>()
 							);
 					auto outputs = new std::vector<std::shared_ptr<einsum::Access>>();
 					outputs->push_back(std::shared_ptr<einsum::Access>(acc));
 					$$ = outputs;}
-| IDENTIFIER write_access COM def_lhs	{
+| IDENTIFIER access COM def_lhs	{
 					auto acc =  new einsum::Access(
 						std::shared_ptr<einsum::TensorVar>(new einsum::TensorVar(
 							*$1,
-							std::shared_ptr<einsum::TensorType>(new einsum::TensorType())
+							std::shared_ptr<einsum::TensorType>(new einsum::TensorType()),
+							false
 						)),
-						*$2
+						*$2,
+						std::vector<std::shared_ptr<IndexVarExpr>>()
 					);
 					$4->insert($4->begin(), std::shared_ptr<einsum::Access>(acc));
 					$$ = $4;}
 
-args:			{$$ = new std::vector<std::shared_ptr<einsum::Expression>>(); }
-| args COM orexp		{$1->push_back(std::shared_ptr<einsum::Expression>($3)); $$ = $1;}
+args: orexp			{auto args = new std::vector<std::shared_ptr<einsum::Expression>>(); args->push_back(std::shared_ptr<einsum::Expression>($1)); $$ = args;}
+| orexp COM args		{auto args = new std::vector<std::shared_ptr<einsum::Expression>>();
+				args->push_back(std::shared_ptr<einsum::Expression>($1));
+				args->insert(args->end(), $3->begin(), $3->end());
+				$$ = args;}
 
-call: IDENTIFIER OPEN_PAREN CLOSED_PAREN	{new einsum::Call(*$1, std::vector<std::shared_ptr<einsum::Expression>>());}
-| IDENTIFIER OPEN_PAREN orexp args CLOSED_PAREN   {$4->insert($4->begin(), std::shared_ptr<einsum::Expression>($3));
-						$$ = new einsum::Call(*$1, *$4);}
+builtin: CHOOSE {$$ = einsum::choose_red.get();}
+| MIN {$$ = einsum::min_red.get();}
+| IFELSE {$$ = einsum::ifelse_red.get();}
+
+call: IDENTIFIER OPEN_PAREN CLOSED_PAREN	{$$ = new einsum::Call(*$1, std::vector<std::shared_ptr<einsum::Expression>>());}
+| IDENTIFIER OPEN_PAREN args CLOSED_PAREN   {$$ = new einsum::Call(*$1, *$3);}
+| builtin OPEN_PAREN CLOSED_PAREN           {$$ = new einsum::Call(std::shared_ptr<einsum::BuiltinFuncDecl>($1), std::vector<std::shared_ptr<einsum::Expression>>());}
+| builtin OPEN_PAREN args CLOSED_PAREN      {$$ = new einsum::Call(std::shared_ptr<einsum::BuiltinFuncDecl>($1), *$3);}
+
+call_repeat: STAR_CALL OPEN_PAREN CLOSED_PAREN PIPE INTEGER_LITERAL	{$1->pop_back(); new einsum::CallStarRepeat($5, *$1, std::vector<std::shared_ptr<einsum::Expression>>());}
+             | STAR_CALL OPEN_PAREN args CLOSED_PAREN PIPE INTEGER_LITERAL	{ $1->pop_back();
+             							$$ = new einsum::CallStarRepeat($6, *$1, *$3);}
+
 
 call_star: STAR_CALL OPEN_PAREN CLOSED_PAREN PIPE orexp	{$1->pop_back(); new einsum::CallStarCondition(std::shared_ptr<einsum::Expression>($5), *$1, std::vector<std::shared_ptr<einsum::Expression>>());}
-| STAR_CALL OPEN_PAREN orexp args CLOSED_PAREN PIPE orexp	{ $1->pop_back();
-							$4->insert($4->begin(), std::shared_ptr<einsum::Expression>($3));
-							$$ = new einsum::CallStarCondition(std::shared_ptr<einsum::Expression>($7), *$1, *$4);}
+| STAR_CALL OPEN_PAREN args CLOSED_PAREN PIPE orexp	{ $1->pop_back();
+							$$ = new einsum::CallStarCondition(std::shared_ptr<einsum::Expression>($6), *$1, *$3);}
 
 
 exp:		OPEN_PAREN orexp CLOSED_PAREN { $$ = $2;}
-		| INTEGER_LITERAL	{ $$ = new einsum::Literal($1, einsum::Type::make<einsum::Datatype>(einsum::Datatype::Kind::Int)); }
-		| FLOAT_LITERAL		{ $$ = new einsum::Literal($1, einsum::Type::make<einsum::Datatype>(einsum::Datatype::Kind::Float)); }
-		| BOOL_LITERAL		{ $$ = new einsum::Literal($1, einsum::Type::make<einsum::Datatype>(einsum::Datatype::Kind::Bool)); }
-		| IDENTIFIER access 	{ $$ = new einsum::ReadAccess(
-								std::shared_ptr<einsum::TensorVar>(new einsum::TensorVar(
-									*$1,
-									std::shared_ptr<einsum::TensorType>(new einsum::TensorType())
-								)),
-								*$2
-							);
-					}
+		| INTEGER_LITERAL	{ $$ = new einsum::Literal($1, einsum::intType); }
+		| FLOAT_LITERAL		{ $$ = new einsum::Literal($1, einsum::floatType); }
+		| BOOL_LITERAL		{ $$ = new einsum::Literal($1, einsum::boolType); }
+		| read_tensor_access 	{ $$ = $1;}
 		| call	{$$ = $1;}
+		| call_repeat	{$$ = $1;}
 		| call_star	{$$ = $1;}
 		;
 
 reduction: 	IDENTIFIER COLONS OPEN_PAREN PLUS COM orexp CLOSED_PAREN  {$$ = new einsum::Reduction(
-												std::shared_ptr<einsum::IndexVar>(new einsum::IndexVar(*$1, 0)),
-												std::shared_ptr<einsum::AddOp>(new einsum::AddOp()),
+												std::shared_ptr<einsum::IndexVar>(new einsum::IndexVar(*$1)),
+												einsum::add_red,
 												std::shared_ptr<einsum::Expression>($6)
 											);}
 		| IDENTIFIER COLONS OPEN_PAREN MUL COM orexp CLOSED_PAREN  {$$ = new einsum::Reduction(
-                												std::shared_ptr<einsum::IndexVar>(new einsum::IndexVar(*$1, 0)),
-                												std::shared_ptr<einsum::MulOp>(new einsum::MulOp()),
+                												std::shared_ptr<einsum::IndexVar>(new einsum::IndexVar(*$1)),
+                												einsum::mul_red,
                 												std::shared_ptr<einsum::Expression>($6)
                 											);}
-                | IDENTIFIER COLONS OPEN_PAREN IDENTIFIER COM orexp CLOSED_PAREN  {$$ = new einsum::Reduction(
-                												std::shared_ptr<einsum::IndexVar>(new einsum::IndexVar(*$1, 0)),
-                												std::shared_ptr<einsum::OrOp>(new einsum::OrOp()),
+                | IDENTIFIER COLONS OPEN_PAREN AND_RED COM orexp CLOSED_PAREN  {$$ = new einsum::Reduction(
+                                												std::shared_ptr<einsum::IndexVar>(new einsum::IndexVar(*$1)),
+                                												einsum::and_red,
+                                												std::shared_ptr<einsum::Expression>($6)
+                                											);}
+                | IDENTIFIER COLONS OPEN_PAREN OR_RED COM orexp CLOSED_PAREN  {$$ = new einsum::Reduction(
+                                												std::shared_ptr<einsum::IndexVar>(new einsum::IndexVar(*$1)),
+                                												einsum::or_red,
+                                												std::shared_ptr<einsum::Expression>($6)
+                                											);}
+                | IDENTIFIER COLONS OPEN_PAREN MIN COM orexp CLOSED_PAREN  {$$ = new einsum::Reduction(
+                												std::shared_ptr<einsum::IndexVar>(new einsum::IndexVar(*$1)),
+                												einsum::min_red,
                 												std::shared_ptr<einsum::Expression>($6)
                 											);}
+                | IDENTIFIER COLONS OPEN_PAREN CHOOSE COM orexp CLOSED_PAREN  {$$ = new einsum::Reduction(
+                                												std::shared_ptr<einsum::IndexVar>(new einsum::IndexVar(*$1)),
+                                												einsum::choose_red,
+                                												std::shared_ptr<einsum::Expression>($6)
+                                											);}
 
 reduction_list:	{$$ = new std::vector<std::shared_ptr<einsum::Reduction>>();}
 | reduction_list COM reduction {$1->push_back(std::shared_ptr<einsum::Reduction>($3)); $$ = $1;}
 
-def:		def_lhs ASSIGN orexp	{
-						$$ = new einsum::Definition(
-								*$1,
-								std::shared_ptr<einsum::Expression>($3),
-								std::vector<std::shared_ptr<einsum::Reduction>>()
-						);}
-		| def_lhs ASSIGN orexp PIPE reduction reduction_list  {
-									$6->insert($6->begin(), std::shared_ptr<einsum::Reduction>($5));
-									$$ = new einsum::Definition(
-											*$1,
-											std::shared_ptr<einsum::Expression>($3),
-											*$6
-									);}
+order_list : IDENTIFIER {auto ivar = new std::vector<std::shared_ptr<einsum::IndexVar>>();
+			 ivar->push_back(std::shared_ptr<einsum::IndexVar>(new einsum::IndexVar(*$1))); $$ = ivar;
+			}
+| order_list COM IDENTIFIER {$1->push_back(std::shared_ptr<einsum::IndexVar>(new einsum::IndexVar(*$3))); $$ = $1;}
+
+
+def1: def_lhs ASSIGN orexp	{	$$ = new einsum::Definition(
+      								*$1,
+      								std::shared_ptr<einsum::Expression>($3),
+      								std::vector<std::shared_ptr<einsum::Reduction>>()
+      						);}
+
+def2: def1 	{$$ = $1;}
+| def1 PIPE reduction reduction_list  {
+       									$4->insert($4->begin(), std::shared_ptr<einsum::Reduction>($3));
+       									$1->reduction_list = *$4;
+       									$$ = $1;
+       				}
+
+def:	def2 ORD order_list  {	$1->index_vars = *$3; $$ = $1;}
+| def2	{$$ = $1;}
+
+format: DENSE  {
+               			$$ = new einsum::StorageFormat(Dense);
+               	}
+| SPARSE		{
+				$$ = new einsum::StorageFormat(Sparse);
+			}
+
 type: IDENTIFIER				{
 						auto dims = std::vector<std::shared_ptr<einsum::Expression>>();
-						$$ = new einsum::TensorType(std::make_shared<einsum::Datatype>(*$1), dims);}
+						auto formats = std::vector<std::shared_ptr<einsum::StorageFormat>>();
+						$$ = new einsum::TensorType(std::make_shared<einsum::Datatype>(*$1), dims, formats);}
 | type OPEN_BRACKET orexp CLOSED_BRACKET		{
 						 auto dims = std::vector<std::shared_ptr<einsum::Expression>>();
 						 for (int i=0; i < $1->getDimensions().size(); i++) {
@@ -260,8 +306,23 @@ type: IDENTIFIER				{
 						 dims.push_back(std::shared_ptr<einsum::Expression>($3));
 						 $$ = new einsum::TensorType($1->getElementType(), dims);
 						}
+| type OPEN_BRACKET format OPEN_BRACKET orexp CLOSED_BRACKET CLOSED_BRACKET {
+						 auto dims = std::vector<std::shared_ptr<einsum::Expression>>();
+						 for (int i=0; i < $1->getDimensions().size(); i++) {
+							dims.push_back(($1->getDimensions())[i]);
+						 }
+						 dims.push_back(std::shared_ptr<einsum::Expression>($5));
 
-param: IDENTIFIER type				{$$ = new einsum::TensorVar(*$1, std::shared_ptr<einsum::TensorType>($2));}
+						 auto forms = std::vector<std::shared_ptr<einsum::StorageFormat>>();
+						 for (int i=0; i < $1->getDimensions().size(); i++) {
+						 	forms.push_back($1->formats[i]);
+						 }
+						 forms.push_back(std::shared_ptr<einsum::StorageFormat>($3));
+						 $$ = new einsum::TensorType($1->getElementType(), dims, forms);
+}
+
+param: IDENTIFIER type				{assert($2 != nullptr);
+$$ = new einsum::TensorVar(*$1, std::shared_ptr<einsum::TensorType>($2), false);}
 
 param_list:					{$$ = new std::vector<std::shared_ptr<einsum::TensorVar>>();}
 | COM param param_list				{$3->insert($3->begin(), std::shared_ptr<einsum::TensorVar>($2));
@@ -275,11 +336,23 @@ output_params:					{$$ = new std::vector<std::shared_ptr<einsum::TensorVar>>();}
 | OPEN_PAREN param param_list CLOSED_PAREN	{$3->insert($3->begin(), std::shared_ptr<einsum::TensorVar>($2));
                                                  $$ = $3;}
 
-statements:					{$$ = new std::vector<std::shared_ptr<einsum::Definition>>();}
-|  def EOL blank statements				{$4->insert($4->begin(), std::shared_ptr<einsum::Definition>($1));
+statements:					{$$ = new std::vector<std::shared_ptr<einsum::Statement>>();}
+|  def EOL blank statements				{$4->insert($4->begin(), std::shared_ptr<einsum::Statement>($1));
 						 $$ = $4;}
+| format_rule EOL blank statements		{$4->insert($4->begin(), std::shared_ptr<einsum::Statement>($1));
+                                                						 $$ = $4;}
 
 func:		LET IDENTIFIER input_params RARROW output_params EOL blank statements END {$$ = new einsum::FuncDecl(*$2, *$3, *$5, *$8);}
+
+tensor:	IDENTIFIER type				{
+assert($2 != nullptr);
+$$ = new einsum::TensorVar(*$1, std::shared_ptr<einsum::TensorType>($2), true);}
+
+format_rule: FORMAT_RULE IDENTIFIER type RARROW type AT orexp {
+	auto src = IR::make<TensorVar>(*$2, std::shared_ptr<einsum::TensorType>($3), false);
+	auto dst = IR::make<TensorVar>(*$2, std::shared_ptr<einsum::TensorType>($5), false);
+	$$ = new einsum::FormatRule(src, dst, std::shared_ptr<einsum::Expression>($7));
+}
 %%
 
 int yyerror(State state, string s)

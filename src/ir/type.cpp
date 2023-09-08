@@ -5,12 +5,14 @@
 #include <einsum_taco/ir/type.h>
 #include <einsum_taco/ir/ir.h>
 #include <algorithm>
+#include <iostream>
 
 namespace einsum {
     Datatype::Datatype(Kind kind) : kind(kind) {
     }
 
     Datatype::Datatype(std::string type_name) {
+        std::cout << "TYPE NAME: " << type_name << "\n";
         einsum_iassert( type_name == "int" || type_name == "float" || type_name == "bool");
         if (type_name == "int") {
             kind = Kind::Int;
@@ -47,6 +49,17 @@ namespace einsum {
                 return "float";
         }
     }
+
+//    std::string Datatype::fdump() const {
+//        switch(this->getKind()) {
+//            case Kind::Bool:
+//                return "Bool";
+//            case Kind::Int:
+//                return "Int64";
+//            case Kind::Float:
+//                return "Float64";
+//        }
+//    }
 
     bool TupleType::isBool() const {
         return false;
@@ -85,8 +98,13 @@ namespace einsum {
 
     std::string TensorType::dump() const {
         std::string dims;
-        for (const auto &dimension : this->dimensions) {
-            dims += "[" + dimension->dump() + "]";
+        for (size_t i=0; i < getOrder(); i++) {
+            if (formats[i]->format == Dense) {
+                // default, don't print
+                dims += "[" + dimensions[i]->dump() + "]";
+            } else {
+                dims += "[" + formats[i]->dump() + "[" + dimensions[i]->dump() + "]]";
+            }
         }
         return this->getElementType()->dump() + dims;
     }
@@ -101,6 +119,32 @@ namespace einsum {
                 return sizeof(double);
         }
     }
+
+    int Datatype::getIntDefault() {
+        return 0;
+    }
+
+    bool Datatype::getBoolDefault() {
+        return false;
+    }
+
+    float Datatype::getFloatDefault() {
+        return 0;
+    }
+
+    std::string Datatype::dumpDefault() const {
+        if (isBool()) {
+            return std::to_string(getBoolDefault());
+        }
+        if (isInt()) {
+            return std::to_string(getIntDefault());
+        }
+        if (isFloat()) {
+            return std::to_string(getFloatDefault());
+        }
+        return "";
+    }
+
     std::vector<std::shared_ptr<einsum::Expression>> TensorType::getDimensions() const {
         return this->dimensions;
     }
@@ -117,9 +161,36 @@ namespace einsum {
         return (int) this->dimensions.size();
     }
 
+    std::shared_ptr<StorageFormat> TensorType::getFormat(int i) const {
+        return formats[i];
+    }
+
     constexpr std::array<const char*, 4> arith_ops {"+", "-", "*", "/"};
 
     bool Operator::isArithmetic() const {
         return std::find(begin(arith_ops), end(arith_ops), sign) != end(arith_ops);
+    }
+
+    std::string Operator::get_builtin_name() const {
+        return "gstaco_" + class_name();
+    }
+
+    bool StorageFormat::isInt() const {
+        return false;
+    }
+
+    bool StorageFormat::isFloat() const {
+        return false;
+    }
+
+    bool StorageFormat::isBool() const {
+        return false;
+    }
+
+    std::string StorageFormat::dump() const {
+        if (format == Dense) {
+            return "Dense";
+        }
+        return "SparseList";
     }
 }

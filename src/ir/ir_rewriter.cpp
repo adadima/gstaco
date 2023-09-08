@@ -9,217 +9,314 @@
 
 namespace einsum {
 
-    template<typename T>
-    std::shared_ptr<T> shared_from_ref(T& ref) {
-        return std::dynamic_pointer_cast<T>(ref.shared_from_this());
+    std::shared_ptr<BinaryOp> IRRewriter::rewrite_binary(std::shared_ptr<BinaryOp> node) {
+        node->left = rewrite(node->left);
+        node->op = rewrite(node->op);
+        node->right = rewrite(node->right);
+        return node;
     }
 
-    std::shared_ptr<BinaryOp> IRRewriter::rewrite_binary(BinaryOp& node) {
-        node.left->accept(this);
-        auto new_left = expr;
-
-        node.right->accept(this);
-        auto new_right = expr;
-
-        auto bin = std::make_shared<BinaryOp>(new_left, new_right, node.op, node.getType());
-
-        return bin;
+    std::shared_ptr<UnaryOp> IRRewriter::rewrite_unary(std::shared_ptr<UnaryOp> node) {
+        node->expr = rewrite(node->expr);
+        node->op = rewrite(node->op);
+        return node;
     }
 
-    std::shared_ptr<UnaryOp> IRRewriter::rewrite_unary(UnaryOp& node) {
-        node.expr->accept(this);
-        auto exp = expr;
-        return std::make_shared<UnaryOp>(exp, node.op, node.getType());
+    void IRRewriter::visit(std::shared_ptr<IndexVar> node) {
+        node_ = node;
     }
 
-    void IRRewriter::visit(IndexVar& node) {
-        index_var = context->get_index_var(node.getName());
-        context->add_reduction_var(index_var);
+    void  IRRewriter::visit(std::shared_ptr<Literal> node) {
+        node_ = node;
     }
 
-    void  IRRewriter::visit(Literal& node) {
-        expr = shared_from_ref(node);
+    void  IRRewriter::visit(std::shared_ptr<TensorVar> node) {
+        node_ = node;
     }
 
-    void  IRRewriter::visit(TensorVar& node) {
-
-        if (context->access_scope()) {
-            tensor = context->get_write_tensor(node);
-        } else {
-            tensor = context->get_read_tensor(node);
-        }
+    void  IRRewriter::visit(std::shared_ptr<IndexVarExpr> node) {
+        node->indexVar = rewrite(node->indexVar);
+        node_ = node;
     }
 
-    void  IRRewriter::visit(IndexVarExpr& node) {
-        auto ivar = context->get_index_var_expr(node.getName());
-        context->add_reduction_var(ivar->indexVar);
-        expr = ivar;
-    }
-
-    void  IRRewriter::visit(Access& node) {
-        context->enter_access(shared_from_ref(node));
-
-        node.tensor->accept(this);
-        auto new_tensor = tensor;
-
-        auto indices = std::vector<std::shared_ptr<IndexVar>>();
-
-        for (auto &&indice : node.indices) {
+    void  IRRewriter::visit(std::shared_ptr<Access> node) {
+        context->enter_access(node);
+        node->tensor = rewrite(node->tensor);
+        for(auto &indice : node->indices) {
             context->advance_access();
-            indice->accept(this);
-            indices.push_back(index_var);
+            indice = rewrite(indice);
         }
-
-        access = std::make_shared<Access>(new_tensor, indices);
-
+        node_ = node;
         context->exit_access();
     }
 
-    void  IRRewriter::visit(ReadAccess& node) {
-        if (!context->tensor_scope().empty() && node.indices.empty() && context->def_scope()->has_index_var(node.tensor->name)) {
-            auto ivar = context->get_index_var_expr(node.tensor->name);
-            context->add_reduction_var(ivar->indexVar);
-            expr = ivar;
-            return;
-        }
-        context->enter_read_access(shared_from_ref(node));
-        node.tensor->accept(this);
-
-        auto new_tensor = tensor;
-
-        auto new_indices = std::vector<std::shared_ptr<Expression>>();
-        for (auto & indice : node.indices) {
+    void  IRRewriter::visit(std::shared_ptr<ReadAccess> node) {
+        context->enter_read_access(node);
+        node->tensor = rewrite(node->tensor);
+        for(auto &indice : node->indices) {
             context->advance_access();
-            indice->accept(this);
-            new_indices.push_back(expr);
+            indice = rewrite(indice);
         }
-
-        expr = std::make_shared<ReadAccess>(new_tensor, new_indices);
+        node_ = node;
         context->exit_read_access();
     }
 
-    void  IRRewriter::visit(Definition& node) {
-        if (!context->func_scope()) {
-            return;
+    void  IRRewriter::visit(std::shared_ptr<Definition> node) {
+        context->enter_definition(node);
+        for(auto& lhs: node->lhs) {
+            lhs = rewrite(lhs);
         }
-
-        context->enter_definition(shared_from_ref(node));
-
-        auto new_lhs = std::vector<std::shared_ptr<Access>>();
-        for (auto &&acc : node.lhs) {
-            acc->accept(this);
-            new_lhs.push_back(access);
+        node->rhs = rewrite(node->rhs);
+        for(auto& red: node->reduction_list) {
+            red = rewrite(red);
         }
-
-        node.rhs->accept(this);
-        auto new_rhs = expr;
-
-        auto new_reds = std::vector<std::shared_ptr<Reduction>>();
-
-        for (auto &[ivar, red] : node.reductions) {
-                auto new_red = IR::make<Reduction>(context->get_reduction_var(ivar->getName()), red->reductionOp, red->reductionInit);
-                new_reds.push_back(new_red);
-        }
-
-        def = IR::make<Definition>(new_lhs, new_rhs, new_reds);
-
-        context->exit_definition();
+        node_ = node;
+        context->exit_definition(node);
     }
 
-    void  IRRewriter::visit(FuncDecl& node) {
-        context->enter_function(shared_from_ref(node));
-
-        auto body = std::vector<std::shared_ptr<Definition>>();
-        for (auto &&definition : node.body) {
-            definition->accept(this);
-            body.push_back(def);
-        }
-
-        func = std::make_shared<FuncDecl>(node.funcName, node.inputs, node.outputs, body);
-
-        context->exit_function(func);
-
-    }
-
-    void  IRRewriter::visit(Call& node) {
-        auto new_args = std::vector<std::shared_ptr<Expression>>();
-
-        for (auto &&arg : node.arguments) {
-            arg->accept(this);
-            new_args.push_back(expr);
-        }
-        auto function = context->get_function(node.function->funcName);
-        expr = std::make_shared<Call>(function, new_args);
-    }
-
-    void  IRRewriter::visit(CallStarRepeat& node) {
-        auto new_args = std::vector<std::shared_ptr<Expression>>();
-
-        for (auto &&arg : node.arguments) {
-            arg->accept(this);
-            new_args.push_back(expr);
-        }
-
-        auto function = context->get_function(node.function->funcName);
-        expr = std::make_shared<CallStarRepeat>(node.numIterations, function, new_args);
-
-    }
-
-    void  IRRewriter::visit(CallStarCondition& node) {
-        auto new_args = std::vector<std::shared_ptr<Expression>>();
-
-        for (auto &&arg : node.arguments) {
-            arg->accept(this);
-            new_args.push_back(expr);
-        }
-
-        auto new_func = context->get_function(node.function->funcName);
-
-        node.stopCondition->accept(this);
-        auto new_stop = expr;
-
-        auto cond = std::dynamic_pointer_cast<Literal>(new_stop);
-        if (cond && cond->isInt()) {
-            expr = IR::make<CallStarRepeat>(cond->getValue<int>(), new_func, node.arguments);
+    void  IRRewriter::visit(std::shared_ptr<FuncDecl> node) {
+        auto f = context->get_function(node->funcName);
+        if (f) {
+            node_ = f;
         } else {
-            expr = IR::make<CallStarCondition>(new_stop, new_func, new_args);
+            context->enter_function(node);
+            visit_decl(node);
+            context->exit_function(node);
         }
-
     }
 
-    //TODO: remove this method and find a cleaner way to retrieve return type of visited module component
-    std::shared_ptr<ModuleComponent> IRRewriter::visit(ModuleComponent& node) {
-        node.accept(this);
-        if (node.is_decl()) {
-            return func;
-        }
-        if (node.is_def()) {
-            return def;
+    void IRRewriter::visit_call(std::shared_ptr<Call> node) {
+        if (!node->function->is_builtin()) {
+            node->function = rewrite(node->function);
         }
 
-        if (node.is_expr()) {
-            return expr;
+        for(auto& arg: node->arguments) {
+            arg = rewrite(arg);
         }
-
-        return nullptr;
+        node_ = node;
     }
 
-    void  IRRewriter::visit(Module& node) {
-        auto new_components = std::vector<std::shared_ptr<ModuleComponent>>();
-        for (auto &&comp : node.decls) {
-            new_components.push_back(visit(*comp));
+    void  IRRewriter::visit(std::shared_ptr<Call> node) {
+        context->enter_call(node);
+        visit_call(node);
+        context->exit_call(node);
+    }
+
+    void  IRRewriter::visit(std::shared_ptr<CallStarRepeat> node) {
+        context->enter_call(node);
+        for(auto& rule: node->format_rules) {
+            rule = rewrite(rule);
         }
-        module = std::make_shared<Module>(new_components);
+        visit_call(node);
+        context->exit_call(node);
     }
 
-    void IRRewriter::visit(Reduction &node) {}
-
-    void IRRewriter::visit(BinaryOp &node) {
-        expr = rewrite_binary(node);
+    void  IRRewriter::visit(std::shared_ptr<CallStarCondition> node) {
+        context->enter_call(node);
+        for(auto& rule: node->format_rules) {
+            rule = rewrite(rule);
+        }
+//        std::cout << "REWRITING STOP CONDITION: " << node->stopCondition->dump() << "\n";
+        node->stopCondition = rewrite(node->stopCondition);
+//        std::cout << "NEW STOP CONDITION: " << node->stopCondition->dump() << "\n";
+        node->condition_def = rewrite(node->condition_def);
+        visit_call(node);
+        context->exit_call(node);
     }
 
-    void IRRewriter::visit(UnaryOp &node) {
-        expr = rewrite_unary(node);
+    void  IRRewriter::visit(std::shared_ptr<Module> node) {
+        context->enter_module(node);
+        for(auto &comp: node->decls) {
+            if (comp == nullptr) {
+                continue;
+            }
+            comp = rewrite(comp);
+        }
+        node_ = node;
+        context->exit_module();
+    }
+
+    void IRRewriter::visit(std::shared_ptr<Reduction> node) {
+        node->reductionVar = rewrite(node->reductionVar);
+        node->reductionInit = rewrite(node->reductionInit);
+        node->reductionOp = rewrite(node->reductionOp);
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<BinaryOp> node) {
+        node_ = rewrite_binary(node);
+    }
+
+    void IRRewriter::visit(std::shared_ptr<UnaryOp> node) {
+        node_ = rewrite_unary(node);
+    }
+
+    void IRRewriter::visit(std::shared_ptr<Datatype> node) {
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<StorageFormat> node) {
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<TensorType> node) {
+        node->type = rewrite(node->type);
+        for (size_t i=0; i < node->dimensions.size(); i++) {
+            auto& dim = node->dimensions[i];
+            dim = rewrite(dim);
+
+            auto& format = node->formats[i];
+            format = rewrite(format);
+        }
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<TupleType> node) {
+        for (auto &t : node->tuple) {
+            t = rewrite(t);
+        }
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<Operator> node) {
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<Allocate> node) {
+        node->tensor = rewrite(node->tensor);
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<MemAssignment> node) {
+        node->rhs = rewrite(node->rhs);
+        node->lhs = rewrite(node->lhs);
+        node_ = node;
+    }
+
+    std::shared_ptr<ModuleComponent> IRRewriter::visit(const std::shared_ptr<ModuleComponent>& node) {
+        if (node->is_builtin()) {
+            return rewrite(node->as_builtin());
+        }
+        if (node->is_tuple_var()) {
+            return rewrite(node->as_tuple_var());
+        }
+        if (node->is_init()) {
+            return rewrite(node->as_init());
+        }
+        if (node->is_decl()) {
+            return rewrite(node->as_decl());
+        }
+        if (node->is_var()) {
+            return rewrite(node->as_var());
+        }
+        if (node->is_def()) {
+            return rewrite(node->as_def());
+        }
+        if (node->is_multi_def()) {
+            return rewrite(node->as_multi_def());
+        }
+        if (node->is_expr()) {
+            return rewrite(node->as_expr());
+        }
+        if (node->is_allocate()) {
+            return rewrite(node->as_allocate());
+        }
+        if (node->is_mem_assign()) {
+            return rewrite(node->as_mem_assign());
+        }
+        return node;
+    }
+
+    std::shared_ptr<Statement> IRRewriter::visit(const std::shared_ptr<Statement> &node) {
+
+        if (node->is_allocate()) {
+            return rewrite(node->as_allocate());
+        }
+        if (node->is_def()) {
+            return rewrite(node->as_def());
+        }
+        if (node->is_multi_def()) {
+            return rewrite(node->as_multi_def());
+        }
+        if (node->is_mem_assign()) {
+            return rewrite(node->as_mem_assign());
+        }
+        return node;
+    }
+
+    void IRRewriter::visit_decl(const std::shared_ptr<FuncDecl>& node) {
+        for(auto& input: node->inputs) {
+            input = rewrite(input);
+        }
+        for(auto& output: node->outputs) {
+            output = rewrite(output);
+        }
+        for(auto& stmt: node->body) {
+            einsum_iassert(context->func_scope() != nullptr);
+            stmt = rewrite(stmt);
+        }
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<Initialize> node) {
+        node->tensor = rewrite(node->tensor);
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<MinOperator> node) {
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<IfElseOperator> node) {
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<ChooseOperator> node) {
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<AddOperator> node) {
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<MulOperator> node) {
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<AndOperator> node) {
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<OrOperator> node) {
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<TupleVar> node) {
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<TupleVarReadAccess> node) {
+        node->var = rewrite(node->var);
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<MultipleOutputDefinition> node) {
+        node->lhs = rewrite(node->lhs);
+        node->rhs = rewrite(node->rhs);
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<BuiltinFuncDecl> node) {
+        node_ = node;
+    }
+
+    void IRRewriter::visit(std::shared_ptr<FormatRule> node) {
+        node->src_tensor = rewrite(node->src_tensor);
+        node->dst_tensor = rewrite(node->dst_tensor);
+        node->condition = rewrite(node->condition);
+        node->format_switch_cond = rewrite(node->format_switch_cond);
+        node->format_switch_def = rewrite(node->format_switch_def);
+        node_ = node;
     }
 
 }

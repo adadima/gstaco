@@ -1,0 +1,26 @@
+N int
+
+edges int[N][SparseList[N]]
+
+damp float
+
+beta_score float
+
+Let InitRank() -> (r_out float[N])
+    r_out[j] = 1.0 / N
+End
+
+
+Let PageRankStep(rank_in float[N], r_in float[N], scaled_edges float[N][SparseList[N]]) -> (rank float[N], r_out float[N], out float[N][SparseList[N]])
+    rank[i] = scaled_edges[i][j] * r_in[j] | j:(+, 0.0)
+    r_out[i] = beta_score + damp * rank[i]
+    out = scaled_edges
+End
+
+
+Let Main() -> (rank float[N], out_d int[N], scaled_edges float[N][SparseList[N]], r_out float[N])
+    rank[i] = 0.0
+    out_d[j] = edges[i][j] | i:(+, 0) Ord i, j
+    scaled_edges[i][j] = edges[i][j] / out_d[j]
+    _, r_out, _ = PageRankStep*(rank, InitRank(), scaled_edges) | 20
+End

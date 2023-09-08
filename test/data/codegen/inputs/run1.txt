@@ -1,0 +1,7 @@
+N int
+
+edges int[N][N]
+
+Let PageRankStep() -> (out_d int[N])
+    out_d[j] = edges[i][j] | i:(+, 0)
+End

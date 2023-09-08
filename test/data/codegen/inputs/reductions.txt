@@ -1,0 +1,7 @@
+N int
+
+M int
+
+Let func(B float[N][10][M][20][10][10], C float[10], D float[20]) -> (A float[N][M])
+    A[i][k] = B[i][j][k][l][n][m] * C[j] * D[l] | j:(+, 0.0), l:(*, 1.0), n:(+, 0.0), m:(*, 1.0)
+End

@@ -34,6 +34,10 @@ ID       [a-zA-Z_#][a-zA-Z_#0-9]*
 "!="                { yylval->op_val = new std::string(yytext); return NEQ; }
 "&&"                { yylval->op_val = new std::string(yytext); return AND; }
 "||"		        { yylval->op_val = new std::string(yytext); return OR; }
+"OR"                { yylval->op_val = new std::string(yytext); return OR_RED; }
+"AND"               { yylval->op_val = new std::string(yytext); return AND_RED; }
+"MIN"               { yylval->op_val = new std::string(yytext); return MIN; }
+"CHOOSE"            { yylval->op_val = new std::string(yytext); return CHOOSE; }
 
 "="      { yylval->op_val = new std::string(yytext); return ASSIGN; }
 "("      { yylval->op_val = new std::string(yytext); return OPEN_PAREN; }
@@ -51,14 +55,21 @@ true|false    {yylval->bool_val = (std::string(yytext) == "true") ? true : false
 
 "End"       {yylval->id_val = new std::string(yytext); return END; }
 
+"SparseList"       {yylval->op_val = new std::string(yytext); return SPARSE; }
 
-if|then|else {
-            printf( "A keyword: %s\n", yytext );
-            }
+"Dense"       {yylval->op_val = new std::string(yytext); return DENSE; }
+
+"Ord"           {yylval->op_val = new std::string(yytext); return ORD; }
+
+"FormatRule"    {yylval->op_val = new std::string(yytext); return FORMAT_RULE; }
+
+"@"             {yylval->op_val = new std::string(yytext); return AT; }
+
+"ifelse"          {yylval->op_val = new std::string(yytext); return IFELSE;}
 
 {ID}"*"         {yylval->id_val = new std::string(yytext); return STAR_CALL; }
 
-_|{ID}        {yylval->id_val = new std::string(yytext); return IDENTIFIER; }
+{ID}        {yylval->id_val = new std::string(yytext); return IDENTIFIER; }
 
 "->"        {yylval->id_val = new std::string(yytext); return RARROW; }
 
@@ -68,4 +79,4 @@ _|{ID}        {yylval->id_val = new std::string(yytext); return IDENTIFIER; }
 
 "{"[^}\n]*"}"     /* eat up one-line comments */
 
-.		{ std::cerr << "SCANNER "; yyerror(State{}, ""); exit(1);	}
+.		{ std::cerr << "SCANNER " << std::string(yytext) << "\n"; yyerror(State{}, ""); exit(1);	}

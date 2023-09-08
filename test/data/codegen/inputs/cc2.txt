@@ -1,0 +1,35 @@
+N int
+
+edges int[N][SparseList[N]]
+
+Let Init() -> (IDs int[N], update0 int[1], update1 int[1])
+    IDs[i] = i
+    update0[i] = 1
+    update1[i] = 1
+End
+
+Let EdgeUpdate(old_IDs int[N], old_update1 int[1], dummy int[N]) -> (new_IDs int[N], new_update1 int[1], temp int[N])
+    temp[j] = ifelse(edges[j][i] == 1 || edges[i][j] == 1,  old_IDs[old_IDs[i]], N + 1) | i:(MIN, old_IDs[old_IDs[j]])
+    new_IDs[i] = ifelse(temp[i] == 0, old_IDs[old_IDs[i]], MIN(temp[i], old_IDs[old_IDs[i]]))
+    new_update1[j] = ifelse(old_IDs[old_IDs[i]] != new_IDs[old_IDs[i]], 1, 0) | i:(CHOOSE, 0)
+End
+
+Let VertexUpdate(old_IDs int[N], old_update0 int[1]) -> (new_IDs int[N], new_update0 int[1])
+    new_IDs[i] = old_IDs[old_IDs[i]]
+    new_update0[j] = (old_IDs[old_IDs[i]] != old_IDs[i]) | i:(CHOOSE, 0)
+End
+
+
+Let CC_Step(old_IDs int[N], old_up0 int[1], old_up1 int[1], dummy1 int[1], dummy2 int[N]) -> (new_IDs int[N], new_up0 int[1], new_up1 int[1], inter_up0 int[1], inter_IDs int[N])
+    inter_IDs, new_up1, _ = EdgeUpdate(old_IDs, old_up1, dummy2)
+    inter_up0[i] = 1
+    new_IDs, new_up0 = VertexUpdate*(inter_IDs, inter_up0) | (#2 == 0)
+End
+
+
+Let Main() -> (final_IDs int[N], update0 int[1], update1 int[1], IDs int[N], dummy1 int[1], dummy2 int[N])
+    IDs, update0, update1 = Init()
+    dummy1[i] = 0
+    dummy2[i] = 0
+    final_IDs, _, _, _, _ = CC_Step*(IDs, update0, update1, dummy1, dummy2) | (#3 == 0)
+End

@@ -1,0 +1,9 @@
+Let repeated(a int, b int[10], c int) -> (na int, nb int[10], nc int)
+    na = a
+    nb[i] = b[i]
+    nc = c
+End
+
+Let Init(d int, p int[10]) -> (nd int, np int[10], r int)
+    nd, np, r = repeated*(d, p, 0) | (#2[#3] == 0)
+End

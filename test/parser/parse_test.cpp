@@ -112,8 +112,31 @@ TEST(ParseTest, CallStarConditionTest) {
     EXPECT_EQ(parse("round_out, unused_out = Round*(0, A) | (#1 == 2)").dump(), "\nround_out, unused_out = Round*(0, A) | (#1 == 2)\n");
 }
 
+TEST(ParseTest, Formats) {
+    const std::string expected = R"(
+Let Main(edges int[N][SparseList[M]]) -> (A int)
+End)";
+
+    EXPECT_EQ(parse(R"(
+Let Main(edges int[Dense[N]][SparseList[M]]) -> (A int)
+
+End)").dump(), expected + "\n");
+
+    EXPECT_EQ(parse(R"(
+Let Main(edges int[N][SparseList[M]]) -> (A int)
+
+End)").dump(), expected + "\n");
+}
+
+TEST(ParseTest, CSRTensorVar) {
+    const std::string func = R"(edges int[N][SparseList[N]])";
+    EXPECT_EQ(parse(func).dump(), "\nedges int[N][SparseList[N]]\n");
+
+    EXPECT_EQ(parse(R"(edges int[N][M])").dump(), "\nedges int[N][M]\n");
+}
+
 TEST(ParseTest, Bcentrality) {
-    auto expected = *readFileIntoString("parser/inputs/bcentrality.txt");
+    auto expected = readFileIntoString(get_test_data_dir() + "parser/inputs/bcentrality.txt");
     auto module = parse(expected);
     EXPECT_EQ(module.dump(), expected);
 }

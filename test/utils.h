@@ -5,8 +5,10 @@
 #ifndef EINSUM_TACO_UTILS_H
 #define EINSUM_TACO_UTILS_H
 
+#include <iostream>
 #include <string_view>
 #include <fstream>
+#include <streambuf>
 
 inline einsum::Module parse(std::string_view code) {
     char temp_name[17];
@@ -30,24 +32,56 @@ inline einsum::Module parse(std::string_view code) {
     return module;
 }
 
-#ifndef EINSUM_TACO_TEST_DATADIR
-#error "Did not receive test data dir."
-#endif
+// #ifndef EINSUM_TACO_TEST_DATADIR
+// #error "Did not receive test data dir."
+// #endif
+
+// #ifndef TEST_CXX_COMPILER
+// #error "Did not set c++ compiler variable."
+// #endif
 
 inline std::string get_test_data_dir() {
     return {EINSUM_TACO_TEST_DATADIR};
 }
 
-static std::string* readFileIntoString(const string& path) {
-    ifstream f(get_test_data_dir() + path);
-    auto str = new string();
-    if(f) {
-        ostringstream ss;
-        ss << f.rdbuf();
-        *str = ss.str();
-        return str;
+inline std::string get_test_dir() {
+    return {EINSUM_TACO_TEST_DIR};
+}
+
+inline std::string get_compiler_path() {
+    return {TEST_CXX_COMPILER};
+}
+
+inline std::string get_julia_include_dir() {
+    return {JULIA_INCLUDE_DIR};
+}
+
+inline std::string get_julia_lib_dir() {
+    return {JULIA_LIB_DIR};
+}
+
+inline std::string get_finch_embed_dir() {
+    return {FINCH_DIR};
+}
+
+static std::string readFileIntoString(const std::string& path) {
+    std::ifstream istrm(path);
+
+    if (!istrm.is_open()) {
+        std::cout << "Failed to open file for reading " << path << std::endl;
+        std::abort();
     }
-    return nullptr;
+
+    std::stringstream buffer;
+    buffer << istrm.rdbuf();
+
+    return buffer.str();
+}
+
+static void writeStringToFile(const std::string& filename, const std::string& text) {
+    std::ofstream out(filename);
+    out << text;
+    out.close();
 }
 
 #endif //EINSUM_TACO_UTILS_H

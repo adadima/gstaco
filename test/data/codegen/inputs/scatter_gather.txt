@@ -1,0 +1,3 @@
+Let func(B int[10][20], C int[20]) -> (A int[10])
+    A[C[i]] = B[i][j] * C[C[j]] | j:(+, 0)
+End
